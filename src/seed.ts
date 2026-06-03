@@ -10,6 +10,7 @@ import {
   Conversation,
   Campaign,
   Feedback,
+  WhatsAppSession,
 } from "./models/index.js";
 import { hashPassword } from "./lib/auth.js";
 
@@ -26,6 +27,7 @@ async function seed() {
   await Conversation.deleteMany({});
   await Campaign.deleteMany({});
   await Feedback.deleteMany({});
+  await WhatsAppSession.deleteMany({});
 
   console.log("[Seed] Cleared existing data");
 
@@ -529,6 +531,16 @@ async function seed() {
     status: "resolved",
   });
   console.log("[Seed] Created 1 feedback");
+
+  // Create WhatsApp session
+  await WhatsAppSession.create({
+    branchId: branch._id,
+    sessionName: "wuppertal-main",
+    qrStatus: "pending",
+    connected: false,
+    isActive: true,
+  });
+  console.log("[Seed] Created 1 WhatsApp session");
 
   console.log("\n✅ Database seeded successfully!");
   console.log("Default login: admin@mrtabboush.de / tabboush2024");

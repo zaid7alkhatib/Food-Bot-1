@@ -8,6 +8,7 @@ import { connectDB } from "./src/lib/db.js";
 import authRoutes from "./src/routes/auth.js";
 import { initSocket, emitGlobal } from "./src/services/socket.js";
 import { startCronJobs } from "./src/services/cron.js";
+import { startWhatsAppSession, stopWhatsAppSession } from "./src/services/whatsapp.js";
 import {
   Branch,
   Category,
@@ -775,13 +776,41 @@ app.get("/api/whatsapp/sessions", async (req, res) => {
 });
 
 app.post("/api/whatsapp/sessions/:id/connect", async (req, res) => {
-  // TODO: Wire with Baileys startWhatsAppSession
-  res.json({ message: "Connection initiated" });
+  try {
+    const { id } = req.params;
+    const session = await WhatsAppSession.findById(id);
+    if (!session) {
+      res.status(404).json({ error: "Session not found" });
+      return;
+    }
+
+    await startWhatsAppSession(session.sessionName, async (qr: string) => {
+      await WhatsAppSession.findByIdAndUpdate(id, { qrCode: qr, qrStatus: "pending" });
+      emitGlobal("whatsapp:qr", { sessionId: id, qr });
+    });
+
+    res.json({ message: "Connection initiated", sessionId: id });
+  } catch (err) {
+    console.error("[API] Connect error:", err);
+    res.status(500).json({ error: "Failed to start session" });
+  }
 });
 
 app.post("/api/whatsapp/sessions/:id/disconnect", async (req, res) => {
-  // TODO: Wire with Baileys stopWhatsAppSession
-  res.json({ message: "Disconnected" });
+  try {
+    const { id } = req.params;
+    const session = await WhatsAppSession.findById(id);
+    if (!session) {
+      res.status(404).json({ error: "Session not found" });
+      return;
+    }
+
+    await stopWhatsAppSession(session.sessionName);
+    res.json({ message: "Disconnected", sessionId: id });
+  } catch (err) {
+    console.error("[API] Disconnect error:", err);
+    res.status(500).json({ error: "Failed to stop session" });
+  }
 });
 
 // ------------------------------------------------------------------

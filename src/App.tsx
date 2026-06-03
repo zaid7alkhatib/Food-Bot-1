@@ -11,6 +11,7 @@ import {
   HelpCircle,
   LogOut,
   Zap,
+  Smartphone,
 } from "lucide-react";
 import { io, Socket } from "socket.io-client";
 import PhoneSimulator from "./components/PhoneSimulator";
@@ -20,13 +21,14 @@ import ThermalPrinter from "./components/ThermalPrinter";
 import ChatCenter from "./components/ChatCenter";
 import CampaignTab from "./components/CampaignTab";
 import MenuEditor from "./components/MenuEditor";
+import WhatsAppSessions from "./components/WhatsAppSessions";
 import LoginPage from "./components/LoginPage";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { Order, OrderStatus, Conversation, MenuItem, Category, Campaign, Feedback } from "./types";
 
 function Dashboard() {
   const { user, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState<"overview" | "orders" | "chat" | "campaigns" | "menu" | "hardware">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "orders" | "chat" | "campaigns" | "menu" | "hardware" | "whatsapp">("overview");
 
   // State populated from the server
   const [branchInfo, setBranchInfo] = useState<any>(null);
@@ -454,6 +456,18 @@ function Dashboard() {
               <Printer size={14} />
               Printer
             </button>
+
+            <button
+              onClick={() => setActiveTab("whatsapp")}
+              className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-t-xl flex items-center gap-2 transition cursor-pointer ${
+                activeTab === "whatsapp"
+                  ? "bg-white border-t-2 border-orange-500 text-orange-700 font-semibold shadow-sm"
+                  : "text-gray-500 hover:text-orange-600 hover:bg-neutral-100"
+              }`}
+            >
+              <Smartphone size={14} />
+              WhatsApp
+            </button>
           </div>
 
           {/* Dynamic Tab Panels */}
@@ -516,6 +530,8 @@ function Dashboard() {
                     currencySymbol={currencySymbol}
                   />
                 )}
+
+                {activeTab === "whatsapp" && <WhatsAppSessions />}
               </>
             )}
           </div>
