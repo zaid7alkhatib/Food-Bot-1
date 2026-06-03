@@ -175,6 +175,66 @@ function getLanguageSwitchReply(lang: CustomerLanguage): string {
   return "Sprache auf Deutsch geändert. Bitte fahren Sie mit Ihrer Bestellung fort, ich antworte jetzt auf Deutsch. ✅";
 }
 
+function getAddressPrompt(lang: CustomerLanguage): string {
+  if (lang === "ar") return "رائع! خدمة التوصيل متوفرة داخل 4 كم. يرجى إرسال عنوان التوصيل بالتفصيل في فوبيرتال:";
+  if (lang === "en") return "Great! Home delivery is available within 4 km of our branch. Please type your detailed delivery address in Wuppertal:";
+  return "Super! Der Lieferservice ist innerhalb von 4 km verfügbar. Bitte senden Sie uns Ihre Lieferadresse in Wuppertal:";
+}
+
+function getPickupTimePrompt(lang: CustomerLanguage): string {
+  if (lang === "ar") return "ممتاز! تفضل بالاستلام من المطعم بـ Berliner Str. 179.\nما هو وقت الاستلام المناسب لك؟ (مثال: 19:30)";
+  if (lang === "en") return "Great choice! Pickup is ready at Berliner Str. 179.\nWhat time would you like to pick up your order? (e.g., 20:15)";
+  return "Alles klar! Sie können Ihre Bestellung in der Berliner Str. 179 abholen.\nUm wie viel Uhr möchten Sie Ihr Essen abholen? (z.B., 19:45)";
+}
+
+function getMenuPrompt(lang: CustomerLanguage): string {
+  if (lang === "ar") {
+    return "إليك قائمة الطعام المتوفرة لدينا:\n\n1. وجبة شاورما عربي دجاج - 9.50€\n2. شاورما دجاج سوبر - 6.50€\n3. بروستد دجاج 4 قطع - 11.00€\n4. دجاجة مشوية عالفحم - 14.50€\n5. لبن عيران طازج - 1.80€\n\nاكتب اسم الوجبة أو الرقم للطلب:";
+  }
+  if (lang === "en") {
+    return "Here is our current hot menu:\n\n1. Arabic Chicken Shawarma Meal - €9.50\n2. Chicken Shawarma Super (Wrap) - €6.50\n3. Crispy Broasted Chicken (4 Pcs) - €11.00\n4. Whole Charcoal Grilled Chicken - €14.50\n5. Cold Yogurt Ayran - €1.80\n\nPlease type the item name or number to add to your cart:";
+  }
+  return "Hier ist unsere leckere Speisekarte:\n\n1. Arabisches Hähnchen-Shawarma Teller - 9,50 €\n2. Hähnchen Shawarma Super (Wrap) - 6,50 €\n3. Knusper-Broasted Hähnchen (4 Stck) - 11,00 €\n4. Ganzes Grillhähnchen - 14,50 €\n5. Yogurt Ayran erfrischend - 1,80 €\n\nBitte antworten Sie mit der Nummer oder dem Namen, um zu wählen:";
+}
+
+function getCancelReply(lang: CustomerLanguage): string {
+  if (lang === "ar") return "تم إلغاء مسودة الطلب الحالية. إذا أردت البدء من جديد، اكتب أهلاً أو طلب جديد. ✅";
+  if (lang === "en") return "Your current draft order has been cancelled. Type hello or new order whenever you want to start again. ✅";
+  return "Ihre aktuelle Bestellskizze wurde abgebrochen. Schreiben Sie Hallo oder neue Bestellung, wenn Sie neu starten möchten. ✅";
+}
+
+function getBackUnavailableReply(lang: CustomerLanguage): string {
+  if (lang === "ar") return "لا توجد خطوة سابقة واضحة حالياً. يمكنني بدء طلب جديد إذا كتبت طلب جديد.";
+  if (lang === "en") return "There is no clear previous step right now. Type new order if you want to start over.";
+  return "Es gibt aktuell keinen klaren vorherigen Schritt. Schreiben Sie neue Bestellung, wenn Sie neu starten möchten.";
+}
+
+type FlowCommand =
+  | "restart"
+  | "cancel"
+  | "back"
+  | "change_language"
+  | "change_address"
+  | "change_pickup_time"
+  | "change_type"
+  | "change_order";
+
+function detectFlowCommand(message: string): FlowCommand | null {
+  const text = message.toLowerCase().trim();
+  if (!text) return null;
+
+  if (/(change|switch).*(language)|sprache.*(ändern|wechseln)|تغيير.*(اللغة|اللغه)|بدل.*(اللغة|اللغه)/i.test(text)) return "change_language";
+  if (/^(restart|start over|new order|reset order|neu starten|von vorne|neue bestellung|ابدأ من جديد|ابدا من جديد|طلب جديد|إعادة الطلب|اعادة الطلب)$/i.test(text)) return "restart";
+  if (/^(cancel|cancel order|abort|abbrechen|stornieren|إلغاء|الغاء|ألغي|الغي)$/i.test(text)) return "cancel";
+  if (/^(back|go back|previous|zurück|zurueck|رجوع|ارجع|للخلف)$/i.test(text)) return "back";
+  if (/(change|edit).*(address)|address.*(change|edit)|adresse.*(ändern|wechseln)|lieferadresse.*(ändern|wechseln)|تغيير.*(العنوان|عنوان)|غير.*(العنوان|عنوان)/i.test(text)) return "change_address";
+  if (/(change|edit).*(pickup time|time)|pickup time.*(change|edit)|abholzeit.*(ändern|wechseln)|تغيير.*(الوقت|وقت الاستلام)|غير.*(الوقت|وقت الاستلام)/i.test(text)) return "change_pickup_time";
+  if (/(change|edit).*(delivery|pickup|type)|lieferung.*(ändern|wechseln)|abholung.*(ändern|wechseln)|تغيير.*(التوصيل|الاستلام|طريقة الاستلام)|غير.*(التوصيل|الاستلام)/i.test(text)) return "change_type";
+  if (/(change|edit).*(order|item|meal|food)|bestellung.*(ändern|wechseln)|gericht.*(ändern|wechseln)|تغيير.*(الطلب|الوجبة|الصنف)|غير.*(الطلب|الوجبة|الصنف)/i.test(text)) return "change_order";
+
+  return null;
+}
+
 function hasPricedUpsell(value: any): boolean {
   return !!value && Number.isFinite(Number(value.price));
 }
@@ -251,6 +311,77 @@ async function updateConversationIdentity(convo: any, identity: {
 
 function getConversationWhatsAppTarget(convo: any): string {
   return convo.whatsAppJid || convo.whatsAppPhoneJid || convo.whatsAppPhone;
+}
+
+function buildEmptyUnsubmittedOrder(convo: any) {
+  return {
+    branchId: convo.branchId?._id?.toString?.() || convo.branchId?.toString?.() || "",
+    customerName: convo.customerName,
+    whatsAppPhone: convo.whatsAppPhone,
+    items: [],
+    subtotal: 0,
+    deliveryFee: 1.5,
+    total: 1.5,
+    status: "received",
+    paymentMethod: "Cash on Delivery",
+  };
+}
+
+function resetOrderItems(convo: any) {
+  const deliveryFee = convo.unsubmittedOrder?.orderType === "delivery" ? 1.5 : 0;
+  convo.unsubmittedOrder = {
+    ...convo.unsubmittedOrder,
+    items: [],
+    subtotal: 0,
+    deliveryFee,
+    total: deliveryFee,
+  };
+}
+
+function applyRestart(convo: any, lang: CustomerLanguage) {
+  convo.unsubmittedOrder = buildEmptyUnsubmittedOrder(convo);
+  return {
+    botReplyText: getWelcomeReply(lang),
+    nextStep: "type",
+  };
+}
+
+function applyBack(convo: any, lang: CustomerLanguage, currentStep: string) {
+  if (currentStep === "address" || currentStep === "pickup_time") {
+    convo.unsubmittedOrder = {
+      ...convo.unsubmittedOrder,
+      orderType: undefined,
+      deliveryFee: 1.5,
+      total: convo.unsubmittedOrder?.subtotal || 1.5,
+      deliveryAddress: undefined,
+      pickupTime: undefined,
+    };
+    return { botReplyText: getWelcomeReply(lang), nextStep: "type" };
+  }
+
+  if (currentStep === "menu") {
+    if (convo.unsubmittedOrder?.orderType === "pickup") {
+      convo.unsubmittedOrder = { ...convo.unsubmittedOrder, pickupTime: undefined };
+      return { botReplyText: getPickupTimePrompt(lang), nextStep: "pickup_time" };
+    }
+    convo.unsubmittedOrder = { ...convo.unsubmittedOrder, deliveryAddress: undefined };
+    return { botReplyText: getAddressPrompt(lang), nextStep: "address" };
+  }
+
+  if (currentStep === "customizing" || currentStep === "confirming") {
+    resetOrderItems(convo);
+    return { botReplyText: getMenuPrompt(lang), nextStep: "menu" };
+  }
+
+  if (currentStep === "completed") {
+    return applyRestart(convo, lang);
+  }
+
+  if (currentStep === "type" || currentStep === "welcome") {
+    return { botReplyText: getWelcomeReply(lang), nextStep: "type" };
+  }
+
+  return { botReplyText: getBackUnavailableReply(lang), nextStep: currentStep || "welcome" };
 }
 
 async function sendConversationWhatsAppMessage(convo: any, text: string) {
@@ -742,11 +873,19 @@ app.post("/api/bot-reply", async (req, res) => {
 
     if (nextStep === "language_selection") {
       const selectedLanguage = parseLanguageSelection(message);
+      const selectionCommand = detectFlowCommand(message);
       if (selectedLanguage) {
         lang = selectedLanguage;
         convo.customerLanguage = selectedLanguage;
         botReplyText = getWelcomeReply(selectedLanguage);
         nextStep = "type";
+      } else if (selectionCommand === "cancel") {
+        convo.unsubmittedOrder = buildEmptyUnsubmittedOrder(convo);
+        botReplyText = getCancelReply(lang);
+        nextStep = "welcome";
+      } else if (selectionCommand === "restart" || selectionCommand === "back") {
+        botReplyText = getLanguageSelectionPrompt();
+        nextStep = "language_selection";
       } else {
         botReplyText = getLanguageSelectionPrompt();
         nextStep = "language_selection";
@@ -770,6 +909,57 @@ app.post("/api/bot-reply", async (req, res) => {
       convo.customerLanguage = detectedLanguage;
     } else if (!storedLanguage && nextStep !== "welcome") {
       convo.customerLanguage = lang;
+    }
+
+    const flowCommand = !botReplyText ? detectFlowCommand(message) : null;
+    if (flowCommand === "restart") {
+      const result = applyRestart(convo, lang);
+      botReplyText = result.botReplyText;
+      nextStep = result.nextStep;
+    } else if (flowCommand === "cancel") {
+      convo.unsubmittedOrder = buildEmptyUnsubmittedOrder(convo);
+      botReplyText = getCancelReply(lang);
+      nextStep = "welcome";
+    } else if (flowCommand === "back") {
+      const result = applyBack(convo, lang, nextStep);
+      botReplyText = result.botReplyText;
+      nextStep = result.nextStep;
+    } else if (flowCommand === "change_language") {
+      botReplyText = getLanguageSelectionPrompt();
+      nextStep = "language_selection";
+    } else if (flowCommand === "change_address") {
+      convo.unsubmittedOrder = {
+        ...convo.unsubmittedOrder,
+        orderType: "delivery",
+        deliveryFee: 1.5,
+        deliveryAddress: undefined,
+        total: (convo.unsubmittedOrder?.subtotal || 0) + 1.5,
+      };
+      botReplyText = getAddressPrompt(lang);
+      nextStep = "address";
+    } else if (flowCommand === "change_pickup_time") {
+      convo.unsubmittedOrder = {
+        ...convo.unsubmittedOrder,
+        orderType: "pickup",
+        deliveryFee: 0,
+        pickupTime: undefined,
+        total: convo.unsubmittedOrder?.subtotal || 0,
+      };
+      botReplyText = getPickupTimePrompt(lang);
+      nextStep = "pickup_time";
+    } else if (flowCommand === "change_type") {
+      convo.unsubmittedOrder = {
+        ...convo.unsubmittedOrder,
+        orderType: undefined,
+        deliveryAddress: undefined,
+        pickupTime: undefined,
+      };
+      botReplyText = getWelcomeReply(lang);
+      nextStep = "type";
+    } else if (flowCommand === "change_order") {
+      resetOrderItems(convo);
+      botReplyText = getMenuPrompt(lang);
+      nextStep = "menu";
     }
 
     if (aiClient && !botReplyText) {
@@ -804,6 +994,7 @@ NEW incoming customer message is: "${message}"
 Your task is to:
 1. Understand the message, but always reply in the stored customer language "${lang}" unless the customer explicitly asks to switch language.
 2. Move the customer through the ordering flowchart:
+   - Control commands are handled by the server before this prompt, but respect them if visible in history: back/zurück/رجوع means one practical step back; restart/neue Bestellung/طلب جديد means reset draft and start again; cancel/abbrechen/إلغاء means cancel the current draft; change address/time/type/order should ask for the relevant field again.
    - "language_selection" state: If the customer has not selected a language, ask them to choose 1 Deutsch, 2 العربية, or 3 English.
    - "welcome" state: Say hello, state that we do Delivery (1.50€ fee within 4km) or Pickup. Ask them to choose Type (Delivery or Pickup).
    - "type" state: Read choice. If they say pickup, set currentStep to "pickup_time" and ask what time they will pick it up (e.g. "19:30"). If delivery, set currentStep to "address" and ask for their delivery address in Wuppertal.
@@ -871,11 +1062,7 @@ You MUST reply with a JSON object in this exact schema structure:
             orderType: "delivery",
             deliveryFee: 1.5,
           };
-          botReplyText = isAr
-            ? "رائع! خدمة التوصيل متوفرة داخل 4 كم دليفري. يرجى إرسال عنوان التوصيل بالتفصيل في مدينة فوبيرتال (مثال: Berliner Str. 179 Wuppertal):"
-            : isEn
-            ? "Great! Home delivery is available within 4 km of our branch. Please type your detailed delivery address in Wuppertal:"
-            : "Super! Der Lieferservice ist innerhalb von 4 km für eine kleine Gebühr von 1,50 € verfügbar. Bitte senden Sie uns Ihre Lieferadresse in Wuppertal:";
+          botReplyText = getAddressPrompt(lang);
           nextStep = "address";
         } else {
           convo.unsubmittedOrder = {
@@ -883,28 +1070,24 @@ You MUST reply with a JSON object in this exact schema structure:
             orderType: "pickup",
             deliveryFee: 0,
           };
-          botReplyText = isAr
-            ? "ممتاز! تفضل بالاستلام من المطعم بـ Berliner Str. 179.\nما هو وقت الاستلام المناسب لك؟ (مثال: 19:30)"
-            : isEn
-            ? "Great choice! Pickup is ready at Berliner Str. 179.\nWhat time would you like to pickup your order? (e.g., 20:15)"
-            : "Alles klar! Sie können Ihre Bestellung in der Berliner Str. 179 abholen.\nUm wie viel Uhr möchten Sie Ihr Essen abholen? (z.B., 19:45)";
+          botReplyText = getPickupTimePrompt(lang);
           nextStep = "pickup_time";
         }
       } else if (step === "address") {
         convo.unsubmittedOrder = { ...convo.unsubmittedOrder, deliveryAddress: message };
         botReplyText = isAr
-          ? "حفظنا العنوان بنجاح! 📍\nإليك قائمة الطعام المتوفرة لدينا:\n\n1. وجبة شاورما عربي دجاج - 9.50€\n2. شاورما دجاج سوبر - 6.50€\n3. بروستد دجاج 4 قطع - 11.00€\n4. دجاجة مشوية عالفحم - 14.50€\n5. لبن عيران طازج - 1.80€\n\nاكتب اسم الوجبة أو الرقم للطلب:"
+          ? `حفظنا العنوان بنجاح! 📍\n${getMenuPrompt(lang)}`
           : isEn
-          ? "Delivery Address saved! 📍\nHere is our current hot menu:\n\n1. Arabic Chicken Shawarma Meal - €9.50\n2. Chicken Shawarma Super (Wrap) - €6.50\n3. Crispy Broasted Chicken (4 Pcs) - €11.00\n4. Whole Charcoal Grilled Chicken - €14.50\n5. Cold Yogurt Ayran - €1.80\n\nPlease type the item name or number to add to your cart:"
-          : "Lieferadresse gespeichert! 📍\nHier ist unsere leckere Speisekarte:\n\n1. Arabisches Hähnchen-Shawarma Teller - 9,50 €\n2. Hähnchen Shawarma Super (Wrap) - 6,50 €\n3. Knusper-Broasted Hähnchen (4 Stck) - 11,00 €\n4. Ganzes Grillhähnchen - 14,50 €\n5. Yogurt Ayran erfrischend - 1,80 €\n\nBitte antworten Sie mit der Nummer oder dem Namen, um zu wählen:";
+          ? `Delivery Address saved! 📍\n${getMenuPrompt(lang)}`
+          : `Lieferadresse gespeichert! 📍\n${getMenuPrompt(lang)}`;
         nextStep = "menu";
       } else if (step === "pickup_time") {
         convo.unsubmittedOrder = { ...convo.unsubmittedOrder, pickupTime: message };
         botReplyText = isAr
-          ? "تم تأكيد وقت الاستلام! ⏰\nإليك قائمة الطعام المتوفرة لدينا:\n\n1. وجبة شاورما عربي دجاج - 9.50€\n2. شاورما دجاج سوبر - 6.50€\n3. بروستد دجاج 4 قطع - 11.00€\n4. دجاجة مشوية عالفحم - 14.50€\n5. لبن عيران طازج - 1.80€\n\nاكتب اسم الوجبة أو الرقم للطلب:"
+          ? `تم تأكيد وقت الاستلام! ⏰\n${getMenuPrompt(lang)}`
           : isEn
-          ? "Pickup time confirmed! ⏰\nHere is our menu:\n\n1. Arabic Chicken Shawarma Meal - €9.50\n2. Chicken Shawarma Super (Wrap) - €6.50\n3. Crispy Broasted Chicken (4 Pcs) - €11.00\n4. Whole Charcoal Grilled Chicken - €14.50\n5. Cold Yogurt Ayran - €1.80\n\nPlease reply with the number or name of what you want to eat:"
-          : "Abholzeit vermerkt! ⏰\nHier ist unsere Speisekarte:\n\n1. Arabisches Hähnchen-Shawarma Teller - 9,50 €\n2. Hähnchen Shawarma Super (Wrap) - 6,50 €\n3. Knusper-Broasted Hähnchen (4 Stck) - 11,00 €\n4. Ganzes Grillhähnchen - 14,50 €\n5. Yogurt Ayran erfrischend - 1,80 €\n\nBitte wählen Sie mit Name oder Ziffer:";
+          ? `Pickup time confirmed! ⏰\n${getMenuPrompt(lang)}`
+          : `Abholzeit vermerkt! ⏰\n${getMenuPrompt(lang)}`;
         nextStep = "menu";
       } else if (step === "menu") {
         let selectedItem: any;
