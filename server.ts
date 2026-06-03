@@ -8,7 +8,7 @@ import { createServer as createViteServer } from "vite";
 import rateLimit from "express-rate-limit";
 import { GoogleGenAI } from "@google/genai";
 import { connectDB } from "./src/lib/db.js";
-import { authMiddleware } from "./src/lib/auth.js";
+import { AuthenticatedRequest, authMiddleware, requireRole } from "./src/lib/auth.js";
 import authRoutes from "./src/routes/auth.js";
 import branchesRoutes from "./src/routes/branches.js";
 import categoriesRoutes from "./src/routes/categories.js";
@@ -58,9 +58,24 @@ startCronJobs();
 // 2. Auth Routes
 // ------------------------------------------------------------------
 app.use("/api/auth", authRoutes);
-app.use("/api/branches", authMiddleware as any, branchesRoutes);
-app.use("/api/menu/categories", authMiddleware as any, categoriesRoutes);
-app.use("/api/reports", authMiddleware as any, reportsRoutes);
+app.use(
+  "/api/branches",
+  authMiddleware as any,
+  requireRole("super_admin", "restaurant_admin", "branch_manager") as any,
+  branchesRoutes
+);
+app.use(
+  "/api/menu/categories",
+  authMiddleware as any,
+  requireRole("super_admin", "restaurant_admin", "branch_manager") as any,
+  categoriesRoutes
+);
+app.use(
+  "/api/reports",
+  authMiddleware as any,
+  requireRole("super_admin", "restaurant_admin", "branch_manager") as any,
+  reportsRoutes
+);
 app.use("/api/settings", authMiddleware as any, settingsRoutes);
 
 // ------------------------------------------------------------------
@@ -114,6 +129,16 @@ function serializeDoc(doc: any) {
 
 function serializeDocs(docs: any[]) {
   return docs.map(serializeDoc);
+}
+
+const ADMIN_ROLES = ["super_admin", "restaurant_admin"];
+const MANAGER_ROLES = ["super_admin", "restaurant_admin", "branch_manager"];
+const ORDER_ROLES = ["super_admin", "restaurant_admin", "branch_manager", "staff"];
+const CHAT_ROLES = ["super_admin", "restaurant_admin", "branch_manager", "support_agent"];
+const MENU_ROLES = ["super_admin", "restaurant_admin", "branch_manager"];
+
+function userHasRole(user: AuthenticatedRequest["user"], roles: string[]): boolean {
+  return !!user?.role && roles.includes(user.role);
 }
 
 function cleanedString(value: unknown): string | undefined {
@@ -214,9 +239,17 @@ async function restoreWhatsAppSessions() {
 // 4. REST API Routes (MongoDB backed)
 // ------------------------------------------------------------------
 
-// GET /api/state — Full system snapshot (public for now, can be protected later)
-app.get("/api/state", async (req, res) => {
+// GET /api/state — Role-filtered system snapshot
+app.get("/api/state", authMiddleware as any, async (req: AuthenticatedRequest, res) => {
   try {
+    const user = req.user;
+    const canViewOrders = userHasRole(user, ORDER_ROLES);
+    const canViewChats = userHasRole(user, CHAT_ROLES);
+    const canViewMenu = userHasRole(user, MENU_ROLES);
+    const canViewMarketing = userHasRole(user, ADMIN_ROLES);
+    const canViewReports = userHasRole(user, MANAGER_ROLES);
+    const canViewSettings = userHasRole(user, MANAGER_ROLES);
+
     const [branches, categories, menuItems, orders, campaigns, feedbacks, conversations] =
       await Promise.all([
         Branch.find({ isActive: true }).lean(),
@@ -230,17 +263,17 @@ app.get("/api/state", async (req, res) => {
 
     res.json({
       branch: branches[0] || null,
-      branches: serializeDocs(branches),
-      categories: serializeDocs(categories),
-      menuItems: serializeDocs(menuItems),
-      orders: serializeDocs(orders).map((o: any) => ({
+      branches: canViewSettings ? serializeDocs(branches) : [],
+      categories: canViewMenu ? serializeDocs(categories) : [],
+      menuItems: canViewMenu ? serializeDocs(menuItems) : [],
+      orders: canViewOrders ? serializeDocs(orders).map((o: any) => ({
         ...o,
         id: o._id?.toString() || o.id,
         branchId: o.branchId?.toString?.() || o.branchId,
-      })),
-      campaigns: serializeDocs(campaigns),
-      feedbacks: serializeDocs(feedbacks),
-      conversations: serializeDocs(conversations),
+      })) : [],
+      campaigns: canViewMarketing ? serializeDocs(campaigns) : [],
+      feedbacks: canViewReports ? serializeDocs(feedbacks) : [],
+      conversations: canViewChats ? serializeDocs(conversations) : [],
       currency: defaultCurrency,
       geminiStatus: !!process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== "MY_GEMINI_API_KEY",
     });
@@ -251,7 +284,7 @@ app.get("/api/state", async (req, res) => {
 });
 
 // POST /api/orders
-app.post("/api/orders", authMiddleware as any, async (req, res) => {
+app.post("/api/orders", authMiddleware as any, requireRole(...ORDER_ROLES) as any, async (req, res) => {
   try {
     const count = await Order.countDocuments();
     const newOrder = new Order({
@@ -269,7 +302,7 @@ app.post("/api/orders", authMiddleware as any, async (req, res) => {
 });
 
 // PUT /api/orders/:id/status
-app.put("/api/orders/:id/status", authMiddleware as any, async (req, res) => {
+app.put("/api/orders/:id/status", authMiddleware as any, requireRole(...ORDER_ROLES) as any, async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -333,7 +366,7 @@ app.put("/api/orders/:id/status", authMiddleware as any, async (req, res) => {
 });
 
 // POST /api/conversations/:convoId/messages
-app.post("/api/conversations/:convoId/messages", authMiddleware as any, async (req, res) => {
+app.post("/api/conversations/:convoId/messages", authMiddleware as any, requireRole(...CHAT_ROLES) as any, async (req, res) => {
   try {
     const { convoId } = req.params;
     const { text, sender } = req.body;
@@ -370,7 +403,7 @@ app.post("/api/conversations/:convoId/messages", authMiddleware as any, async (r
 });
 
 // POST /api/conversations/:convoId/takeover
-app.post("/api/conversations/:convoId/takeover", authMiddleware as any, async (req, res) => {
+app.post("/api/conversations/:convoId/takeover", authMiddleware as any, requireRole(...CHAT_ROLES) as any, async (req, res) => {
   try {
     const { convoId } = req.params;
     const { botEnabled } = req.body;
@@ -406,7 +439,7 @@ app.post("/api/conversations/:convoId/takeover", authMiddleware as any, async (r
 });
 
 // POST /api/campaigns/:id/send
-app.post("/api/campaigns/:id/send", authMiddleware as any, async (req, res) => {
+app.post("/api/campaigns/:id/send", authMiddleware as any, requireRole(...ADMIN_ROLES) as any, async (req, res) => {
   try {
     const { id } = req.params;
     const campaign = await Campaign.findByIdAndUpdate(
@@ -463,7 +496,7 @@ app.post("/api/campaigns/:id/send", authMiddleware as any, async (req, res) => {
 });
 
 // POST /api/feedbacks
-app.post("/api/feedbacks", authMiddleware as any, async (req, res) => {
+app.post("/api/feedbacks", async (req, res) => {
   try {
     const { orderId, rating, comment, customerName, whatsAppPhone } = req.body;
     const feedback = new Feedback({
@@ -484,7 +517,7 @@ app.post("/api/feedbacks", authMiddleware as any, async (req, res) => {
 });
 
 // POST /api/menu/items
-app.post("/api/menu/items", authMiddleware as any, async (req, res) => {
+app.post("/api/menu/items", authMiddleware as any, requireRole(...MENU_ROLES) as any, async (req, res) => {
   try {
     const restaurant = req.body.restaurantId
       ? await Restaurant.findById(req.body.restaurantId).lean()
@@ -526,7 +559,7 @@ app.post("/api/menu/items", authMiddleware as any, async (req, res) => {
 });
 
 // PUT /api/menu/items/:id
-app.put("/api/menu/items/:id", authMiddleware as any, async (req, res) => {
+app.put("/api/menu/items/:id", authMiddleware as any, requireRole(...MENU_ROLES) as any, async (req, res) => {
   try {
     const { id } = req.params;
     const item = await MenuItem.findByIdAndUpdate(id, req.body, { new: true });
@@ -978,7 +1011,7 @@ You MUST reply with a JSON object in this exact schema structure:
 // ------------------------------------------------------------------
 // 6. WhatsApp Session Routes
 // ------------------------------------------------------------------
-app.get("/api/whatsapp/sessions", authMiddleware as any, async (req, res) => {
+app.get("/api/whatsapp/sessions", authMiddleware as any, requireRole(...ADMIN_ROLES) as any, async (req, res) => {
   try {
     const sessions = await WhatsAppSession.find().populate("branchId").lean();
     res.json(sessions);
@@ -987,7 +1020,7 @@ app.get("/api/whatsapp/sessions", authMiddleware as any, async (req, res) => {
   }
 });
 
-app.post("/api/whatsapp/sessions/:id/connect", authMiddleware as any, async (req, res) => {
+app.post("/api/whatsapp/sessions/:id/connect", authMiddleware as any, requireRole(...ADMIN_ROLES) as any, async (req, res) => {
   try {
     const { id } = req.params;
     const session = await WhatsAppSession.findById(id);
@@ -1008,7 +1041,7 @@ app.post("/api/whatsapp/sessions/:id/connect", authMiddleware as any, async (req
   }
 });
 
-app.post("/api/whatsapp/sessions/:id/disconnect", authMiddleware as any, async (req, res) => {
+app.post("/api/whatsapp/sessions/:id/disconnect", authMiddleware as any, requireRole(...ADMIN_ROLES) as any, async (req, res) => {
   try {
     const { id } = req.params;
     const session = await WhatsAppSession.findById(id);

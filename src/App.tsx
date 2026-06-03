@@ -13,6 +13,7 @@ import {
   Zap,
   Smartphone,
   Building2,
+  Users,
 } from "lucide-react";
 import { io, Socket } from "socket.io-client";
 import PhoneSimulator from "./components/PhoneSimulator";
@@ -25,10 +26,48 @@ import MenuEditor from "./components/MenuEditor";
 import WhatsAppSessions from "./components/WhatsAppSessions";
 import BranchSettings from "./components/BranchSettings";
 import RestaurantSettings from "./components/RestaurantSettings";
+import UserManagement from "./components/UserManagement";
 import LoginPage from "./components/LoginPage";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { I18nProvider, useI18n, AppLanguage } from "./i18n";
-import { Order, OrderStatus, Conversation, MenuItem, Category, Campaign, Feedback } from "./types";
+import { Order, OrderStatus, Conversation, MenuItem, Category, Campaign, Feedback, UserRole } from "./types";
+
+type DashboardTab =
+  | "overview"
+  | "orders"
+  | "chat"
+  | "campaigns"
+  | "menu"
+  | "hardware"
+  | "whatsapp"
+  | "settings"
+  | "restaurant"
+  | "users";
+
+const ROLE_TABS: Record<UserRole, DashboardTab[]> = {
+  super_admin: ["overview", "orders", "chat", "campaigns", "menu", "hardware", "whatsapp", "settings", "restaurant", "users"],
+  restaurant_admin: ["overview", "orders", "chat", "campaigns", "menu", "hardware", "whatsapp", "settings", "restaurant", "users"],
+  branch_manager: ["overview", "orders", "chat", "menu", "hardware", "settings"],
+  staff: ["orders", "hardware"],
+  support_agent: ["chat"],
+};
+
+const TAB_CONFIG: {
+  id: DashboardTab;
+  labelKey: string;
+  Icon: React.ComponentType<{ size?: number }>;
+}[] = [
+  { id: "overview", labelKey: "nav.overview", Icon: TrendingUp },
+  { id: "orders", labelKey: "nav.orders", Icon: ShoppingBag },
+  { id: "chat", labelKey: "nav.chat", Icon: MessageSquare },
+  { id: "campaigns", labelKey: "nav.campaigns", Icon: Megaphone },
+  { id: "menu", labelKey: "nav.menu", Icon: Settings },
+  { id: "hardware", labelKey: "nav.printer", Icon: Printer },
+  { id: "whatsapp", labelKey: "nav.whatsapp", Icon: Smartphone },
+  { id: "settings", labelKey: "nav.branch", Icon: Settings },
+  { id: "restaurant", labelKey: "nav.restaurant", Icon: Building2 },
+  { id: "users", labelKey: "nav.users", Icon: Users },
+];
 
 function normalizeConversation(conversation: any): Conversation {
   const id = conversation.id || conversation._id;
@@ -60,7 +99,10 @@ function Dashboard() {
     "Content-Type": "application/json",
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   });
-  const [activeTab, setActiveTab] = useState<"overview" | "orders" | "chat" | "campaigns" | "menu" | "hardware" | "whatsapp" | "settings" | "restaurant">("overview");
+  const allowedTabs = user ? ROLE_TABS[user.role] ?? ROLE_TABS.staff : [];
+  const visibleTabs = TAB_CONFIG.filter((tab) => allowedTabs.includes(tab.id));
+  const showSimulator = user?.role === "super_admin" || user?.role === "restaurant_admin" || user?.role === "branch_manager";
+  const [activeTab, setActiveTab] = useState<DashboardTab>("overview");
 
   // State populated from the server
   const [branchInfo, setBranchInfo] = useState<any>(null);
@@ -82,6 +124,12 @@ function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
 
   const socketRef = useRef<Socket | null>(null);
+
+  useEffect(() => {
+    if (allowedTabs.length > 0 && !allowedTabs.includes(activeTab)) {
+      setActiveTab(allowedTabs[0]);
+    }
+  }, [activeTab, allowedTabs]);
 
   // ------------------------------------------------------------------
   // Socket.io + initial data fetch
@@ -387,8 +435,9 @@ function Dashboard() {
       </header>
 
       {/* Main workspace */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 grid grid-cols-1 lg:grid-cols-12 gap-6 pb-12">
+      <main className={`flex-1 max-w-7xl w-full mx-auto p-4 grid grid-cols-1 ${showSimulator ? "lg:grid-cols-12" : "lg:grid-cols-1"} gap-6 pb-12`}>
         {/* Left column: Smartphone simulator */}
+        {showSimulator && (
         <div className="lg:col-span-4 flex flex-col">
           <div className="sticky top-6 space-y-4">
             <div className="flex items-center justify-between pb-1 border-b border-gray-200">
@@ -420,121 +469,29 @@ function Dashboard() {
             </div>
           </div>
         </div>
+        )}
 
         {/* Right column: Admin dashboards */}
-        <div className="lg:col-span-8 flex flex-col gap-5">
+        <div className={`${showSimulator ? "lg:col-span-8" : ""} flex flex-col gap-5`}>
           {/* Tab triggers */}
           <div className="flex flex-wrap border-b border-gray-200 gap-1 select-none">
-            <button
-              onClick={() => setActiveTab("overview")}
-              className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-t-xl flex items-center gap-2 transition cursor-pointer ${
-                activeTab === "overview"
-                  ? "bg-white border-t-2 border-orange-500 text-orange-700 font-semibold shadow-sm"
-                  : "text-gray-500 hover:text-orange-600 hover:bg-neutral-100"
-              }`}
-            >
-              <TrendingUp size={14} />
-              {t("nav.overview")}
-            </button>
-
-            <button
-              onClick={() => setActiveTab("orders")}
-              className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-t-xl flex items-center gap-2 transition cursor-pointer relative ${
-                activeTab === "orders"
-                  ? "bg-white border-t-2 border-orange-500 text-orange-700 font-semibold shadow-sm"
-                  : "text-gray-500 hover:text-orange-600 hover:bg-neutral-100"
-              }`}
-            >
-              <ShoppingBag size={14} />
-              {t("nav.orders")}
-              {orders.filter((o) => o.status === "received").length > 0 && (
-                <span className="w-2 h-2 rounded-full bg-red-500 animate-ping absolute top-1 right-2"></span>
-              )}
-            </button>
-
-            <button
-              onClick={() => setActiveTab("chat")}
-              className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-t-xl flex items-center gap-2 transition cursor-pointer ${
-                activeTab === "chat"
-                  ? "bg-white border-t-2 border-orange-500 text-orange-700 font-semibold shadow-sm"
-                  : "text-gray-500 hover:text-orange-600 hover:bg-neutral-100"
-              }`}
-            >
-              <MessageSquare size={14} />
-              {t("nav.chat")}
-            </button>
-
-            <button
-              onClick={() => setActiveTab("campaigns")}
-              className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-t-xl flex items-center gap-2 transition cursor-pointer ${
-                activeTab === "campaigns"
-                  ? "bg-white border-t-2 border-orange-500 text-orange-700 font-semibold shadow-sm"
-                  : "text-gray-500 hover:text-orange-600 hover:bg-neutral-100"
-              }`}
-            >
-              <Megaphone size={14} />
-              {t("nav.campaigns")}
-            </button>
-
-            <button
-              onClick={() => setActiveTab("menu")}
-              className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-t-xl flex items-center gap-2 transition cursor-pointer ${
-                activeTab === "menu"
-                  ? "bg-white border-t-2 border-orange-500 text-orange-700 font-semibold shadow-sm"
-                  : "text-gray-500 hover:text-orange-600 hover:bg-neutral-100"
-              }`}
-            >
-              <Settings size={14} />
-              {t("nav.menu")}
-            </button>
-
-            <button
-              onClick={() => setActiveTab("hardware")}
-              className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-t-xl flex items-center gap-2 transition cursor-pointer ${
-                activeTab === "hardware"
-                  ? "bg-white border-t-2 border-orange-500 text-orange-700 font-semibold shadow-sm"
-                  : "text-gray-500 hover:text-orange-600 hover:bg-neutral-100"
-              }`}
-            >
-              <Printer size={14} />
-              {t("nav.printer")}
-            </button>
-
-            <button
-              onClick={() => setActiveTab("whatsapp")}
-              className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-t-xl flex items-center gap-2 transition cursor-pointer ${
-                activeTab === "whatsapp"
-                  ? "bg-white border-t-2 border-orange-500 text-orange-700 font-semibold shadow-sm"
-                  : "text-gray-500 hover:text-orange-600 hover:bg-neutral-100"
-              }`}
-            >
-              <Smartphone size={14} />
-              {t("nav.whatsapp")}
-            </button>
-
-            <button
-              onClick={() => setActiveTab("settings")}
-              className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-t-xl flex items-center gap-2 transition cursor-pointer ${
-                activeTab === "settings"
-                  ? "bg-white border-t-2 border-orange-500 text-orange-700 font-semibold shadow-sm"
-                  : "text-gray-500 hover:text-orange-600 hover:bg-neutral-100"
-              }`}
-            >
-              <Settings size={14} />
-              {t("nav.branch")}
-            </button>
-
-            <button
-              onClick={() => setActiveTab("restaurant")}
-              className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-t-xl flex items-center gap-2 transition cursor-pointer ${
-                activeTab === "restaurant"
-                  ? "bg-white border-t-2 border-orange-500 text-orange-700 font-semibold shadow-sm"
-                  : "text-gray-500 hover:text-orange-600 hover:bg-neutral-100"
-              }`}
-            >
-              <Building2 size={14} />
-              {t("nav.restaurant")}
-            </button>
+            {visibleTabs.map(({ id, labelKey, Icon }) => (
+              <button
+                key={id}
+                onClick={() => setActiveTab(id)}
+                className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-t-xl flex items-center gap-2 transition cursor-pointer relative ${
+                  activeTab === id
+                    ? "bg-white border-t-2 border-orange-500 text-orange-700 font-semibold shadow-sm"
+                    : "text-gray-500 hover:text-orange-600 hover:bg-neutral-100"
+                }`}
+              >
+                <Icon size={14} />
+                {t(labelKey)}
+                {id === "orders" && orders.filter((o) => o.status === "received").length > 0 && (
+                  <span className="w-2 h-2 rounded-full bg-red-500 animate-ping absolute top-1 right-2"></span>
+                )}
+              </button>
+            ))}
           </div>
 
           {/* Dynamic Tab Panels */}
@@ -598,6 +555,8 @@ function Dashboard() {
                 {activeTab === "settings" && <BranchSettings />}
 
                 {activeTab === "restaurant" && <RestaurantSettings />}
+
+                {activeTab === "users" && <UserManagement />}
               </>
             )}
           </div>

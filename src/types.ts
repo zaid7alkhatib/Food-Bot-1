@@ -4,6 +4,20 @@ export interface Translation {
   en: string;
 }
 
+export type UserRole = "super_admin" | "restaurant_admin" | "branch_manager" | "staff" | "support_agent";
+
+export interface UserAccount {
+  id: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  restaurantId?: string;
+  branchId?: string;
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface Branch {
   id: string;
   name: string;

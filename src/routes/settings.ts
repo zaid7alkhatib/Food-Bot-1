@@ -1,10 +1,14 @@
 import { Router } from "express";
 import { Restaurant, Branch } from "../models/index.js";
+import { requireRole } from "../lib/auth.js";
 
 const router = Router();
 
+const ADMIN_ROLES = ["super_admin", "restaurant_admin"];
+const MANAGER_ROLES = ["super_admin", "restaurant_admin", "branch_manager"];
+
 // GET /api/settings/restaurant
-router.get("/restaurant", async (req, res) => {
+router.get("/restaurant", requireRole(...ADMIN_ROLES) as any, async (req, res) => {
   try {
     const restaurant = await Restaurant.findOne({ isActive: true }).lean();
     if (!restaurant) {
@@ -19,7 +23,7 @@ router.get("/restaurant", async (req, res) => {
 });
 
 // PUT /api/settings/restaurant/:id
-router.put("/restaurant/:id", async (req, res) => {
+router.put("/restaurant/:id", requireRole(...ADMIN_ROLES) as any, async (req, res) => {
   try {
     const restaurant = await Restaurant.findByIdAndUpdate(req.params.id, req.body, { new: true }).lean();
     if (!restaurant) {
@@ -34,7 +38,7 @@ router.put("/restaurant/:id", async (req, res) => {
 });
 
 // GET /api/settings/branches
-router.get("/branches", async (req, res) => {
+router.get("/branches", requireRole(...MANAGER_ROLES) as any, async (req, res) => {
   try {
     const branches = await Branch.find({ isActive: true }).lean();
     res.json(branches);
@@ -45,7 +49,7 @@ router.get("/branches", async (req, res) => {
 });
 
 // GET /api/settings/order-status-messages
-router.get("/order-status-messages", async (req, res) => {
+router.get("/order-status-messages", requireRole(...MANAGER_ROLES) as any, async (req, res) => {
   // For now, return the default messages from mockData
   // In the future, these should come from the Restaurant document
   const messages = {
