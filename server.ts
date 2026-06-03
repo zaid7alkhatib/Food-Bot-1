@@ -116,6 +116,28 @@ function serializeDocs(docs: any[]) {
   return docs.map(serializeDoc);
 }
 
+async function restoreWhatsAppSessions() {
+  const sessions = await WhatsAppSession.find({
+    isActive: true,
+    connected: true,
+    qrStatus: "connected",
+  }).lean();
+
+  if (sessions.length === 0) {
+    console.log("[WhatsApp] No connected sessions to restore");
+    return;
+  }
+
+  console.log(`[WhatsApp] Restoring ${sessions.length} connected session(s)`);
+  for (const session of sessions) {
+    try {
+      await startWhatsAppSession(session.sessionName);
+    } catch (err) {
+      console.error(`[WhatsApp] Failed to restore ${session.sessionName}:`, err);
+    }
+  }
+}
+
 // ------------------------------------------------------------------
 // 4. REST API Routes (MongoDB backed)
 // ------------------------------------------------------------------
@@ -910,6 +932,9 @@ const startServer = async () => {
   httpServer.listen(PORT, "0.0.0.0", () => {
     console.log(`[MR. Tabboush Server] Running on http://0.0.0.0:${PORT}`);
     console.log(`[Socket.io] Listening for realtime connections`);
+    restoreWhatsAppSessions().catch((err) => {
+      console.error("[WhatsApp] Session restore failed:", err);
+    });
   });
 };
 

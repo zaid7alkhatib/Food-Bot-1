@@ -50,6 +50,11 @@ async function processIncomingBotMessage(sock: WASocket, remoteJid: string, text
 }
 
 export async function startWhatsAppSession(sessionName: string, onQR?: (qr: string) => void) {
+  const existingSession = sessions.get(sessionName);
+  if (existingSession) {
+    return existingSession;
+  }
+
   const sessionDir = path.join(process.cwd(), "bailey_sessions", sessionName);
 
   if (!fs.existsSync(sessionDir)) {
@@ -82,6 +87,8 @@ export async function startWhatsAppSession(sessionName: string, onQR?: (qr: stri
     if (connection === "close") {
       const shouldReconnect =
         (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
+
+      sessions.delete(sessionName);
 
       await WhatsAppSession.findOneAndUpdate(
         { sessionName },
