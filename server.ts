@@ -16,7 +16,7 @@ import reportsRoutes from "./src/routes/reports.js";
 import settingsRoutes from "./src/routes/settings.js";
 import { initSocket, emitGlobal } from "./src/services/socket.js";
 import { startCronJobs } from "./src/services/cron.js";
-import { startWhatsAppSession, stopWhatsAppSession } from "./src/services/whatsapp.js";
+import { sendWhatsAppMessage, startWhatsAppSession, stopWhatsAppSession } from "./src/services/whatsapp.js";
 import {
   Branch,
   Category,
@@ -162,6 +162,30 @@ async function updateConversationIdentity(convo: any, identity: {
     convo.unsubmittedOrder.customerName = convo.customerName;
     convo.unsubmittedOrder.whatsAppPhone = convo.whatsAppPhone;
   }
+}
+
+function getConversationWhatsAppTarget(convo: any): string {
+  return convo.whatsAppJid || convo.whatsAppPhoneJid || convo.whatsAppPhone;
+}
+
+async function sendConversationWhatsAppMessage(convo: any, text: string) {
+  const target = getConversationWhatsAppTarget(convo);
+  if (!target) {
+    throw new Error("Conversation does not have a WhatsApp target");
+  }
+
+  const session = await WhatsAppSession.findOne({
+    ...(convo.branchId ? { branchId: convo.branchId } : {}),
+    isActive: true,
+    connected: true,
+  }).sort({ updatedAt: -1 });
+
+  if (!session) {
+    throw new Error("No connected WhatsApp session is available for this conversation");
+  }
+
+  await startWhatsAppSession(session.sessionName);
+  await sendWhatsAppMessage(session.sessionName, target, text);
 }
 
 async function restoreWhatsAppSessions() {
@@ -331,6 +355,7 @@ app.post("/api/conversations/:convoId/messages", authMiddleware as any, async (r
     convo.updatedAt = new Date();
 
     if (sender === "human") {
+      await sendConversationWhatsAppMessage(convo, text);
       convo.botEnabled = false;
     }
 
@@ -360,12 +385,14 @@ app.post("/api/conversations/:convoId/takeover", authMiddleware as any, async (r
     convo.updatedAt = new Date();
 
     if (botEnabled) {
+      const reactivationText = "🤖 تم إعادة تفعيل المساعد الآلي لخدمتك!\n🤖 Der Bestell-Bot ist wieder aktiv und bereit für Sie!";
       convo.messages.push({
         id: "msg-" + Math.random().toString(36).substr(2, 9),
         sender: "bot",
-        text: "🤖 تم إعادة تفعيل المساعد الآلي لخدمتك!\n🤖 Der Bestell-Bot ist wieder aktiv und bereit für Sie!",
+        text: reactivationText,
         timestamp: new Date().toISOString(),
       });
+      await sendConversationWhatsAppMessage(convo, reactivationText);
     }
 
     await convo.save();

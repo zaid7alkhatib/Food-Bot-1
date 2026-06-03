@@ -195,6 +195,6 @@ export async function sendWhatsAppMessage(sessionName: string, phone: string, te
     throw new Error(`Session ${sessionName} not found or not connected`);
   }
 
-  const jid = phone.includes("@g.us") ? phone : `${phone.replace(/[^0-9]/g, "")}@s.whatsapp.net`;
+  const jid = phone.includes("@") ? phone : `${phone.replace(/[^0-9]/g, "")}@s.whatsapp.net`;
   await sock.sendMessage(jid, { text });
 }
