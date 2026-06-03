@@ -24,6 +24,12 @@ export default function ChatCenter({
   const selectedConvo = conversations.find((c) => c.id === selectedConvoId);
 
   useEffect(() => {
+    if ((!selectedConvoId || !selectedConvo) && conversations[0]?.id) {
+      setSelectedConvoId(conversations[0].id);
+    }
+  }, [conversations, selectedConvo, selectedConvoId]);
+
+  useEffect(() => {
     if (chatBottomRef.current) {
       chatBottomRef.current.scrollIntoView({ behavior: "smooth" });
     }
@@ -49,6 +55,7 @@ export default function ChatCenter({
         
         <div className="flex-1 overflow-y-auto divide-y divide-gray-100">
           {conversations.map((convo) => {
+            if (!convo.id) return null;
             const lastMsg = convo.messages[convo.messages.length - 1];
             const isSelected = convo.id === selectedConvoId;
             return (

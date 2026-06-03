@@ -30,6 +30,28 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import { I18nProvider, useI18n, AppLanguage } from "./i18n";
 import { Order, OrderStatus, Conversation, MenuItem, Category, Campaign, Feedback } from "./types";
 
+function normalizeConversation(conversation: any): Conversation {
+  const id = conversation.id || conversation._id;
+  return {
+    ...conversation,
+    id: id ? String(id) : "",
+  };
+}
+
+function normalizeConversations(conversations: any[] = []): Conversation[] {
+  return conversations.map(normalizeConversation).filter((conversation) => conversation.id);
+}
+
+function mergeConversation(prev: Conversation[], incoming: any): Conversation[] {
+  const normalized = normalizeConversation(incoming);
+  if (!normalized.id) return prev;
+
+  return [
+    normalized,
+    ...prev.filter((conversation) => conversation.id !== normalized.id),
+  ].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+}
+
 function Dashboard() {
   const { user, logout, token } = useAuth();
   const { language, setLanguage, t, dir } = useI18n();
@@ -73,7 +95,7 @@ function Dashboard() {
         setCategories(data.categories);
         setMenuItems(data.menuItems);
         setOrders(data.orders);
-        setConversations(data.conversations);
+        setConversations(normalizeConversations(data.conversations));
         setCampaigns(data.campaigns);
         setFeedbacks(data.feedbacks);
         setGeminiStatus(data.geminiStatus);
@@ -122,13 +144,7 @@ function Dashboard() {
     });
 
     socket.on("conversation:updated", (updatedConvo: Conversation) => {
-      setConversations((prev) => {
-        const exists = prev.find((c) => c.id === updatedConvo.id);
-        if (exists) {
-          return prev.map((c) => (c.id === updatedConvo.id ? updatedConvo : c));
-        }
-        return [updatedConvo, ...prev];
-      });
+      setConversations((prev) => mergeConversation(prev, updatedConvo));
     });
 
     socket.on("campaign:sent", () => {
@@ -169,7 +185,7 @@ function Dashboard() {
       if (response.ok) {
         const data = await response.json();
         setOrders(data.orders);
-        setConversations(data.conversations);
+        setConversations(normalizeConversations(data.conversations));
 
         if (selectedOrderToPrint?.id === id) {
           const matched = data.orders.find((o: Order) => o.id === id);
@@ -208,7 +224,7 @@ function Dashboard() {
       });
       if (response.ok) {
         const data = await response.json();
-        setConversations((prev) => prev.map((c) => (c.id === convoId ? data : c)));
+        setConversations((prev) => mergeConversation(prev, data));
       }
     } catch (err) {
       console.error("Admin chat failed", err);
@@ -224,7 +240,7 @@ function Dashboard() {
       });
       if (response.ok) {
         const data = await response.json();
-        setConversations((prev) => prev.map((c) => (c.id === convoId ? data : c)));
+        setConversations((prev) => mergeConversation(prev, data));
       }
     } catch (err) {
       console.error("Takeover toggle error:", err);
@@ -236,7 +252,7 @@ function Dashboard() {
       const response = await fetch(`/api/campaigns/${id}/send`, { method: "POST", headers: token ? { Authorization: `Bearer ${token}` } : {} });
       if (response.ok) {
         const data = await response.json();
-        setConversations(data.conversations);
+        setConversations(normalizeConversations(data.conversations));
         setCampaigns((prev) =>
           prev.map((c) => (c.id === id ? data.campaign : c))
         );

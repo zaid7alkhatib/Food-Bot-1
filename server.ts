@@ -104,6 +104,18 @@ function hasPricedUpsell(value: any): boolean {
   return !!value && Number.isFinite(Number(value.price));
 }
 
+function serializeDoc(doc: any) {
+  const raw = typeof doc?.toObject === "function" ? doc.toObject() : doc;
+  return {
+    ...raw,
+    id: raw?._id?.toString?.() || raw?.id,
+  };
+}
+
+function serializeDocs(docs: any[]) {
+  return docs.map(serializeDoc);
+}
+
 // ------------------------------------------------------------------
 // 4. REST API Routes (MongoDB backed)
 // ------------------------------------------------------------------
@@ -122,29 +134,19 @@ app.get("/api/state", async (req, res) => {
         Conversation.find().sort({ updatedAt: -1 }).lean(),
       ]);
 
-    // Convert _id to id strings for frontend compatibility
-    const serialize = (arr: any[]) =>
-      arr.map((doc: any) => ({
-        ...doc,
-        id: doc._id?.toString() || doc.id,
-      }));
-
     res.json({
       branch: branches[0] || null,
-      branches: serialize(branches),
-      categories: serialize(categories),
-      menuItems: serialize(menuItems),
-      orders: serialize(orders).map((o: any) => ({
+      branches: serializeDocs(branches),
+      categories: serializeDocs(categories),
+      menuItems: serializeDocs(menuItems),
+      orders: serializeDocs(orders).map((o: any) => ({
         ...o,
         id: o._id?.toString() || o.id,
         branchId: o.branchId?.toString?.() || o.branchId,
       })),
-      campaigns: serialize(campaigns),
-      feedbacks: serialize(feedbacks),
-      conversations: serialize(conversations).map((c: any) => ({
-        ...c,
-        id: c._id?.toString() || c.id,
-      })),
+      campaigns: serializeDocs(campaigns),
+      feedbacks: serializeDocs(feedbacks),
+      conversations: serializeDocs(conversations),
       currency: defaultCurrency,
       geminiStatus: !!process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== "MY_GEMINI_API_KEY",
     });
@@ -223,12 +225,12 @@ app.put("/api/orders/:id/status", authMiddleware as any, async (req, res) => {
     const conversations = await Conversation.find().sort({ updatedAt: -1 }).lean();
 
     emitGlobal("order:updated", { orderId: id, status });
-    if (convo) emitGlobal("conversation:updated", convo);
+    if (convo) emitGlobal("conversation:updated", serializeDoc(convo));
 
     res.json({
       order: { ...order, id: order._id?.toString() || order.id },
       orders: orders.map((o: any) => ({ ...o, id: o._id?.toString() || o.id })),
-      conversations: conversations.map((c: any) => ({ ...c, id: c._id?.toString() || c.id })),
+      conversations: serializeDocs(conversations),
     });
   } catch (err) {
     console.error("[API] PUT /api/orders/:id/status error:", err);
@@ -263,8 +265,9 @@ app.post("/api/conversations/:convoId/messages", authMiddleware as any, async (r
     }
 
     await convo.save();
-    emitGlobal("conversation:updated", convo);
-    res.json(convo);
+    const serializedConvo = serializeDoc(convo);
+    emitGlobal("conversation:updated", serializedConvo);
+    res.json(serializedConvo);
   } catch (err) {
     console.error("[API] POST /api/conversations/:convoId/messages error:", err);
     res.status(500).json({ error: "Failed to send message" });
@@ -296,8 +299,9 @@ app.post("/api/conversations/:convoId/takeover", authMiddleware as any, async (r
     }
 
     await convo.save();
-    emitGlobal("conversation:updated", convo);
-    res.json(convo);
+    const serializedConvo = serializeDoc(convo);
+    emitGlobal("conversation:updated", serializedConvo);
+    res.json(serializedConvo);
   } catch (err) {
     console.error("[API] POST /api/conversations/:convoId/takeover error:", err);
     res.status(500).json({ error: "Failed to toggle takeover" });
@@ -492,7 +496,7 @@ app.post("/api/bot-reply", async (req, res) => {
 
     // If human mode, don't auto-reply
     if (!convo.botEnabled) {
-      res.json({ conversation: convo, dbOrders, botReplyText: null });
+      res.json({ conversation: serializeDoc(convo), dbOrders, botReplyText: null });
       return;
     }
 
@@ -815,10 +819,10 @@ You MUST reply with a JSON object in this exact schema structure:
     convo.updatedAt = new Date();
     await convo.save();
 
-    emitGlobal("conversation:updated", convo);
+    emitGlobal("conversation:updated", serializeDoc(convo));
 
     const allOrders = await Order.find().sort({ createdAt: -1 }).lean();
-    res.json({ conversation: convo, dbOrders: allOrders, botReplyText });
+    res.json({ conversation: serializeDoc(convo), dbOrders: allOrders, botReplyText });
   } catch (err) {
     console.error("[API] POST /api/bot-reply error:", err);
     res.status(500).json({ error: "Bot processing failed" });
