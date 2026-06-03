@@ -118,6 +118,9 @@ export interface Order {
   branchId: string;
   customerName: string;
   whatsAppPhone: string;
+  whatsAppJid?: string;
+  whatsAppPhoneJid?: string;
+  whatsAppLid?: string;
   orderType: OrderType;
   items: OrderItem[];
   subtotal: number;
@@ -143,6 +146,9 @@ export interface Conversation {
   id: string; // usually Customer ID / Phone number
   customerName: string;
   whatsAppPhone: string;
+  whatsAppJid?: string;
+  whatsAppPhoneJid?: string;
+  whatsAppLid?: string;
   botEnabled: boolean;
   assignedTo?: string;
   takeoverReason?: string;

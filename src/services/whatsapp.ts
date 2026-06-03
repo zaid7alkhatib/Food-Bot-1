@@ -25,16 +25,49 @@ function getMessageText(message: any): string {
   );
 }
 
-function getCustomerPhone(remoteJid: string): string {
-  return remoteJid.replace(/@s\.whatsapp\.net|@g\.us|@lid/g, "");
+function getJidUser(jid?: string | null): string {
+  return jid?.split("@")[0]?.split(":")[0] || "";
 }
 
-async function processIncomingBotMessage(sock: WASocket, remoteJid: string, text: string) {
+function getPhoneFromJid(jid?: string | null): string | null {
+  if (!jid || !jid.endsWith("@s.whatsapp.net")) return null;
+  const user = getJidUser(jid).replace(/\D/g, "");
+  return user ? `+${user}` : null;
+}
+
+function getLidJid(jid?: string | null): string | null {
+  return jid?.endsWith("@lid") ? jid : null;
+}
+
+function getCustomerIdentity(msg: any) {
+  const remoteJid = msg.key.remoteJid as string;
+  const candidateJids = [
+    msg.key.remoteJid,
+    msg.key.remoteJidAlt,
+    msg.key.participant,
+    msg.key.participantAlt,
+  ].filter(Boolean) as string[];
+
+  const phoneJid = candidateJids.find((jid) => getPhoneFromJid(jid)) || null;
+  const lidJid = candidateJids.find((jid) => getLidJid(jid)) || null;
+  const phone = getPhoneFromJid(phoneJid) || getJidUser(remoteJid);
+  const customerName = typeof msg.pushName === "string" ? msg.pushName.trim() : "";
+
+  return {
+    phone,
+    customerName: customerName || undefined,
+    whatsappJid: remoteJid,
+    whatsappPhoneJid: phoneJid,
+    whatsappLid: lidJid,
+  };
+}
+
+async function processIncomingBotMessage(sock: WASocket, remoteJid: string, text: string, identity: ReturnType<typeof getCustomerIdentity>) {
   const response = await fetch(`${getInternalBotUrl()}/api/bot-reply`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      phone: getCustomerPhone(remoteJid),
+      ...identity,
       message: text,
     }),
   });
@@ -118,13 +151,13 @@ export async function startWhatsAppSession(sessionName: string, onQR?: (qr: stri
           const text = getMessageText(msg.message);
           if (!text.trim()) continue;
 
-          const phone = getCustomerPhone(remoteJid);
-          console.log(`[WhatsApp] Message from ${phone}: ${text}`);
+          const identity = getCustomerIdentity(msg);
+          console.log(`[WhatsApp] Message from ${identity.customerName || identity.phone}: ${text}`);
 
           try {
-            await processIncomingBotMessage(sock, remoteJid, text);
+            await processIncomingBotMessage(sock, remoteJid, text, identity);
           } catch (err) {
-            console.error(`[WhatsApp] Bot reply failed for ${phone}:`, err);
+            console.error(`[WhatsApp] Bot reply failed for ${identity.phone}:`, err);
           }
         }
       }

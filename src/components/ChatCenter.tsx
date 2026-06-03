@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Send, User, Bot, AlertTriangle, ShieldCheck, CheckCheck, RefreshCw } from "lucide-react";
 import { Conversation, Message } from "../types";
 import { useI18n } from "../i18n";
+import { isWhatsAppPhone } from "../utils/whatsappContact";
 
 interface ChatCenterProps {
   conversations: Conversation[];
@@ -107,7 +108,9 @@ export default function ChatCenter({
                 <h4 className="text-xs font-bold text-gray-950 flex items-center gap-1.5">
                   {t("chat.withCustomer", { name: selectedConvo.customerName })}
                 </h4>
-                <p className="text-[10px] font-mono text-gray-400 mt-0.5">{t("common.phone")}: {selectedConvo.whatsAppPhone}</p>
+                <p className="text-[10px] font-mono text-gray-400 mt-0.5">
+                  {isWhatsAppPhone(selectedConvo.whatsAppPhone) ? t("common.phone") : "WhatsApp ID"}: {selectedConvo.whatsAppPhone}
+                </p>
               </div>
 
               {/* Takeover Control buttons */}

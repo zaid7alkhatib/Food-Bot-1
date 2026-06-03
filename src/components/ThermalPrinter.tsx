@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Printer, Settings, Volume2, CheckCircle2, RotateCw, Wifi } from "lucide-react";
 import { Order } from "../types";
 import { useI18n } from "../i18n";
+import { isWhatsAppPhone } from "../utils/whatsappContact";
 
 interface ThermalPrinterProps {
   activeOrderToPrint: Order | null;
@@ -221,7 +222,7 @@ export default function ThermalPrinter({
                 </div>
                 <div>{t("printer.date").toUpperCase()}: {new Date(activeOrderToPrint.createdAt).toLocaleDateString()} {new Date(activeOrderToPrint.createdAt).toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"})}</div>
                 <div>{t("printer.customer").toUpperCase()}: {activeOrderToPrint.customerName}</div>
-                <div>{t("printer.tel").toUpperCase()}: {activeOrderToPrint.whatsAppPhone}</div>
+                <div>{isWhatsAppPhone(activeOrderToPrint.whatsAppPhone) ? t("printer.tel").toUpperCase() : "WHATSAPP ID"}: {activeOrderToPrint.whatsAppPhone}</div>
                 
                 {/* Specific coordinates */}
                 {activeOrderToPrint.orderType === "delivery" ? (

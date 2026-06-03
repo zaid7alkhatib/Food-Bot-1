@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Check, Clock, Truck, Play, ShieldAlert, X, Printer, MapPin, User, CheckCircle2, ChevronRight, Volume2 } from "lucide-react";
 import { Order, OrderStatus } from "../types";
 import { useI18n } from "../i18n";
+import { isWhatsAppPhone } from "../utils/whatsappContact";
 
 interface LiveOrdersListProps {
   orders: Order[];
@@ -202,7 +203,9 @@ export default function LiveOrdersList({
                     <span className="font-semibold text-gray-800">{selectedOrder.customerName}</span>
                   </div>
                   <div>
-                    <span className="text-gray-400 block">{t("orders.whatsappPhone")}:</span>
+                    <span className="text-gray-400 block">
+                      {isWhatsAppPhone(selectedOrder.whatsAppPhone) ? t("orders.whatsappPhone") : "WhatsApp ID"}:
+                    </span>
                     <span className="font-mono font-semibold text-gray-800">{selectedOrder.whatsAppPhone}</span>
                   </div>
                   {selectedOrder.orderType === "delivery" ? (

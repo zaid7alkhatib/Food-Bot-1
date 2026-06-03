@@ -116,6 +116,54 @@ function serializeDocs(docs: any[]) {
   return docs.map(serializeDoc);
 }
 
+function cleanedString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function strippedJidUser(jid?: string): string | undefined {
+  return jid?.split("@")[0]?.split(":")[0] || undefined;
+}
+
+function guestName(identifier: string): string {
+  return `Gast ${identifier.substring(Math.max(0, identifier.length - 4))}`;
+}
+
+function isGuestName(name?: string): boolean {
+  return !name || /^Gast\s+\S+$/i.test(name);
+}
+
+async function updateConversationIdentity(convo: any, identity: {
+  phone: string;
+  customerName?: string;
+  whatsappJid?: string;
+  whatsappPhoneJid?: string;
+  whatsappLid?: string;
+}) {
+  if (identity.customerName && isGuestName(convo.customerName)) {
+    convo.customerName = identity.customerName;
+  }
+
+  if (identity.phone.startsWith("+") && convo.whatsAppPhone !== identity.phone) {
+    const existingPhoneConvo = await Conversation.findOne({
+      _id: { $ne: convo._id },
+      whatsAppPhone: identity.phone,
+    });
+
+    if (!existingPhoneConvo) {
+      convo.whatsAppPhone = identity.phone;
+    }
+  }
+
+  convo.whatsAppJid = identity.whatsappJid || convo.whatsAppJid;
+  convo.whatsAppPhoneJid = identity.whatsappPhoneJid || convo.whatsAppPhoneJid;
+  convo.whatsAppLid = identity.whatsappLid || convo.whatsAppLid;
+
+  if (convo.unsubmittedOrder) {
+    convo.unsubmittedOrder.customerName = convo.customerName;
+    convo.unsubmittedOrder.whatsAppPhone = convo.whatsAppPhone;
+  }
+}
+
 async function restoreWhatsAppSessions() {
   const sessions = await WhatsAppSession.find({
     isActive: true,
@@ -472,9 +520,44 @@ app.put("/api/menu/items/:id", authMiddleware as any, async (req, res) => {
 // ------------------------------------------------------------------
 app.post("/api/bot-reply", async (req, res) => {
   try {
-    const { phone, message } = req.body;
+    const {
+      message,
+      customerName,
+      whatsappJid,
+      whatsappPhoneJid,
+      whatsappLid,
+    } = req.body;
+    const phone = cleanedString(req.body.phone) || strippedJidUser(whatsappJid) || "unknown";
+    const cleanCustomerName = cleanedString(customerName);
+    const cleanWhatsAppJid = cleanedString(whatsappJid);
+    const cleanWhatsAppPhoneJid = cleanedString(whatsappPhoneJid);
+    const cleanWhatsAppLid = cleanedString(whatsappLid);
+    const identity = {
+      phone,
+      customerName: cleanCustomerName,
+      whatsappJid: cleanWhatsAppJid,
+      whatsappPhoneJid: cleanWhatsAppPhoneJid,
+      whatsappLid: cleanWhatsAppLid,
+    };
 
-    let convo = await Conversation.findOne({ whatsAppPhone: phone });
+    const lookupValues = Array.from(new Set([
+      phone,
+      cleanWhatsAppJid,
+      cleanWhatsAppPhoneJid,
+      cleanWhatsAppLid,
+      strippedJidUser(cleanWhatsAppJid),
+      strippedJidUser(cleanWhatsAppPhoneJid),
+      strippedJidUser(cleanWhatsAppLid),
+    ].filter(Boolean) as string[]));
+
+    let convo = await Conversation.findOne({
+      $or: [
+        { whatsAppPhone: { $in: lookupValues } },
+        { whatsAppJid: { $in: lookupValues } },
+        { whatsAppPhoneJid: { $in: lookupValues } },
+        { whatsAppLid: { $in: lookupValues } },
+      ],
+    });
     const dbMenuItems = await MenuItem.find({ isActive: true }).lean();
     const dbOrders = await Order.find().sort({ createdAt: -1 }).lean();
 
@@ -484,8 +567,11 @@ app.post("/api/bot-reply", async (req, res) => {
         Branch.findOne({ isActive: true }).lean(),
       ]);
       convo = new Conversation({
-        customerName: "Gast " + phone.substring(phone.length - 4),
+        customerName: cleanCustomerName || guestName(phone),
         whatsAppPhone: phone,
+        whatsAppJid: cleanWhatsAppJid,
+        whatsAppPhoneJid: cleanWhatsAppPhoneJid,
+        whatsAppLid: cleanWhatsAppLid,
         restaurantId: defaultRestaurant?._id,
         branchId: defaultBranch?._id,
         botEnabled: true,
@@ -493,7 +579,7 @@ app.post("/api/bot-reply", async (req, res) => {
         currentStep: "welcome",
         unsubmittedOrder: {
           branchId: defaultBranch?._id?.toString() || "",
-          customerName: "Gast " + phone.substring(phone.length - 4),
+          customerName: cleanCustomerName || guestName(phone),
           whatsAppPhone: phone,
           items: [],
           subtotal: 0,
@@ -503,6 +589,8 @@ app.post("/api/bot-reply", async (req, res) => {
           paymentMethod: "Cash on Delivery",
         },
       });
+    } else {
+      await updateConversationIdentity(convo, identity);
     }
 
     // Push user message
@@ -792,6 +880,9 @@ You MUST reply with a JSON object in this exact schema structure:
             branchId: convo.branchId || (await Branch.findOne({ isActive: true }))?._id,
             customerName: convo.customerName,
             whatsAppPhone: convo.whatsAppPhone,
+            whatsAppJid: convo.whatsAppJid,
+            whatsAppPhoneJid: convo.whatsAppPhoneJid,
+            whatsAppLid: convo.whatsAppLid,
             orderType: convo.unsubmittedOrder?.orderType || "delivery",
             items: convo.unsubmittedOrder?.items || [],
             subtotal: convo.unsubmittedOrder?.subtotal || 0,
@@ -825,6 +916,12 @@ You MUST reply with a JSON object in this exact schema structure:
 
     // Save final order
     if (finalPlacedOrder) {
+      finalPlacedOrder.customerName = convo.customerName;
+      finalPlacedOrder.whatsAppPhone = convo.whatsAppPhone;
+      finalPlacedOrder.whatsAppJid = convo.whatsAppJid;
+      finalPlacedOrder.whatsAppPhoneJid = convo.whatsAppPhoneJid;
+      finalPlacedOrder.whatsAppLid = convo.whatsAppLid;
+
       const newOrder = new Order(finalPlacedOrder);
       await newOrder.save();
       emitGlobal("order:new", newOrder);

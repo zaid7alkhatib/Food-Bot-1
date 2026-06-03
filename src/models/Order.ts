@@ -55,6 +55,9 @@ export interface IOrder extends Document {
   branchId: mongoose.Types.ObjectId;
   customerName: string;
   whatsAppPhone: string;
+  whatsAppJid?: string;
+  whatsAppPhoneJid?: string;
+  whatsAppLid?: string;
   orderType: "delivery" | "pickup";
   items: any[];
   subtotal: number;
@@ -81,6 +84,9 @@ const OrderSchema = new Schema<IOrder>(
     branchId: { type: Schema.Types.ObjectId, ref: "Branch", required: true },
     customerName: { type: String, required: true },
     whatsAppPhone: { type: String, required: true },
+    whatsAppJid: String,
+    whatsAppPhoneJid: String,
+    whatsAppLid: String,
     orderType: { type: String, enum: ["delivery", "pickup"], required: true },
     items: [OrderItemSchema],
     subtotal: { type: Number, default: 0 },
