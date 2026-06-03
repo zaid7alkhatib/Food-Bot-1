@@ -15,6 +15,7 @@ import {
   PieChart,
   Pie,
 } from "recharts";
+import { useI18n } from "../i18n";
 
 interface DashboardData {
   revenueToday: number;
@@ -36,6 +37,7 @@ interface DashboardOverviewProps {
 }
 
 export default function DashboardOverview({ currencySymbol }: DashboardOverviewProps) {
+  const { t } = useI18n();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -64,7 +66,7 @@ export default function DashboardOverview({ currencySymbol }: DashboardOverviewP
     return (
       <div className="bg-white rounded-xl border border-gray-100 p-12 text-center">
         <div className="w-8 h-8 rounded-full border-4 border-orange-500 border-t-transparent animate-spin mx-auto mb-2"></div>
-        <span className="text-xs text-gray-500">Loading analytics...</span>
+        <span className="text-xs text-gray-500">{t("overview.loading")}</span>
       </div>
     );
   }
@@ -81,8 +83,8 @@ export default function DashboardOverview({ currencySymbol }: DashboardOverviewP
   const pickupCount = data?.pickupCount || 0;
 
   const typeDistributionData = [
-    { name: "Delivery (🛵)", value: deliveryCount || 1, color: "#f97316" },
-    { name: "Pickup (📦)", value: pickupCount || 1, color: "#10b981" },
+    { name: `🛵 ${t("orders.delivery")}`, value: deliveryCount || 1, color: "#f97316" },
+    { name: `📦 ${t("orders.pickup")}`, value: pickupCount || 1, color: "#10b981" },
   ];
 
   const chartBestSellers = topItems.length > 0 ? topItems : [
@@ -111,11 +113,11 @@ export default function DashboardOverview({ currencySymbol }: DashboardOverviewP
             <Coins size={22} />
           </div>
           <div className="leading-tight">
-            <p className="text-gray-400 text-xs font-medium uppercase tracking-wider">Revenue Today</p>
+            <p className="text-gray-400 text-xs font-medium uppercase tracking-wider">{t("overview.revenueToday")}</p>
             <h3 className="text-2xl font-bold text-gray-900 mt-1">
               {revenueToday.toFixed(2)}{currencySymbol}
             </h3>
-            <p className="text-[10px] text-emerald-500 font-medium mt-0.5">🟢 Verified payouts</p>
+            <p className="text-[10px] text-emerald-500 font-medium mt-0.5">🟢 {t("overview.verifiedPayouts")}</p>
           </div>
         </div>
 
@@ -124,10 +126,10 @@ export default function DashboardOverview({ currencySymbol }: DashboardOverviewP
             <ShoppingBag size={22} />
           </div>
           <div className="leading-tight">
-            <p className="text-gray-400 text-xs font-medium uppercase tracking-wider">Total Orders</p>
+            <p className="text-gray-400 text-xs font-medium uppercase tracking-wider">{t("overview.totalOrders")}</p>
             <h3 className="text-2xl font-bold text-gray-900 mt-1">{totalOrders}</h3>
             <p className="text-[10px] text-orange-500 font-medium mt-0.5">
-              ⚡ {activeOrders} currently in queue
+              ⚡ {t("overview.queue", { count: activeOrders })}
             </p>
           </div>
         </div>
@@ -137,11 +139,11 @@ export default function DashboardOverview({ currencySymbol }: DashboardOverviewP
             <TrendingUp size={22} />
           </div>
           <div className="leading-tight">
-            <p className="text-gray-400 text-xs font-medium uppercase tracking-wider">Average Order</p>
+            <p className="text-gray-400 text-xs font-medium uppercase tracking-wider">{t("overview.averageOrder")}</p>
             <h3 className="text-2xl font-bold text-gray-900 mt-1">
               {avgOrderValue.toFixed(2)}{currencySymbol}
             </h3>
-            <p className="text-[10px] text-gray-500 mt-0.5">Per delivered receipt</p>
+            <p className="text-[10px] text-gray-500 mt-0.5">{t("overview.perReceipt")}</p>
           </div>
         </div>
 
@@ -150,10 +152,10 @@ export default function DashboardOverview({ currencySymbol }: DashboardOverviewP
             <MessageSquare size={22} />
           </div>
           <div className="leading-tight">
-            <p className="text-gray-400 text-xs font-medium uppercase tracking-wider">Active Threads</p>
+            <p className="text-gray-400 text-xs font-medium uppercase tracking-wider">{t("overview.activeThreads")}</p>
             <h3 className="text-2xl font-bold text-gray-900 mt-1">{totalConversations}</h3>
             <p className="text-[10px] text-purple-600 font-medium mt-0.5">
-              ⭐ {avgFeedback.toFixed(1)}/5.0 Customer Rating
+              ⭐ {t("overview.customerRating", { rating: avgFeedback.toFixed(1) })}
             </p>
           </div>
         </div>
@@ -165,10 +167,10 @@ export default function DashboardOverview({ currencySymbol }: DashboardOverviewP
           <div className="flex items-center justify-between">
             <h4 className="text-xs font-semibold text-gray-900 uppercase tracking-widest flex items-center gap-1.5">
               <TrendingUp size={14} className="text-orange-500" />
-              Hourly Sales Growth
+              {t("overview.hourlySales")}
             </h4>
             <span className="text-[10px] bg-orange-50 text-orange-700 px-2.5 py-0.5 rounded-full font-medium">
-              Live Feed
+              {t("overview.liveFeed")}
             </span>
           </div>
           <div className="w-full h-64 mt-2">
@@ -183,7 +185,7 @@ export default function DashboardOverview({ currencySymbol }: DashboardOverviewP
                 />
                 <Legend iconSize={8} wrapperStyle={{ fontSize: 10 }} />
                 <Line
-                  name={`Revenue (${currencySymbol})`}
+                  name={t("overview.revenue", { currency: currencySymbol })}
                   type="monotone"
                   dataKey="sales"
                   stroke="#f97316"
@@ -199,7 +201,7 @@ export default function DashboardOverview({ currencySymbol }: DashboardOverviewP
         <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex flex-col gap-3">
           <h4 className="text-xs font-semibold text-gray-900 uppercase tracking-widest flex items-center gap-1.5">
             <Clock size={14} className="text-emerald-500" />
-            Fulfillment Channels
+            {t("overview.channels")}
           </h4>
           <div className="flex-1 flex flex-col items-center justify-center">
             <div className="relative w-full h-44 flex items-center justify-center">
@@ -223,7 +225,7 @@ export default function DashboardOverview({ currencySymbol }: DashboardOverviewP
               </ResponsiveContainer>
               <div className="absolute flex flex-col items-center justify-center">
                 <span className="text-2xl font-bold text-gray-800">{totalOrders}</span>
-                <span className="text-[9px] uppercase text-gray-400 tracking-wider">Total Orders</span>
+                <span className="text-[9px] uppercase text-gray-400 tracking-wider">{t("overview.totalOrders")}</span>
               </div>
             </div>
 
@@ -232,7 +234,7 @@ export default function DashboardOverview({ currencySymbol }: DashboardOverviewP
                 <div key={col.name} className="bg-neutral-50 p-2.5 rounded-lg border border-neutral-100 text-center">
                   <span className="text-[10px] text-gray-500 block font-medium">{col.name}</span>
                   <span className="text-sm font-bold text-neutral-800">
-                    {col.value} <span className="text-[10px] text-neutral-400">orders</span>
+                    {col.value} <span className="text-[10px] text-neutral-400">{t("common.orders")}</span>
                   </span>
                 </div>
               ))}
@@ -245,7 +247,7 @@ export default function DashboardOverview({ currencySymbol }: DashboardOverviewP
       <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm">
         <h4 className="text-xs font-semibold text-gray-900 uppercase tracking-widest flex items-center gap-1.5 mb-4">
           <ClipboardCheck size={14} className="text-blue-500" />
-          Bestseller Meal Volumes (Items Sold)
+          {t("overview.bestsellers")}
         </h4>
         <div className="w-full h-64">
           <ResponsiveContainer width="100%" height="100%">

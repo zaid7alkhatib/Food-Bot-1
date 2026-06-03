@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Building2, Globe, Coins, MessageCircle, Save, Loader2, CheckCircle2, Link2 } from "lucide-react";
+import { useI18n } from "../i18n";
 
 interface Restaurant {
   _id: string;
@@ -19,6 +20,7 @@ interface Restaurant {
 }
 
 export default function RestaurantSettings() {
+  const { t } = useI18n();
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -91,7 +93,7 @@ export default function RestaurantSettings() {
     return (
       <div className="bg-white rounded-xl border border-gray-100 p-12 text-center">
         <Loader2 size={24} className="animate-spin text-orange-500 mx-auto mb-2" />
-        <span className="text-xs text-gray-500">Loading restaurant settings...</span>
+        <span className="text-xs text-gray-500">{t("restaurant.loading")}</span>
       </div>
     );
   }
@@ -100,7 +102,7 @@ export default function RestaurantSettings() {
     return (
       <div className="bg-white rounded-xl border border-gray-100 p-8 text-center">
         <Building2 size={32} className="text-gray-300 mx-auto mb-3" />
-        <p className="text-sm text-gray-500">No restaurant found.</p>
+        <p className="text-sm text-gray-500">{t("restaurant.empty")}</p>
       </div>
     );
   }
@@ -109,14 +111,14 @@ export default function RestaurantSettings() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">Restaurant Settings</h3>
-          <p className="text-xs text-gray-500 mt-0.5">Manage brand, language, currency, and review links</p>
+          <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">{t("restaurant.title")}</h3>
+          <p className="text-xs text-gray-500 mt-0.5">{t("restaurant.subtitle")}</p>
         </div>
         <div className="flex items-center gap-2">
           {saved && (
             <span className="flex items-center gap-1 text-xs text-emerald-600 font-bold">
               <CheckCircle2 size={14} />
-              Saved
+              {t("common.saved")}
             </span>
           )}
           <button
@@ -125,7 +127,7 @@ export default function RestaurantSettings() {
             className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 transition disabled:opacity-50"
           >
             {saving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
-            Save Changes
+            {t("common.saveChanges")}
           </button>
         </div>
       </div>
@@ -135,11 +137,11 @@ export default function RestaurantSettings() {
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-4">
           <div className="flex items-center gap-2 mb-2">
             <Building2 size={16} className="text-orange-500" />
-            <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Brand Identity</h4>
+            <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">{t("restaurant.brand")}</h4>
           </div>
 
           <div>
-            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">Restaurant Name</label>
+            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">{t("restaurant.restaurantName")}</label>
             <input
               type="text"
               value={restaurant.name}
@@ -149,7 +151,7 @@ export default function RestaurantSettings() {
           </div>
 
           <div>
-            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">Legal Name</label>
+            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">{t("restaurant.legalName")}</label>
             <input
               type="text"
               value={restaurant.legalName || ""}
@@ -160,7 +162,7 @@ export default function RestaurantSettings() {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">Phone</label>
+              <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">{t("common.phone")}</label>
               <input
                 type="text"
                 value={restaurant.phone}
@@ -169,7 +171,7 @@ export default function RestaurantSettings() {
               />
             </div>
             <div>
-              <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">WhatsApp</label>
+              <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">{t("common.whatsapp")}</label>
               <input
                 type="text"
                 value={restaurant.whatsappNumber}
@@ -180,7 +182,7 @@ export default function RestaurantSettings() {
           </div>
 
           <div>
-            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">Email</label>
+            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">{t("common.email")}</label>
             <input
               type="email"
               value={restaurant.email || ""}
@@ -190,7 +192,7 @@ export default function RestaurantSettings() {
           </div>
 
           <div>
-            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">Address</label>
+            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">{t("common.address")}</label>
             <input
               type="text"
               value={restaurant.address || ""}
@@ -204,24 +206,24 @@ export default function RestaurantSettings() {
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-4">
           <div className="flex items-center gap-2 mb-2">
             <Globe size={16} className="text-blue-500" />
-            <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Localization</h4>
+            <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">{t("restaurant.localization")}</h4>
           </div>
 
           <div>
-            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">Default Language</label>
+            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">{t("restaurant.defaultLanguage")}</label>
             <select
               value={restaurant.defaultLanguage}
               onChange={(e) => updateField("defaultLanguage", e.target.value)}
               className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-orange-500"
             >
-              <option value="de">German (de)</option>
-              <option value="ar">Arabic (ar)</option>
-              <option value="en">English (en)</option>
+              <option value="de">{t("common.language.de")} (de)</option>
+              <option value="ar">{t("common.language.ar")} (ar)</option>
+              <option value="en">{t("common.language.en")} (en)</option>
             </select>
           </div>
 
           <div>
-            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">Supported Languages</label>
+            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">{t("restaurant.supportedLanguages")}</label>
             <div className="flex gap-2">
               {["ar", "de", "en"].map((lang) => (
                 <button
@@ -240,7 +242,7 @@ export default function RestaurantSettings() {
           </div>
 
           <div>
-            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">Timezone</label>
+            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">{t("common.timezone")}</label>
             <input
               type="text"
               value={restaurant.timezone}
@@ -250,7 +252,7 @@ export default function RestaurantSettings() {
           </div>
 
           <div>
-            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">Currency</label>
+            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">{t("common.currency")}</label>
             <select
               value={restaurant.defaultCurrency}
               onChange={(e) => updateField("defaultCurrency", e.target.value)}
@@ -268,13 +270,13 @@ export default function RestaurantSettings() {
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-4 md:col-span-2">
           <div className="flex items-center gap-2 mb-2">
             <Link2 size={16} className="text-purple-500" />
-            <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Integrations</h4>
+            <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">{t("restaurant.integrations")}</h4>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">
-                Google Maps Review Link
+                {t("restaurant.reviewLink")}
               </label>
               <div className="flex items-center gap-2">
                 <MessageCircle size={14} className="text-gray-400" />
@@ -287,13 +289,13 @@ export default function RestaurantSettings() {
                 />
               </div>
               <p className="text-[10px] text-gray-400 mt-1">
-                Sent to customers after 5-star feedback
+                {t("restaurant.reviewHint")}
               </p>
             </div>
 
             <div>
               <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">
-                Tax / VAT Rate (%)
+                {t("common.taxVat")}
               </label>
               <div className="flex items-center gap-2">
                 <Coins size={14} className="text-gray-400" />
@@ -306,7 +308,7 @@ export default function RestaurantSettings() {
                 />
               </div>
               <p className="text-[10px] text-gray-400 mt-1">
-                Applied to order totals (0 = no tax)
+                {t("restaurant.taxHint")}
               </p>
             </div>
           </div>

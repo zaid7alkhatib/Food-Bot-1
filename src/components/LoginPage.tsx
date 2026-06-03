@@ -1,9 +1,11 @@
 import React, { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { Lock, Mail, Loader2, AlertCircle } from "lucide-react";
+import { useI18n } from "../i18n";
 
 export default function LoginPage() {
   const { login } = useAuth();
+  const { language, setLanguage, t, dir } = useI18n();
   const [email, setEmail] = useState("admin@mrtabboush.de");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -16,14 +18,14 @@ export default function LoginPage() {
     try {
       await login(email, password);
     } catch (err: any) {
-      setError(err.message || "Invalid credentials");
+      setError(err.message || t("login.invalid"));
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
+    <div dir={dir} className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Brand */}
         <div className="text-center mb-8">
@@ -34,15 +36,31 @@ export default function LoginPage() {
             MR. Tabboush
           </h1>
           <p className="text-sm text-slate-400 mt-1">
-            WhatsApp Ordering System
+            {t("login.subtitle")}
           </p>
+          <div className="mt-4 inline-flex rounded-xl bg-slate-800 border border-slate-700 p-1">
+            {(["de", "ar", "en"] as const).map((lang) => (
+              <button
+                key={lang}
+                type="button"
+                onClick={() => setLanguage(lang)}
+                className={`h-8 min-w-10 px-3 rounded-lg text-[11px] font-bold uppercase transition ${
+                  language === lang
+                    ? "bg-orange-500 text-white"
+                    : "text-slate-400 hover:text-white hover:bg-slate-700"
+                }`}
+              >
+                {lang}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Login Card */}
         <div className="bg-white rounded-2xl shadow-xl p-6 sm:p-8">
-          <h2 className="text-lg font-bold text-gray-900 mb-1">Welcome back</h2>
+          <h2 className="text-lg font-bold text-gray-900 mb-1">{t("login.welcome")}</h2>
           <p className="text-xs text-gray-500 mb-6">
-            Sign in to access the admin dashboard
+            {t("login.helper")}
           </p>
 
           {error && (
@@ -55,7 +73,7 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                Email Address
+                {t("login.email")}
               </label>
               <div className="relative">
                 <Mail
@@ -75,7 +93,7 @@ export default function LoginPage() {
 
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                Password
+                {t("login.password")}
               </label>
               <div className="relative">
                 <Lock
@@ -101,17 +119,17 @@ export default function LoginPage() {
               {isSubmitting ? (
                 <>
                   <Loader2 size={16} className="animate-spin" />
-                  Signing in...
+                  {t("login.signingIn")}
                 </>
               ) : (
-                "Sign In"
+                t("login.signIn")
               )}
             </button>
           </form>
 
           <div className="mt-6 pt-4 border-t border-gray-100 text-center">
             <p className="text-[11px] text-gray-400">
-              Default: <span className="font-mono text-gray-600">admin@mrtabboush.de</span> /{" "}
+              {t("login.default")}: <span className="font-mono text-gray-600">admin@mrtabboush.de</span> /{" "}
               <span className="font-mono text-gray-600">tabboush2024</span>
             </p>
           </div>

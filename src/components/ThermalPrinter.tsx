@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Printer, Settings, Volume2, CheckCircle2, RotateCw, Wifi } from "lucide-react";
 import { Order } from "../types";
+import { useI18n } from "../i18n";
 
 interface ThermalPrinterProps {
   activeOrderToPrint: Order | null;
@@ -15,6 +16,7 @@ export default function ThermalPrinter({
   onToggleAutoPrint,
   currencySymbol,
 }: ThermalPrinterProps) {
+  const { t, text } = useI18n();
   const [paperWidth, setPaperWidth] = useState<"58mm" | "80mm">("80mm");
   const [buzzerEnabled, setBuzzerEnabled] = useState(true);
   const [printerLogs, setPrinterLogs] = useState<string[]>([
@@ -72,7 +74,7 @@ export default function ThermalPrinter({
       <div className="md:col-span-5 flex flex-col bg-white p-5 rounded-xl border border-gray-100 shadow-sm gap-4 h-full">
         <h4 className="text-xs font-semibold text-gray-900 uppercase tracking-widest flex items-center gap-1.5 border-b border-gray-100 pb-3">
           <Settings size={14} className="text-orange-500 animate-spin-slow" />
-          Hardware & ESC/POS settings
+          {t("printer.settings")}
         </h4>
 
         {/* IP connection status */}
@@ -85,7 +87,7 @@ export default function ThermalPrinter({
             </div>
           </div>
           <span className="bg-emerald-100 text-emerald-800 text-[9px] font-bold px-2 py-0.5 rounded uppercase">
-            Online
+            {t("printer.online")}
           </span>
         </div>
 
@@ -93,7 +95,7 @@ export default function ThermalPrinter({
         <div className="space-y-3.5 text-xs text-neutral-700">
           
           <div className="flex items-center justify-between">
-            <label className="font-medium">Paper Width Mode:</label>
+            <label className="font-medium">{t("printer.paperWidth")}:</label>
             <div className="flex gap-1">
               {(["58mm", "80mm"] as const).map((w) => (
                 <button
@@ -113,8 +115,8 @@ export default function ThermalPrinter({
 
           <div className="flex items-center justify-between">
             <div>
-              <span className="font-medium block">Auto-Print WhatsApp Orders:</span>
-              <span className="text-[10px] text-gray-400 block">Routes orders immediately to hot printing</span>
+              <span className="font-medium block">{t("printer.autoPrint")}:</span>
+              <span className="text-[10px] text-gray-400 block">{t("printer.autoPrintHint")}</span>
             </div>
             
             <input
@@ -127,8 +129,8 @@ export default function ThermalPrinter({
 
           <div className="flex items-center justify-between border-t border-gray-100 pt-3">
             <div>
-              <span className="font-medium block text-neutral-800">Order Buzzer Alarm:</span>
-              <span className="text-[9px] text-gray-400 block">Sounds buzzer ring on new printer receipt</span>
+              <span className="font-medium block text-neutral-800">{t("printer.buzzer")}:</span>
+              <span className="text-[9px] text-gray-400 block">{t("printer.buzzerHint")}</span>
             </div>
             
             <input
@@ -145,7 +147,7 @@ export default function ThermalPrinter({
               className="w-full py-2 border border-neutral-200 bg-neutral-50 hover:bg-neutral-100 text-[10px] rounded font-bold uppercase tracking-wider flex items-center justify-center gap-1 transition"
             >
               <Volume2 size={13} />
-              Test Buzzer Ring
+              {t("printer.testBuzzer")}
             </button>
           </div>
         </div>
@@ -153,7 +155,7 @@ export default function ThermalPrinter({
         {/* Embedded terminal prints */}
         <div className="flex-1 flex flex-col pt-3 border-t border-gray-100">
           <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">
-            Sys-Logs Printer:
+            {t("printer.logs")}:
           </span>
           <div className="flex-1 bg-black text-emerald-400 font-mono text-[9px] p-2.5 rounded-lg overflow-y-auto space-y-1 h-36">
             {printerLogs.map((log, i) => (
@@ -178,12 +180,12 @@ export default function ThermalPrinter({
               {isSimulatingPrint ? (
                 <>
                   <RotateCw size={13} className="animate-spin" />
-                  Printing Receipt...
+                  {t("printer.printing")}
                 </>
               ) : (
                 <>
                   <Printer size={13} />
-                  Print Physical Copy ({paperWidth})
+                  {t("printer.printCopy", { width: paperWidth })}
                 </>
               )}
             </button>
@@ -212,24 +214,24 @@ export default function ThermalPrinter({
               {/* Order specifications */}
               <div className="py-3 border-b border-dashed border-neutral-400 space-y-1">
                 <div className="flex justify-between font-bold">
-                  <span>ORDER#: {activeOrderToPrint.orderNumber}</span>
+                  <span>{t("printer.order").toUpperCase()}#: {activeOrderToPrint.orderNumber}</span>
                   <span className="uppercase text-[9px] bg-neutral-200 px-1 rounded">
                     {activeOrderToPrint.orderType}
                   </span>
                 </div>
-                <div>DATE: {new Date(activeOrderToPrint.createdAt).toLocaleDateString()} {new Date(activeOrderToPrint.createdAt).toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"})}</div>
-                <div>CUST: {activeOrderToPrint.customerName}</div>
-                <div>TEL: {activeOrderToPrint.whatsAppPhone}</div>
+                <div>{t("printer.date").toUpperCase()}: {new Date(activeOrderToPrint.createdAt).toLocaleDateString()} {new Date(activeOrderToPrint.createdAt).toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"})}</div>
+                <div>{t("printer.customer").toUpperCase()}: {activeOrderToPrint.customerName}</div>
+                <div>{t("printer.tel").toUpperCase()}: {activeOrderToPrint.whatsAppPhone}</div>
                 
                 {/* Specific coordinates */}
                 {activeOrderToPrint.orderType === "delivery" ? (
                   <div className="border-t border-neutral-200 pt-1 text-[9px] leading-snug">
-                    <span className="font-bold">DELIVERY ADDR:</span>
+                    <span className="font-bold">{t("printer.deliveryAddr").toUpperCase()}:</span>
                     <p className="whitespace-normal">{activeOrderToPrint.deliveryAddress}</p>
                   </div>
                 ) : (
                   <div className="border-t border-neutral-200 pt-1 text-[9px]">
-                    <span className="font-bold">PICKUP TIME:</span> {activeOrderToPrint.pickupTime || "ASAP"}
+                    <span className="font-bold">{t("printer.pickupTime").toUpperCase()}:</span> {activeOrderToPrint.pickupTime || t("common.asap")}
                   </div>
                 )}
               </div>
@@ -237,24 +239,24 @@ export default function ThermalPrinter({
               {/* Cart Items listing */}
               <div className="py-3 border-b border-dashed border-neutral-400 space-y-2">
                 <div className="flex justify-between font-bold text-[10px] uppercase text-neutral-500">
-                  <span>DESCRIPTION</span>
-                  <span>TOTAL</span>
+                  <span>{t("printer.description").toUpperCase()}</span>
+                  <span>{t("common.total").toUpperCase()}</span>
                 </div>
                 
                 {activeOrderToPrint.items.map((item, id) => (
                   <div key={id} className="space-y-0.5 text-[11px]">
                     <div className="flex justify-between font-bold">
-                      <span>{item.quantity}x {item.name.de || item.name.en}</span>
+                      <span>{item.quantity}x {text(item.name)}</span>
                       <span>{item.totalPrice.toFixed(2)}{currencySymbol}</span>
                     </div>
                     {item.selectedModifiers.map((mod, mId) => (
                       <div key={mId} className="text-[9px] text-neutral-600 pl-2">
-                        + {mod.groupName.de || mod.groupName.en}: {mod.option.name.de || mod.option.name.en}
+                        + {text(mod.groupName)}: {text(mod.option.name)}
                       </div>
                     ))}
                     {item.selectedUpsell && (
                       <div className="text-[9px] text-neutral-600 pl-2">
-                        + Combo: {item.selectedUpsell.name.de || item.selectedUpsell.name.en}
+                        + {t("orders.combo")}: {text(item.selectedUpsell.name)}
                       </div>
                     )}
                   </div>
@@ -264,17 +266,17 @@ export default function ThermalPrinter({
               {/* Totals Summary */}
               <div className="py-3 border-b border-dashed border-neutral-400 space-y-1 text-right">
                 <div className="flex justify-between">
-                  <span>SUBTOTAL:</span>
+                  <span>{t("common.subtotal").toUpperCase()}:</span>
                   <span>{activeOrderToPrint.subtotal.toFixed(2)}{currencySymbol}</span>
                 </div>
                 {activeOrderToPrint.orderType === "delivery" && (
                   <div className="flex justify-between">
-                    <span>DELIVERY FEE:</span>
+                    <span>{t("common.deliveryFee").toUpperCase()}:</span>
                     <span>{activeOrderToPrint.deliveryFee.toFixed(2)}{currencySymbol}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-bold border-t border-neutral-200 pt-1 text-sm">
-                  <span>GRAND TOTAL:</span>
+                  <span>{t("printer.grandTotal").toUpperCase()}:</span>
                   <span>{activeOrderToPrint.total.toFixed(2)}{currencySymbol}</span>
                 </div>
               </div>
@@ -282,10 +284,10 @@ export default function ThermalPrinter({
               {/* Cash stamp validation info */}
               <div className="pt-4 text-center space-y-2">
                 <div className="p-1 px-4 border border-black inline-block font-bold text-xs uppercase rotate-[-2deg] tracking-widest text-[#000] border-dashed">
-                  💰 PAID WITH CASH
+                  💰 {t("printer.cash").toUpperCase()}
                 </div>
                 <div className="text-[9px] leading-snug">
-                  Thank you for eating with MR. Tabboush!<br />
+                  {t("printer.thanks")}<br />
                   شكرًا عظيمًا لطلبكم من مستر طابوش!
                 </div>
                 
@@ -303,8 +305,8 @@ export default function ThermalPrinter({
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-neutral-400 text-center text-xs">
             <Printer size={40} className="stroke-1 text-neutral-300 mb-2" />
-            Keine anstehende Bestellung zum Drucken ausgewählt.<br />
-            Klicken Sie im Reiter "Live-Warteschlange" auf eine Bestellung und drücken Sie "Beleg drucken".
+            {t("printer.empty")}<br />
+            {t("printer.emptyHint")}
           </div>
         )}
       </div>

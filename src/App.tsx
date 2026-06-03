@@ -27,10 +27,12 @@ import BranchSettings from "./components/BranchSettings";
 import RestaurantSettings from "./components/RestaurantSettings";
 import LoginPage from "./components/LoginPage";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { I18nProvider, useI18n, AppLanguage } from "./i18n";
 import { Order, OrderStatus, Conversation, MenuItem, Category, Campaign, Feedback } from "./types";
 
 function Dashboard() {
   const { user, logout, token } = useAuth();
+  const { language, setLanguage, t, dir } = useI18n();
 
   const authHeaders = () => ({
     "Content-Type": "application/json",
@@ -281,8 +283,10 @@ function Dashboard() {
     setActiveTab("hardware");
   };
 
+  const adminRole = user ? t(`app.role.${user.role}`) : "";
+
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-neutral-800">
+    <div dir={dir} className="min-h-screen bg-slate-50 flex flex-col font-sans text-neutral-800">
       {/* Header */}
       <header className="bg-slate-900 text-white shadow-xl border-b-4 border-orange-500 z-30 select-none">
         <div className="max-w-7xl mx-auto px-4 py-3 sm:py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -294,11 +298,11 @@ function Dashboard() {
             <div className="leading-snug text-center sm:text-left">
               <h1 className="text-lg sm:text-xl font-serif font-bold tracking-tight flex items-center justify-center sm:justify-start gap-2">
                 MR. Tabboush
-                <span className="text-xs bg-orange-500 text-white px-2.5 py-0.5 rounded-full font-sans tracking-wide">SYSTEM</span>
+                <span className="text-xs bg-orange-500 text-white px-2.5 py-0.5 rounded-full font-sans tracking-wide">{t("app.system")}</span>
               </h1>
               <p className="text-xs text-slate-400 flex items-center gap-1.5 justify-center sm:justify-start">
                 <span className="inline-block w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></span>
-                Wuppertal Branch • WhatsApp Automated Ordering Ecosystem
+                {t("app.subtitle")}
               </p>
             </div>
           </div>
@@ -309,7 +313,7 @@ function Dashboard() {
             <div className="flex items-center gap-2 bg-slate-800 border border-slate-700 rounded-xl px-3 py-1.5">
               <Zap size={14} className={socketConnected ? "text-green-400" : "text-red-400"} />
               <span className="text-[10px] text-slate-400 uppercase font-bold">
-                {socketConnected ? "Live" : "Polling"}
+                {socketConnected ? t("app.live") : t("app.polling")}
               </span>
             </div>
 
@@ -317,11 +321,28 @@ function Dashboard() {
             <div className="flex items-center gap-2 bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-1.5">
               <Activity size={14} className={geminiStatus ? "text-green-400 animate-pulse" : "text-orange-400 animate-pulse"} />
               <div className="text-left leading-none">
-                <span className="text-[10px] text-slate-400 uppercase font-bold block">NLP AGENT:</span>
+                <span className="text-[10px] text-slate-400 uppercase font-bold block">{t("app.nlpAgent")}</span>
                 <span className="text-xs font-semibold text-white">
-                  {geminiStatus ? "Gemini 3.5 Active" : "Local Rule-based Simulator"}
+                  {geminiStatus ? t("app.geminiActive") : t("app.localSimulator")}
                 </span>
               </div>
+            </div>
+
+            <div className="flex items-center gap-1 bg-slate-800 border border-slate-700 rounded-xl p-1" title={t("app.language")}>
+              {(["de", "ar", "en"] as AppLanguage[]).map((lang) => (
+                <button
+                  key={lang}
+                  type="button"
+                  onClick={() => setLanguage(lang)}
+                  className={`h-7 min-w-8 px-2 rounded-lg text-[10px] font-bold uppercase transition ${
+                    language === lang
+                      ? "bg-orange-500 text-white"
+                      : "text-slate-400 hover:text-white hover:bg-slate-700"
+                  }`}
+                >
+                  {lang}
+                </button>
+              ))}
             </div>
 
             {/* User + Logout */}
@@ -329,12 +350,12 @@ function Dashboard() {
               <div className="flex items-center gap-2">
                 <div className="hidden sm:flex flex-col text-right text-xs leading-tight text-slate-400">
                   <span className="font-bold text-white">{user.name}</span>
-                  <span className="capitalize">{user.role.replace("_", " ")}</span>
+                  <span className="capitalize">{adminRole}</span>
                 </div>
                 <button
                   onClick={logout}
                   className="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-400 hover:text-white transition"
-                  title="Sign out"
+                  title={t("app.signOut")}
                 >
                   <LogOut size={16} />
                 </button>
@@ -343,7 +364,7 @@ function Dashboard() {
 
             <div className="hidden md:flex flex-col text-right text-xs leading-tight text-slate-400">
               <span className="font-bold text-white">Berliner Str. 179</span>
-              <span>42277 Wuppertal, Germany</span>
+              <span>{t("app.addressLine")}</span>
             </div>
           </div>
         </div>
@@ -357,9 +378,9 @@ function Dashboard() {
             <div className="flex items-center justify-between pb-1 border-b border-gray-200">
               <h2 className="text-xs font-extrabold uppercase tracking-widest text-slate-800 flex items-center gap-1.5">
                 <Languages size={15} />
-                WhatsApp Simulator
+                {t("app.whatsappSimulator")}
               </h2>
-              <span className="text-[10px] text-gray-400 font-serif italic">Test bot flows live here</span>
+              <span className="text-[10px] text-gray-400 font-serif italic">{t("app.simulatorHint")}</span>
             </div>
 
             <PhoneSimulator
@@ -377,11 +398,9 @@ function Dashboard() {
             <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 text-xs text-orange-950 leading-relaxed shadow-sm">
               <h5 className="font-bold flex items-center gap-1 mb-1 text-orange-950">
                 <HelpCircle size={13} />
-                Developer Test Guide:
+                {t("app.testGuide")}
               </h5>
-              <p>
-                How to order: Try typing <strong>"Hallo"</strong> or <strong>"أريد طلب شاورما"</strong> in the chat to link with the ordering assistant. Choose <strong>Delivery</strong> or <strong>Pickup</strong>, select items, and reply <strong>"1"</strong> to place!
-              </p>
+              <p>{t("app.testGuideText")}</p>
             </div>
           </div>
         </div>
@@ -399,7 +418,7 @@ function Dashboard() {
               }`}
             >
               <TrendingUp size={14} />
-              Overview
+              {t("nav.overview")}
             </button>
 
             <button
@@ -411,7 +430,7 @@ function Dashboard() {
               }`}
             >
               <ShoppingBag size={14} />
-              Live Orders
+              {t("nav.orders")}
               {orders.filter((o) => o.status === "received").length > 0 && (
                 <span className="w-2 h-2 rounded-full bg-red-500 animate-ping absolute top-1 right-2"></span>
               )}
@@ -426,7 +445,7 @@ function Dashboard() {
               }`}
             >
               <MessageSquare size={14} />
-              Live Chats
+              {t("nav.chat")}
             </button>
 
             <button
@@ -438,7 +457,7 @@ function Dashboard() {
               }`}
             >
               <Megaphone size={14} />
-              Marketing
+              {t("nav.campaigns")}
             </button>
 
             <button
@@ -450,7 +469,7 @@ function Dashboard() {
               }`}
             >
               <Settings size={14} />
-              Menu Editor
+              {t("nav.menu")}
             </button>
 
             <button
@@ -462,7 +481,7 @@ function Dashboard() {
               }`}
             >
               <Printer size={14} />
-              Printer
+              {t("nav.printer")}
             </button>
 
             <button
@@ -474,7 +493,7 @@ function Dashboard() {
               }`}
             >
               <Smartphone size={14} />
-              WhatsApp
+              {t("nav.whatsapp")}
             </button>
 
             <button
@@ -486,7 +505,7 @@ function Dashboard() {
               }`}
             >
               <Settings size={14} />
-              Branch
+              {t("nav.branch")}
             </button>
 
             <button
@@ -498,7 +517,7 @@ function Dashboard() {
               }`}
             >
               <Building2 size={14} />
-              Restaurant
+              {t("nav.restaurant")}
             </button>
           </div>
 
@@ -507,7 +526,7 @@ function Dashboard() {
             {isLoading ? (
               <div className="bg-white rounded-xl border border-gray-100 p-12 text-center flex flex-col items-center justify-center gap-2 shadow-sm">
                 <div className="w-8 h-8 rounded-full border-4 border-orange-500 border-t-transparent animate-spin"></div>
-                <span className="text-xs text-gray-500 font-medium">Bundling workspace states...</span>
+                <span className="text-xs text-gray-500 font-medium">{t("app.loading")}</span>
               </div>
             ) : (
               <>
@@ -571,8 +590,8 @@ function Dashboard() {
 
       {/* Footer */}
       <footer className="bg-neutral-900 text-gray-400 py-6 border-t border-neutral-800 text-center text-xs mt-auto">
-        <p>© 2026 MR. Tabboush Ordering & engagement system. Designed for Farman GmbH Syrian Cuisine operations.</p>
-        <p className="text-[10px] text-gray-600 mt-1">Powered by MongoDB + Socket.io + Baileys on Node.js 20</p>
+        <p>{t("app.footer")}</p>
+        <p className="text-[10px] text-gray-600 mt-1">{t("app.poweredBy")}</p>
       </footer>
     </div>
   );
@@ -583,9 +602,11 @@ function Dashboard() {
 // ------------------------------------------------------------------
 export default function App() {
   return (
-    <AuthProvider>
-      <AppWithAuth />
-    </AuthProvider>
+    <I18nProvider>
+      <AuthProvider>
+        <AppWithAuth />
+      </AuthProvider>
+    </I18nProvider>
   );
 }
 

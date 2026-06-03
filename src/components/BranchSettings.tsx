@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Store, MapPin, Clock, Bike, CreditCard, Save, Loader2, CheckCircle2 } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
+import { useI18n } from "../i18n";
 
 interface Branch {
   _id: string;
@@ -18,6 +20,8 @@ interface Branch {
 }
 
 export default function BranchSettings() {
+  const { token } = useAuth();
+  const { t } = useI18n();
   const [branches, setBranches] = useState<Branch[]>([]);
   const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
   const [loading, setLoading] = useState(true);
@@ -30,7 +34,9 @@ export default function BranchSettings() {
 
   const fetchBranches = async () => {
     try {
-      const res = await fetch("/api/branches");
+      const res = await fetch("/api/branches", {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       const data = await res.json();
       setBranches(data);
       if (data.length > 0) setSelectedBranch(data[0]);
@@ -48,7 +54,10 @@ export default function BranchSettings() {
     try {
       const res = await fetch(`/api/branches/${selectedBranch._id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify(selectedBranch),
       });
       if (res.ok) {
@@ -74,7 +83,7 @@ export default function BranchSettings() {
     return (
       <div className="bg-white rounded-xl border border-gray-100 p-12 text-center">
         <Loader2 size={24} className="animate-spin text-orange-500 mx-auto mb-2" />
-        <span className="text-xs text-gray-500">Loading branch settings...</span>
+        <span className="text-xs text-gray-500">{t("branch.loading")}</span>
       </div>
     );
   }
@@ -83,7 +92,7 @@ export default function BranchSettings() {
     return (
       <div className="bg-white rounded-xl border border-gray-100 p-8 text-center">
         <Store size={32} className="text-gray-300 mx-auto mb-3" />
-        <p className="text-sm text-gray-500">No branches found.</p>
+        <p className="text-sm text-gray-500">{t("branch.empty")}</p>
       </div>
     );
   }
@@ -92,14 +101,14 @@ export default function BranchSettings() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">Branch Settings</h3>
-          <p className="text-xs text-gray-500 mt-0.5">Manage delivery, pickup, and branch info</p>
+          <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">{t("branch.title")}</h3>
+          <p className="text-xs text-gray-500 mt-0.5">{t("branch.subtitle")}</p>
         </div>
         <div className="flex items-center gap-2">
           {saved && (
             <span className="flex items-center gap-1 text-xs text-emerald-600 font-bold">
               <CheckCircle2 size={14} />
-              Saved
+              {t("common.saved")}
             </span>
           )}
           <button
@@ -108,7 +117,7 @@ export default function BranchSettings() {
             className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 transition disabled:opacity-50"
           >
             {saving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
-            Save Changes
+            {t("common.saveChanges")}
           </button>
         </div>
       </div>
@@ -116,7 +125,7 @@ export default function BranchSettings() {
       {/* Branch selector */}
       {branches.length > 1 && (
         <div className="bg-white rounded-xl border border-gray-100 p-4">
-          <label className="text-xs font-bold text-gray-700 uppercase tracking-wider block mb-2">Select Branch</label>
+          <label className="text-xs font-bold text-gray-700 uppercase tracking-wider block mb-2">{t("branch.select")}</label>
           <select
             value={selectedBranch._id}
             onChange={(e) => {
@@ -139,11 +148,11 @@ export default function BranchSettings() {
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-4">
           <div className="flex items-center gap-2 mb-2">
             <Store size={16} className="text-orange-500" />
-            <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">General Info</h4>
+            <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">{t("branch.general")}</h4>
           </div>
 
           <div>
-            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">Branch Name</label>
+            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">{t("branch.branchName")}</label>
             <input
               type="text"
               value={selectedBranch.name}
@@ -153,7 +162,7 @@ export default function BranchSettings() {
           </div>
 
           <div>
-            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">Phone</label>
+            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">{t("common.phone")}</label>
             <input
               type="text"
               value={selectedBranch.phone}
@@ -163,7 +172,7 @@ export default function BranchSettings() {
           </div>
 
           <div>
-            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">Opening Hours</label>
+            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">{t("branch.openingHours")}</label>
             <div className="flex items-center gap-2">
               <Clock size={14} className="text-gray-400" />
               <input
@@ -180,11 +189,11 @@ export default function BranchSettings() {
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-4">
           <div className="flex items-center gap-2 mb-2">
             <MapPin size={16} className="text-red-500" />
-            <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Address</h4>
+            <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">{t("common.address")}</h4>
           </div>
 
           <div>
-            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">Street Address</label>
+            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">{t("branch.street")}</label>
             <input
               type="text"
               value={selectedBranch.address}
@@ -195,7 +204,7 @@ export default function BranchSettings() {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">City</label>
+              <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">{t("common.city")}</label>
               <input
                 type="text"
                 value={selectedBranch.city}
@@ -204,7 +213,7 @@ export default function BranchSettings() {
               />
             </div>
             <div>
-              <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">Postal Code</label>
+              <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">{t("common.postalCode")}</label>
               <input
                 type="text"
                 value={selectedBranch.postalCode}
@@ -215,7 +224,7 @@ export default function BranchSettings() {
           </div>
 
           <div>
-            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">Country</label>
+            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">{t("common.country")}</label>
             <input
               type="text"
               value={selectedBranch.country}
@@ -229,7 +238,7 @@ export default function BranchSettings() {
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-4">
           <div className="flex items-center gap-2 mb-2">
             <Bike size={16} className="text-blue-500" />
-            <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Delivery Settings</h4>
+            <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">{t("branch.deliverySettings")}</h4>
           </div>
 
           <div className="flex items-center gap-3">
@@ -240,13 +249,13 @@ export default function BranchSettings() {
                 onChange={(e) => updateField("deliveryEnabled", e.target.checked)}
                 className="w-4 h-4 text-orange-600 rounded border-gray-300 focus:ring-orange-500"
               />
-              <span className="text-sm font-medium text-gray-700">Delivery Enabled</span>
+              <span className="text-sm font-medium text-gray-700">{t("branch.deliveryEnabled")}</span>
             </label>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">Radius (km)</label>
+              <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">{t("branch.radius")}</label>
               <input
                 type="number"
                 step="0.1"
@@ -256,7 +265,7 @@ export default function BranchSettings() {
               />
             </div>
             <div>
-              <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">Fee (€)</label>
+              <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">{t("branch.fee")}</label>
               <input
                 type="number"
                 step="0.01"
@@ -268,7 +277,7 @@ export default function BranchSettings() {
           </div>
 
           <div>
-            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">Min Order (€)</label>
+            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">{t("branch.minOrder")}</label>
             <input
               type="number"
               step="0.01"
@@ -283,7 +292,7 @@ export default function BranchSettings() {
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-4">
           <div className="flex items-center gap-2 mb-2">
             <CreditCard size={16} className="text-emerald-500" />
-            <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Pickup & Payment</h4>
+            <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">{t("branch.pickupPayment")}</h4>
           </div>
 
           <div className="flex items-center gap-3">
@@ -294,13 +303,13 @@ export default function BranchSettings() {
                 onChange={(e) => updateField("pickupEnabled", e.target.checked)}
                 className="w-4 h-4 text-orange-600 rounded border-gray-300 focus:ring-orange-500"
               />
-              <span className="text-sm font-medium text-gray-700">Pickup Enabled</span>
+              <span className="text-sm font-medium text-gray-700">{t("branch.pickupEnabled")}</span>
             </label>
           </div>
 
           <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
             <p className="text-xs text-gray-500">
-              Payment methods are currently managed per branch. The system supports Cash on Delivery and Cash on Pickup by default.
+              {t("branch.paymentNote")}
             </p>
           </div>
         </div>

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Megaphone, Plus, Sparkles, Send, Globe, Trash, RefreshCw } from "lucide-react";
 import { Campaign } from "../types";
+import { useI18n } from "../i18n";
 
 interface CampaignTabProps {
   campaigns: Campaign[];
@@ -8,6 +9,7 @@ interface CampaignTabProps {
 }
 
 export default function CampaignTab({ campaigns, onDispatchCampaign }: CampaignTabProps) {
+  const { t } = useI18n();
   const [activeCamFilter, setActiveCamFilter] = useState<"all" | "draft" | "sent">("all");
   
   // Create state
@@ -33,7 +35,7 @@ export default function CampaignTab({ campaigns, onDispatchCampaign }: CampaignT
         <div className="bg-neutral-50 p-4 border-b border-gray-100 flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <Megaphone size={16} className="text-orange-500 animate-pulse" />
-            <span className="text-xs font-semibold text-gray-950 uppercase tracking-widest">Broadcasts</span>
+            <span className="text-xs font-semibold text-gray-950 uppercase tracking-widest">{t("campaign.broadcasts")}</span>
           </div>
 
           <div className="flex gap-1.5">
@@ -42,7 +44,7 @@ export default function CampaignTab({ campaigns, onDispatchCampaign }: CampaignT
               className="p-1 px-2.2 bg-orange-600 hover:bg-orange-700 text-white text-[10px] font-bold rounded flex items-center gap-1 transition leading-none uppercase"
             >
               <Plus size={10} />
-              Draft
+              {t("common.draft")}
             </button>
           </div>
         </div>
@@ -59,7 +61,7 @@ export default function CampaignTab({ campaigns, onDispatchCampaign }: CampaignT
                   : "border-transparent hover:bg-neutral-50"
               }`}
             >
-              {filter}
+              {filter === "all" ? t("common.all") : filter === "draft" ? t("common.draft") : t("common.sent")}
             </button>
           ))}
         </div>
@@ -86,8 +88,8 @@ export default function CampaignTab({ campaigns, onDispatchCampaign }: CampaignT
               <p className="text-[11px] text-gray-500 leading-snug">{c.description}</p>
 
               <div className="flex items-center justify-between text-[9px] text-gray-400 font-mono mt-1 pt-1.5 border-t border-dashed border-neutral-100">
-                <span>Targets: {c.totalTarget || "All contacts"}</span>
-                {c.sentCount !== undefined && <span>Delivered: {c.sentCount} chats</span>}
+                <span>{t("campaign.targets")}: {c.totalTarget || t("campaign.allContacts")}</span>
+                {c.sentCount !== undefined && <span>{t("campaign.delivered")}: {c.sentCount} {t("campaign.chats")}</span>}
               </div>
 
               {/* Action buttons triggers */}
@@ -97,7 +99,7 @@ export default function CampaignTab({ campaigns, onDispatchCampaign }: CampaignT
                   className="w-full mt-2.5 bg-orange-500 hover:bg-orange-600 text-white font-bold text-[10px] uppercase py-1.5 rounded flex items-center justify-center gap-1.5 transition leading-none shadow-sm active:scale-95"
                 >
                   <Send size={10} />
-                  Blast WhatsApp Campaign Now
+                  {t("campaign.sendNow")}
                 </button>
               )}
             </div>
@@ -111,12 +113,12 @@ export default function CampaignTab({ campaigns, onDispatchCampaign }: CampaignT
           <div className="flex-1 flex flex-col gap-4 text-xs">
             <h4 className="font-bold text-neutral-900 text-sm border-b pb-2 flex items-center gap-1.5">
               <Megaphone size={16} className="text-orange-500" />
-              Draft a New Promotion Broadcast
+              {t("campaign.newTitle")}
             </h4>
 
             <div className="grid grid-cols-2 gap-3.5">
               <div className="col-span-2">
-                <label className="block text-[10px] text-neutral-400 font-bold mb-1 uppercase">Campaign Title:</label>
+                <label className="block text-[10px] text-neutral-400 font-bold mb-1 uppercase">{t("campaign.title")}:</label>
                 <input
                   type="text"
                   value={newTitle}
@@ -127,7 +129,7 @@ export default function CampaignTab({ campaigns, onDispatchCampaign }: CampaignT
               </div>
 
               <div className="col-span-2">
-                <label className="block text-[10px] text-neutral-400 font-bold mb-1 uppercase">Internal description:</label>
+                <label className="block text-[10px] text-neutral-400 font-bold mb-1 uppercase">{t("campaign.internalDescription")}:</label>
                 <input
                   type="text"
                   value={newDesc}
@@ -138,15 +140,15 @@ export default function CampaignTab({ campaigns, onDispatchCampaign }: CampaignT
               </div>
 
               <div>
-                <label className="block text-[10px] text-neutral-400 font-bold mb-1 uppercase">Target Language:</label>
+                <label className="block text-[10px] text-neutral-400 font-bold mb-1 uppercase">{t("campaign.targetLanguage")}:</label>
                 <select
                   value={newLang}
                   onChange={(e) => setNewLang(e.target.value as any)}
                   className="w-full bg-white p-2 border border-neutral-300 rounded outline-none text-xs"
                 >
-                  <option value="all">Deliver in both (Arabic & German)</option>
-                  <option value="ar">Arabic only (العربية)</option>
-                  <option value="de">German only (Deutsch)</option>
+                  <option value="all">{t("campaign.bothLanguages")}</option>
+                  <option value="ar">{t("campaign.arOnly")} (العربية)</option>
+                  <option value="de">{t("campaign.deOnly")} (Deutsch)</option>
                 </select>
               </div>
             </div>
@@ -154,7 +156,7 @@ export default function CampaignTab({ campaigns, onDispatchCampaign }: CampaignT
             {/* Language Textareas */}
             <div className="space-y-3 pt-2">
               <div>
-                <label className="block text-[10px] text-neutral-400 font-bold mb-1 uppercase">Arabic Text (العربية):</label>
+                <label className="block text-[10px] text-neutral-400 font-bold mb-1 uppercase">{t("campaign.arText")} (العربية):</label>
                 <textarea
                   rows={3}
                   value={msgAr}
@@ -165,7 +167,7 @@ export default function CampaignTab({ campaigns, onDispatchCampaign }: CampaignT
               </div>
 
               <div>
-                <label className="block text-[10px] text-neutral-400 font-bold mb-1 uppercase">German Text (Deutsch):</label>
+                <label className="block text-[10px] text-neutral-400 font-bold mb-1 uppercase">{t("campaign.deText")} (Deutsch):</label>
                 <textarea
                   rows={3}
                   value={msgDe}
@@ -182,12 +184,12 @@ export default function CampaignTab({ campaigns, onDispatchCampaign }: CampaignT
                 onClick={() => setShowCreateModal(false)}
                 className="px-4 py-2 border border-gray-350 text-gray-700 bg-white hover:bg-gray-100 rounded text-xs font-semibold"
               >
-                Cancel Draft
+                {t("campaign.cancelDraft")}
               </button>
               <button
                 onClick={() => {
                   if (!newTitle.trim() || (!msgAr.trim() && !msgDe.trim())) {
-                    alert("Please provide at least a Title and one message translation!");
+                    alert(t("campaign.validation"));
                     return;
                   }
                   campaigns.push({
@@ -207,7 +209,7 @@ export default function CampaignTab({ campaigns, onDispatchCampaign }: CampaignT
                 }}
                 className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded text-xs font-bold"
               >
-                Save as Draft
+                {t("common.saveDraft")}
               </button>
             </div>
 
@@ -215,16 +217,16 @@ export default function CampaignTab({ campaigns, onDispatchCampaign }: CampaignT
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-neutral-400 text-center gap-2.5">
             <Sparkles size={44} className="stroke-1 text-orange-500 animate-bounce" />
-            <h5 className="font-bold text-gray-800 text-sm">Automated Bulk Customer Marketing Broadcasting</h5>
+            <h5 className="font-bold text-gray-800 text-sm">{t("campaign.emptyTitle")}</h5>
             <p className="text-xs max-w-sm leading-relaxed text-gray-500">
-              Draft messages, customize templates (with Arabic Syrians flavor alongside Deutsch translation sets) and trigger bulk blasts to bring in massive ordering traffic!
+              {t("campaign.emptyText")}
             </p>
             <button
               onClick={() => setShowCreateModal(true)}
               className="mt-2.5 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 shadow"
             >
               <Plus size={14} />
-              Draft New Campaign Updates
+              {t("campaign.draftNew")}
             </button>
           </div>
         )}

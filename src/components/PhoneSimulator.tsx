@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Send, Smartphone, Wifi, Battery, ArrowLeft, CheckCheck, Loader2, Star, MessageSquare } from "lucide-react";
 import { Conversation, Message, Order } from "../types";
+import { useI18n } from "../i18n";
 
 interface PhoneSimulatorProps {
   onOrderPlaced: () => void;
@@ -19,6 +20,7 @@ export default function PhoneSimulator({
   setActiveConvoId,
   currencySymbol,
 }: PhoneSimulatorProps) {
+  const { t } = useI18n();
   const [phoneNumber, setPhoneNumber] = useState("+491571234567");
   const [inputText, setInputText] = useState("");
   const [isQrConnected, setIsQrConnected] = useState(true);
@@ -149,15 +151,15 @@ export default function PhoneSimulator({
               <div className="w-14 h-14 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-600 mb-2">
                 <Smartphone size={30} />
               </div>
-              <h4 className="text-sm font-semibold text-neutral-900">QR Code Session Setup</h4>
+              <h4 className="text-sm font-semibold text-neutral-900">{t("phone.qrTitle")}</h4>
               <p className="text-xs text-neutral-500 mt-1 mb-4">
-                Configure your MR. Tabboush Baileys/WA session by linking accounts.
+                {t("phone.qrHint")}
               </p>
 
               {isConnecting ? (
                 <div className="flex flex-col items-center gap-2">
                   <Loader2 className="w-7 h-7 text-emerald-600 animate-spin" />
-                  <span className="text-[11px] text-emerald-700 font-medium">Pairing with VPS socket...</span>
+                  <span className="text-[11px] text-emerald-700 font-medium">{t("phone.pairing")}</span>
                 </div>
               ) : (
                 <div className="flex flex-col items-center">
@@ -172,7 +174,7 @@ export default function PhoneSimulator({
                     onClick={handleQrConnect}
                     className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs leading-none font-medium shadow-sm transition"
                   >
-                    Simulate Device Link-up
+                    {t("phone.simulateLink")}
                   </button>
                 </div>
               )}
@@ -195,7 +197,7 @@ export default function PhoneSimulator({
                       MR. Tabboush Bot 
                       <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
                     </h3>
-                    <p className="text-[9px] text-[#b3e5fc]">Online Ordering System</p>
+                    <p className="text-[9px] text-[#b3e5fc]">{t("phone.onlineSystem")}</p>
                   </div>
                 </div>
                 
@@ -219,7 +221,7 @@ export default function PhoneSimulator({
                 
                 {/* Safe info bubble */}
                 <div className="bg-[#e1f5fe] text-neutral-700 text-[10px] rounded-lg p-2 text-center border border-[#b3e5fc] mx-6 self-center select-none shadow-[0_1px_1px_rgba(0,0,0,0.05)]">
-                  🔐 End-to-end simulated via VPS. Feel free to conversationally order shawarma in Arabic, German, or English!
+                  🔐 {t("phone.safeBubble")}
                 </div>
 
                 {activeChat && activeChat.messages.map((m) => {
@@ -236,7 +238,7 @@ export default function PhoneSimulator({
                       {/* Badge if message was sent by manual Human override */}
                       {m.sender === "human" && (
                         <span className="text-[8px] uppercase tracking-wider text-amber-700 bg-amber-100 px-1 py-0.25 rounded self-start font-bold mb-0.5">
-                          Support Agent
+                          {t("phone.supportAgent")}
                         </span>
                       )}
                       
@@ -259,9 +261,9 @@ export default function PhoneSimulator({
                 {activeChat && activeChat.currentStep === "completed" && (
                   <div className="self-center w-full max-w-[85%] bg-amber-50 border border-amber-200 rounded-xl p-3 shadow-lg flex flex-col items-center text-center gap-1.5 animate-bounce">
                     <div className="text-lg">🌟</div>
-                    <h4 className="text-xs font-semibold text-amber-900 leading-none">Rate MR. Tabboush</h4>
+                    <h4 className="text-xs font-semibold text-amber-900 leading-none">{t("phone.rate")}</h4>
                     <p className="text-[10px] text-amber-700 leading-snug">
-                      Your order was delivered successfully! Rate your Syrians wrap:
+                      {t("phone.rateHint")}
                     </p>
                     <div className="flex gap-1.5 my-1">
                       {[1, 2, 3, 4, 5].map((star) => (
@@ -271,7 +273,7 @@ export default function PhoneSimulator({
                             const c = prompt(
                               custLang === "ar"
                                 ? "أدخل تعليقك لمساعدتنا على التطور:"
-                                : "Geben Sie Ihr Feedback-Kommentar ein:"
+                                : t("phone.feedbackPrompt")
                             ) || "";
                             handleFeedbackSubmit(star, c);
                           }}
@@ -286,7 +288,7 @@ export default function PhoneSimulator({
 
                 {isTyping && (
                   <div className="bg-white rounded-lg px-2.5 py-1.5 text-xs shadow-sm self-start flex items-center gap-1.5">
-                    <span className="text-[10px] text-emerald-600 font-medium font-sans">Bot is typing</span>
+                    <span className="text-[10px] text-emerald-600 font-medium font-sans">{t("phone.botTyping")}</span>
                     <span className="flex gap-1">
                       <span className="w-1 h-1 rounded-full bg-emerald-500 animate-bounce delay-100"></span>
                       <span className="w-1 h-1 rounded-full bg-emerald-500 animate-bounce delay-200"></span>
@@ -300,40 +302,40 @@ export default function PhoneSimulator({
 
               {/* Bot Step Cheat Sheets */}
               <div className="bg-neutral-100 border-t border-neutral-200 px-2.5 py-1.5 flex flex-wrap gap-1 items-center justify-center">
-                <span className="text-[9px] font-bold text-neutral-500 uppercase">Shortcuts:</span>
+                <span className="text-[9px] font-bold text-neutral-500 uppercase">{t("phone.shortcuts")}</span>
                 <button
                   onClick={() => handleSendMessage(custLang === "ar" ? "أهلاً" : "Hallo")}
                   className="bg-white hover:bg-emerald-50 border border-neutral-200 text-neutral-700 text-[10px] font-medium leading-none px-2 py-1 rounded transition whitespace-nowrap active:scale-95"
                 >
-                  💬 Start
+                  💬 {t("phone.start")}
                 </button>
                 <button
                   type="button"
                   onClick={() => handleSendMessage("1")}
                   className="bg-white hover:bg-emerald-50 border border-neutral-200 text-neutral-700 text-[10px] font-medium leading-none px-2 py-1 rounded transition active:scale-95"
                 >
-                  🛵 Delivery
+                  🛵 {t("orders.delivery")}
                 </button>
                 <button
                   type="button"
                   onClick={() => handleSendMessage("Berliner Str. 110, Wuppertal")}
                   className="bg-white hover:bg-emerald-50 border border-neutral-200 text-neutral-700 text-[10px] font-medium leading-none px-2 py-1 rounded transition active:scale-95"
                 >
-                  📍 Address
+                  📍 {t("phone.address")}
                 </button>
                 <button
                   type="button"
                   onClick={() => handleSendMessage("1")}
                   className="bg-white hover:bg-emerald-50 border border-neutral-200 text-neutral-700 text-[10px] font-medium leading-none px-2 py-1 rounded transition active:scale-95"
                 >
-                  🌯 Choose 1
+                  🌯 {t("phone.choose1")}
                 </button>
                 <button
                   type="button"
                   onClick={() => handleSendMessage(custLang === "ar" ? "نعم" : "Ja")}
                   className="bg-white hover:bg-emerald-50 border border-neutral-200 text-neutral-700 text-[10px] font-medium leading-none px-2 py-1 rounded transition active:scale-95 animate-pulse"
                 >
-                  ✅ Confirm
+                  ✅ {t("phone.confirm")}
                 </button>
               </div>
 
@@ -369,7 +371,7 @@ export default function PhoneSimulator({
                         ? "اكتب رسالة..."
                         : custLang === "en"
                         ? "Type a message..."
-                        : "Nachricht schreiben..."
+                        : t("phone.input")
                     }
                     className="w-full bg-white text-xs py-2 pl-3 pr-8 rounded-full outline-none border border-neutral-200 focus:border-emerald-500 transition duration-150 shadow-inner"
                   />

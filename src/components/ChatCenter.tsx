@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Send, User, Bot, AlertTriangle, ShieldCheck, CheckCheck, RefreshCw } from "lucide-react";
 import { Conversation, Message } from "../types";
+import { useI18n } from "../i18n";
 
 interface ChatCenterProps {
   conversations: Conversation[];
@@ -13,6 +14,7 @@ export default function ChatCenter({
   onSendAdminMessage,
   onToggleTakeover,
 }: ChatCenterProps) {
+  const { t } = useI18n();
   const [selectedConvoId, setSelectedConvoId] = useState<string | null>(
     conversations[0]?.id || null
   );
@@ -39,9 +41,9 @@ export default function ChatCenter({
       {/* Sidebar - list of conversations */}
       <div className="md:col-span-4 flex flex-col bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden h-full max-h-[520px]">
         <div className="bg-neutral-50 p-4 border-b border-gray-100 flex items-center justify-between">
-          <h3 className="text-xs font-semibold text-gray-900 uppercase tracking-wider">Customer Chats</h3>
+          <h3 className="text-xs font-semibold text-gray-900 uppercase tracking-wider">{t("chat.title")}</h3>
           <span className="bg-orange-100 text-orange-900 border border-orange-200 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase">
-            {conversations.filter((c) => !c.botEnabled).length} manual agent
+            {conversations.filter((c) => !c.botEnabled).length} {t("chat.manualAgent")}
           </span>
         </div>
         
@@ -64,11 +66,11 @@ export default function ChatCenter({
                   </span>
                   {!convo.botEnabled ? (
                     <span className="text-[8px] bg-orange-100 border border-orange-200 text-orange-700 font-bold px-1.5 py-0.5 rounded uppercase">
-                      👤 Agent Mode
+                      👤 {t("chat.agentMode")}
                     </span>
                   ) : (
                     <span className="text-[8px] bg-emerald-100 border border-emerald-200 text-emerald-800 font-bold px-1.5 py-0.5 rounded uppercase">
-                      🤖 Auto-Bot
+                      🤖 {t("chat.autoBot")}
                     </span>
                   )}
                 </div>
@@ -78,7 +80,7 @@ export default function ChatCenter({
                 </p>
 
                 <div className="flex items-center justify-between text-[10px] text-gray-400">
-                  <span>Step: {convo.currentStep || "welcome"}</span>
+                  <span>{t("chat.step")}: {convo.currentStep || "welcome"}</span>
                   <span>{new Date(convo.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
                 </div>
               </div>
@@ -96,9 +98,9 @@ export default function ChatCenter({
             <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-neutral-50">
               <div className="leading-tight">
                 <h4 className="text-xs font-bold text-gray-950 flex items-center gap-1.5">
-                  Chat with {selectedConvo.customerName}
+                  {t("chat.withCustomer", { name: selectedConvo.customerName })}
                 </h4>
-                <p className="text-[10px] font-mono text-gray-400 mt-0.5">Phone: {selectedConvo.whatsAppPhone}</p>
+                <p className="text-[10px] font-mono text-gray-400 mt-0.5">{t("common.phone")}: {selectedConvo.whatsAppPhone}</p>
               </div>
 
               {/* Takeover Control buttons */}
@@ -109,7 +111,7 @@ export default function ChatCenter({
                     className="px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-[10px] font-bold rounded-lg flex items-center gap-1.5 leading-none transition duration-150 uppercase"
                   >
                     <AlertTriangle size={13} />
-                    Takeover Chat
+                    {t("chat.takeover")}
                   </button>
                 ) : (
                   <button
@@ -117,7 +119,7 @@ export default function ChatCenter({
                     className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold rounded-lg flex items-center gap-1.5 leading-none transition duration-150 uppercase"
                   >
                     <ShieldCheck size={13} />
-                    Reactivate Auto-Bot
+                    {t("chat.reactivate")}
                   </button>
                 )}
               </div>
@@ -141,12 +143,12 @@ export default function ChatCenter({
                     {/* Badge identifier */}
                     {m.sender === "human" && (
                       <span className="text-[8px] font-bold uppercase text-orange-700 tracking-wider mb-0.5">
-                        👤 Support Agent (You)
+                        👤 {t("chat.supportAgent")}
                       </span>
                     )}
                     {m.sender === "bot" && (
                       <span className="text-[8px] font-bold uppercase text-emerald-800 tracking-wider mb-0.5">
-                        🤖 AI Bot autopilot
+                        🤖 {t("chat.aiBot")}
                       </span>
                     )}
 
@@ -172,8 +174,8 @@ export default function ChatCenter({
                   onKeyDown={(e) => e.key === "Enter" && handleSend()}
                   placeholder={
                     selectedConvo.botEnabled
-                      ? "⚠️ Typing here will automatically suspend AI bot autopilot and start human live mode..."
-                      : "Antwort als Support-Mitarbeiter verfassen..."
+                      ? `⚠️ ${t("chat.placeholderBot")}`
+                      : t("chat.placeholderHuman")
                   }
                   className="w-full bg-white text-xs py-2 px-3.5 border border-neutral-200 focus:border-orange-500 rounded-lg outline-none transition"
                 />
@@ -186,14 +188,14 @@ export default function ChatCenter({
                 }`}
               >
                 <Send size={12} className="ml-0.5" />
-                Reply
+                {t("chat.reply")}
               </button>
             </div>
 
           </div>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-gray-400 text-xs">
-            Wählen Sie ein Gespräch aus der Liste auf der linken Seite aus, um die Nachrichten zu lesen.
+            {t("chat.select")}
           </div>
         )}
       </div>

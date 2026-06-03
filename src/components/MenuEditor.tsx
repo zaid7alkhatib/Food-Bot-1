@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Plus, Trash, Edit3, Languages, Save, Check, ShoppingBag, FolderOpen } from "lucide-react";
 import { MenuItem, Category, Translation } from "../types";
+import { useI18n } from "../i18n";
 
 interface MenuEditorProps {
   categories: Category[];
@@ -17,6 +18,7 @@ export default function MenuEditor({
   onUpdateItem,
   currencySymbol,
 }: MenuEditorProps) {
+  const { t, text } = useI18n();
   const [activeCategoryId, setActiveCategoryId] = useState<string>(categories[0]?.id || "cat-shawarma");
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
 
@@ -83,7 +85,7 @@ export default function MenuEditor({
       <div className="md:col-span-3 flex flex-col bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden divide-y divide-gray-100">
         <div className="bg-neutral-50 p-4 border-b border-gray-100 flex items-center gap-1.5">
           <FolderOpen size={16} className="text-orange-500" />
-          <h3 className="text-xs font-semibold text-gray-900 uppercase tracking-wider">Categories</h3>
+          <h3 className="text-xs font-semibold text-gray-900 uppercase tracking-wider">{t("menu.categories")}</h3>
         </div>
         {categories.map((cat) => (
           <button
@@ -98,7 +100,7 @@ export default function MenuEditor({
                 : "text-gray-600 hover:bg-neutral-50/50"
             }`}
           >
-            {cat.name.de || cat.name.en}
+            {text(cat.name)}
             <span className="text-[10px] bg-neutral-100 text-neutral-500 px-1.5 py-0.5 rounded-full font-mono">
               {menuItems.filter((i) => i.categoryId === cat.id).length}
             </span>
@@ -113,14 +115,14 @@ export default function MenuEditor({
         <div className="bg-neutral-50 p-4 border-b border-gray-100 flex items-center justify-between">
           <h3 className="text-xs font-semibold text-gray-900 uppercase tracking-wider flex items-center gap-1.5">
             <ShoppingBag size={15} className="text-neutral-500" />
-            Menu items customization
+            {t("menu.items")}
           </h3>
           <button
             onClick={handleAddNewItem}
             className="px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 transition leading-none active:scale-95"
           >
             <Plus size={13} />
-            Neues Gericht hinzufügen
+            {t("menu.addDish")}
           </button>
         </div>
 
@@ -128,7 +130,7 @@ export default function MenuEditor({
         <div className="p-5 flex-1 overflow-y-auto space-y-4 divide-y divide-gray-100 divide-dashed">
           {filteredItems.length === 0 ? (
             <div className="text-center p-8 text-xs text-gray-400">
-              In dieser Kategorie sind derzeit keine Produkte registriert. Drücken Sie oben auf Hinzufügen, um ein Produkt zu erstellen!
+              {t("menu.empty")}
             </div>
           ) : (
             filteredItems.map((item) => {
@@ -151,7 +153,7 @@ export default function MenuEditor({
                       <div className="flex items-center justify-between border-b border-neutral-200 pb-2">
                         <span className="font-bold text-neutral-800 flex items-center gap-1">
                           <Languages size={13} />
-                          Translation Fields
+                          {t("menu.translationFields")}
                         </span>
                         
                         <div className="flex gap-1">
@@ -176,7 +178,7 @@ export default function MenuEditor({
                       {activeTranslationTab === "ar" && (
                         <div className="space-y-2">
                           <div>
-                            <label className="block text-[10px] text-gray-400 font-bold mb-1">الاسم (العربية):</label>
+                            <label className="block text-[10px] text-gray-400 font-bold mb-1">{t("menu.nameAr")}:</label>
                             <input
                               type="text"
                               value={nameAr}
@@ -185,7 +187,7 @@ export default function MenuEditor({
                             />
                           </div>
                           <div>
-                            <label className="block text-[10px] text-gray-400 font-bold mb-1">الوصف (العربية):</label>
+                            <label className="block text-[10px] text-gray-400 font-bold mb-1">{t("menu.descAr")}:</label>
                             <textarea
                               rows={2}
                               value={descAr}
@@ -199,7 +201,7 @@ export default function MenuEditor({
                       {activeTranslationTab === "de" && (
                         <div className="space-y-2">
                           <div>
-                            <label className="block text-[10px] text-gray-400 font-bold mb-1">Name (Deutsch):</label>
+                            <label className="block text-[10px] text-gray-400 font-bold mb-1">{t("menu.nameDe")}:</label>
                             <input
                               type="text"
                               value={nameDe}
@@ -208,7 +210,7 @@ export default function MenuEditor({
                             />
                           </div>
                           <div>
-                            <label className="block text-[10px] text-gray-400 font-bold mb-1">Beschreibung (Deutsch):</label>
+                            <label className="block text-[10px] text-gray-400 font-bold mb-1">{t("menu.descDe")}:</label>
                             <textarea
                               rows={2}
                               value={descDe}
@@ -222,7 +224,7 @@ export default function MenuEditor({
                       {activeTranslationTab === "en" && (
                         <div className="space-y-2">
                           <div>
-                            <label className="block text-[10px] text-gray-400 font-bold mb-1">Name (English):</label>
+                            <label className="block text-[10px] text-gray-400 font-bold mb-1">{t("menu.nameEn")}:</label>
                             <input
                               type="text"
                               value={nameEn}
@@ -231,7 +233,7 @@ export default function MenuEditor({
                             />
                           </div>
                           <div>
-                            <label className="block text-[10px] text-gray-400 font-bold mb-1">Description (English):</label>
+                            <label className="block text-[10px] text-gray-400 font-bold mb-1">{t("menu.descEn")}:</label>
                             <textarea
                               rows={2}
                               value={descEn}
@@ -245,7 +247,7 @@ export default function MenuEditor({
                       {/* Generic Numerical Fields */}
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2 border-t border-neutral-200">
                         <div>
-                          <label className="block text-[10px] text-gray-400 font-bold mb-1">Price ({currencySymbol}):</label>
+                          <label className="block text-[10px] text-gray-400 font-bold mb-1">{t("common.price")} ({currencySymbol}):</label>
                           <input
                             type="number"
                             step="0.1"
@@ -255,7 +257,7 @@ export default function MenuEditor({
                           />
                         </div>
                         <div>
-                          <label className="block text-[10px] text-gray-400 font-bold mb-1">SKU:</label>
+                          <label className="block text-[10px] text-gray-400 font-bold mb-1">{t("common.sku")}:</label>
                           <input
                             type="text"
                             value={sku}
@@ -272,7 +274,7 @@ export default function MenuEditor({
                             className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded"
                           />
                           <label htmlFor={`best-${item.id}`} className="font-bold text-neutral-700 select-none">
-                            Bestseller Flag 🔥
+                            {t("menu.bestsellerFlag")} 🔥
                           </label>
                         </div>
                       </div>
@@ -283,14 +285,14 @@ export default function MenuEditor({
                           onClick={() => setEditingItemId(null)}
                           className="px-3 py-1.5 border border-gray-300 text-gray-700 bg-white hover:bg-gray-100 rounded text-xs font-semibold"
                         >
-                          Abbrechen
+                          {t("common.cancel")}
                         </button>
                         <button
                           onClick={() => handleSaveEdit(item.id)}
                           className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-semibold flex items-center gap-1"
                         >
                           <Save size={12} />
-                          Änderungen speichern
+                          {t("menu.save")}
                         </button>
                       </div>
 
@@ -301,23 +303,23 @@ export default function MenuEditor({
                       <div className="space-y-1.5">
                         <div className="flex items-center gap-2">
                           <h4 className="font-serif text-sm font-bold text-gray-950">
-                            {item.name.de || item.name.en} | {item.name.ar}
+                            {text(item.name)} | {item.name.ar}
                           </h4>
                           {item.isBestSeller && (
                             <span className="bg-orange-100 text-orange-850 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase">
-                              🔥 Bestseller
+                              🔥 {t("common.bestseller")}
                             </span>
                           )}
                         </div>
 
                         <p className="text-xs text-gray-500 leading-normal max-w-lg">
-                          {item.description.de || item.description.en} 
+                          {text(item.description)} 
                           <span className="block text-gray-400 italic text-[11px] mt-0.5">"{item.description.ar}"</span>
                         </p>
 
                         <div className="flex gap-4 text-[10px] text-gray-400 font-mono pt-1">
                           <span>SKU: {item.skucode}</span>
-                          <span>Prep: {item.preparationTimeMinutes} Mins</span>
+                          <span>{t("common.prep")}: {item.preparationTimeMinutes} {t("common.minutes")}</span>
                         </div>
                       </div>
 
@@ -331,7 +333,7 @@ export default function MenuEditor({
                           className="p-1 px-2.5 border border-neutral-200 hover:border-orange-500 hover:text-orange-600 text-neutral-600 rounded text-xs font-semibold flex items-center gap-1.5 transition leading-none shadow-sm"
                         >
                           <Edit3 size={11} />
-                          Bearbeiten
+                          {t("menu.edit")}
                         </button>
                       </div>
                     </div>

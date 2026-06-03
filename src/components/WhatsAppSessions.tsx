@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Smartphone, QrCode, Power, PowerOff, RefreshCw, Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
+import { useI18n } from "../i18n";
 
 interface Session {
   _id: string;
@@ -15,6 +17,8 @@ interface Session {
 }
 
 export default function WhatsAppSessions() {
+  const { token } = useAuth();
+  const { t } = useI18n();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -22,7 +26,9 @@ export default function WhatsAppSessions() {
 
   const fetchSessions = async () => {
     try {
-      const res = await fetch("/api/whatsapp/sessions");
+      const res = await fetch("/api/whatsapp/sessions", {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       const data = await res.json();
       setSessions(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -41,7 +47,10 @@ export default function WhatsAppSessions() {
   const handleConnect = async (id: string) => {
     setActionLoading(id);
     try {
-      await fetch(`/api/whatsapp/sessions/${id}/connect`, { method: "POST" });
+      await fetch(`/api/whatsapp/sessions/${id}/connect`, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       await fetchSessions();
     } catch (err) {
       console.error("Connect failed:", err);
@@ -53,7 +62,10 @@ export default function WhatsAppSessions() {
   const handleDisconnect = async (id: string) => {
     setActionLoading(id);
     try {
-      await fetch(`/api/whatsapp/sessions/${id}/disconnect`, { method: "POST" });
+      await fetch(`/api/whatsapp/sessions/${id}/disconnect`, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       await fetchSessions();
     } catch (err) {
       console.error("Disconnect failed:", err);
@@ -66,7 +78,7 @@ export default function WhatsAppSessions() {
     return (
       <div className="bg-white rounded-xl border border-gray-100 p-12 text-center">
         <Loader2 size={24} className="animate-spin text-orange-500 mx-auto mb-2" />
-        <span className="text-xs text-gray-500">Loading WhatsApp sessions...</span>
+        <span className="text-xs text-gray-500">{t("whatsapp.loading")}</span>
       </div>
     );
   }
@@ -75,8 +87,8 @@ export default function WhatsAppSessions() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">WhatsApp Sessions</h3>
-          <p className="text-xs text-gray-500 mt-0.5">Manage Baileys connections per branch</p>
+          <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">{t("whatsapp.title")}</h3>
+          <p className="text-xs text-gray-500 mt-0.5">{t("whatsapp.subtitle")}</p>
         </div>
         <button
           onClick={fetchSessions}
@@ -89,8 +101,8 @@ export default function WhatsAppSessions() {
       {sessions.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-100 p-8 text-center">
           <Smartphone size={32} className="text-gray-300 mx-auto mb-3" />
-          <p className="text-sm text-gray-500">No WhatsApp sessions configured yet.</p>
-          <p className="text-xs text-gray-400 mt-1">Run the seed script to create default sessions.</p>
+          <p className="text-sm text-gray-500">{t("whatsapp.empty")}</p>
+          <p className="text-xs text-gray-400 mt-1">{t("whatsapp.emptyHint")}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -111,7 +123,7 @@ export default function WhatsAppSessions() {
                   <div>
                     <h4 className="text-sm font-bold text-gray-900">{session.sessionName}</h4>
                     <p className="text-[11px] text-gray-500">
-                      {session.branchId?.name || "No branch assigned"}
+                      {session.branchId?.name || t("common.noBranch")}
                     </p>
                   </div>
                 </div>
@@ -124,26 +136,26 @@ export default function WhatsAppSessions() {
                       : "bg-gray-100 text-gray-500"
                   }`}
                 >
-                  {session.connected ? "Connected" : session.qrStatus === "pending" ? "QR Pending" : "Disconnected"}
+                  {session.connected ? t("common.connected") : session.qrStatus === "pending" ? t("common.qrPending") : t("common.disconnected")}
                 </span>
               </div>
 
               <div className="text-xs text-gray-500 space-y-1">
                 {session.phoneNumber && (
                   <p>
-                    <span className="text-gray-400">Phone:</span>{" "}
+                    <span className="text-gray-400">{t("common.phone")}:</span>{" "}
                     <span className="font-mono font-medium text-gray-700">{session.phoneNumber}</span>
                   </p>
                 )}
                 {session.lastConnectedAt && (
                   <p>
-                    <span className="text-gray-400">Last Connected:</span>{" "}
+                    <span className="text-gray-400">{t("whatsapp.lastConnected")}:</span>{" "}
                     {new Date(session.lastConnectedAt).toLocaleString()}
                   </p>
                 )}
                 {session.lastDisconnectedAt && (
                   <p>
-                    <span className="text-gray-400">Last Disconnected:</span>{" "}
+                    <span className="text-gray-400">{t("whatsapp.lastDisconnected")}:</span>{" "}
                     {new Date(session.lastDisconnectedAt).toLocaleString()}
                   </p>
                 )}
@@ -162,7 +174,7 @@ export default function WhatsAppSessions() {
                       ) : (
                         <Power size={12} />
                       )}
-                      Connect
+                      {t("common.connect")}
                     </button>
                     {session.qrCode && (
                       <button
@@ -185,7 +197,7 @@ export default function WhatsAppSessions() {
                     ) : (
                       <PowerOff size={12} />
                     )}
-                    Disconnect
+                    {t("common.disconnect")}
                   </button>
                 )}
               </div>
@@ -204,9 +216,9 @@ export default function WhatsAppSessions() {
             className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full text-center"
             onClick={(e) => e.stopPropagation()}
           >
-            <h4 className="text-sm font-bold text-gray-900 mb-1">Scan QR Code</h4>
+            <h4 className="text-sm font-bold text-gray-900 mb-1">{t("whatsapp.scanQr")}</h4>
             <p className="text-xs text-gray-500 mb-4">
-              Open WhatsApp on your phone → Settings → Linked Devices → Link a Device
+              {t("whatsapp.scanHint")}
             </p>
 
             {qrModal.qrCode ? (
@@ -222,7 +234,7 @@ export default function WhatsAppSessions() {
             ) : (
               <div className="bg-gray-50 p-8 rounded-xl border border-gray-200 flex flex-col items-center gap-2">
                 <Loader2 size={24} className="animate-spin text-orange-500" />
-                <span className="text-xs text-gray-500">Generating QR code...</span>
+                <span className="text-xs text-gray-500">{t("whatsapp.generatingQr")}</span>
               </div>
             )}
 
@@ -230,7 +242,7 @@ export default function WhatsAppSessions() {
               onClick={() => setQrModal(null)}
               className="mt-4 w-full py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-lg transition"
             >
-              Close
+              {t("common.close")}
             </button>
           </div>
         </div>
