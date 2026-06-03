@@ -33,6 +33,43 @@ export default function LiveOrdersList({
     cancelled: { bg: "bg-neutral-100", text: "text-neutral-500 border-neutral-200", label: t("status.cancelled") },
   };
 
+  const toAmount = (value: unknown): number => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
+  const money = (value: unknown): string => toAmount(value).toFixed(2);
+
+  const getItemTotal = (item: any): number => {
+    if (Number.isFinite(Number(item?.totalPrice))) return Number(item.totalPrice);
+
+    const base = toAmount(item?.basePrice) * Math.max(1, toAmount(item?.quantity) || 1);
+    const modifiersTotal = Array.isArray(item?.selectedModifiers)
+      ? item.selectedModifiers.reduce((sum: number, mod: any) => sum + toAmount(mod?.option?.priceAdjustment), 0)
+      : 0;
+    const upsellTotal = toAmount(item?.selectedUpsell?.price);
+
+    return base + modifiersTotal + upsellTotal;
+  };
+
+  const getOrderItems = (order?: Order | null) => Array.isArray(order?.items) ? order.items : [];
+
+  const getOrderSubtotal = (order: Order): number => {
+    if (Number.isFinite(Number(order.subtotal))) return Number(order.subtotal);
+    return getOrderItems(order).reduce((sum, item) => sum + getItemTotal(item), 0);
+  };
+
+  const getOrderTotal = (order: Order): number => {
+    if (Number.isFinite(Number(order.total))) return Number(order.total);
+    return getOrderSubtotal(order) + toAmount(order.deliveryFee);
+  };
+
+  const getStatusInfo = (status?: OrderStatus) => (
+    status && statusColors[status]
+      ? statusColors[status]
+      : { bg: "bg-gray-50", text: "text-gray-500 border-gray-200", label: status || t("common.status") }
+  );
+
   const getOrderStatusFlow = (status: OrderStatus, type: "delivery" | "pickup"): OrderStatus[] => {
     if (status === "cancelled" || status === "delivered") return [];
     if (status === "received") return ["accepted", "cancelled"];
@@ -97,7 +134,7 @@ export default function LiveOrdersList({
             </div>
           ) : (
             orders.map((order) => {
-              const info = statusColors[order.status] || { bg: "bg-gray-50", text: "text-gray-500", label: order.status };
+              const info = getStatusInfo(order.status);
               const isSelected = order.id === selectedOrderId;
               return (
                 <div
@@ -122,7 +159,7 @@ export default function LiveOrdersList({
                       {order.customerName}
                     </span>
                     <span className="font-bold text-neutral-900">
-                      {order.total.toFixed(2)}{currencySymbol}
+                      {money(getOrderTotal(order))}{currencySymbol}
                     </span>
                   </div>
 
@@ -179,7 +216,7 @@ export default function LiveOrdersList({
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-orange-500"></span>
                   <span className="text-xs font-semibold text-neutral-800">
-                    {t("orders.currentStatus")}: <span className="uppercase text-orange-700 font-mono">{statusColors[selectedOrder.status].label}</span>
+                    {t("orders.currentStatus")}: <span className="uppercase text-orange-700 font-mono">{getStatusInfo(selectedOrder.status).label}</span>
                   </span>
                 </div>
                 
@@ -232,23 +269,23 @@ export default function LiveOrdersList({
               <div>
                 <h5 className="text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-2">{t("orders.orderedDishes")}</h5>
                 <div className="border border-gray-100 rounded-lg divide-y divide-gray-100 overflow-hidden text-xs">
-                  {selectedOrder.items.map((item, idx) => (
+                  {getOrderItems(selectedOrder).map((item, idx) => (
                     <div key={idx} className="p-3 bg-white flex flex-col gap-1">
                       <div className="flex items-center justify-between font-medium">
                         <span className="text-gray-900 font-bold">
-                          {item.quantity}x {text(item.name)}
+                          {item.quantity || 1}x {text(item.name)}
                         </span>
                         <span className="font-bold text-gray-950 font-mono">
-                          {item.totalPrice.toFixed(2)}{currencySymbol}
+                          {money(getItemTotal(item))}{currencySymbol}
                         </span>
                       </div>
                       
                       {/* Modifiers List */}
-                      {item.selectedModifiers.map((mod, mIdx) => (
+                      {(item.selectedModifiers || []).map((mod, mIdx) => (
                         <div key={mIdx} className="text-[11px] text-gray-500 ml-3 flex justify-between">
-                          <span>└ ➕ {text(mod.groupName)}: {text(mod.option.name)}</span>
-                          {mod.option.priceAdjustment > 0 && (
-                            <span>+{mod.option.priceAdjustment.toFixed(2)}{currencySymbol}</span>
+                          <span>└ ➕ {text(mod.groupName)}: {text(mod.option?.name)}</span>
+                          {toAmount(mod.option?.priceAdjustment) > 0 && (
+                            <span>+{money(mod.option?.priceAdjustment)}{currencySymbol}</span>
                           )}
                         </div>
                       ))}
@@ -257,7 +294,7 @@ export default function LiveOrdersList({
                       {item.selectedUpsell && (
                         <div className="text-[11px] text-amber-700 bg-amber-50 px-2.5 py-1 rounded border border-amber-100 ml-3 flex justify-between mt-1 items-center">
                           <span className="font-medium">└ ⚡ {t("orders.combo")}: {text(item.selectedUpsell.name)}</span>
-                          <span className="font-bold font-mono">+{item.selectedUpsell.price.toFixed(2)}{currencySymbol}</span>
+                          <span className="font-bold font-mono">+{money(item.selectedUpsell.price)}{currencySymbol}</span>
                         </div>
                       )}
                     </div>
@@ -267,17 +304,17 @@ export default function LiveOrdersList({
                   <div className="p-3 bg-neutral-50/50 space-y-1.5 text-xs">
                     <div className="flex justify-between text-gray-500">
                       <span>{t("common.subtotal")}:</span>
-                      <span className="font-mono">{selectedOrder.subtotal.toFixed(2)}{currencySymbol}</span>
+                      <span className="font-mono">{money(getOrderSubtotal(selectedOrder))}{currencySymbol}</span>
                     </div>
                     {selectedOrder.orderType === "delivery" && (
                       <div className="flex justify-between text-gray-500">
                         <span>{t("orders.deliveryFeeRadius")}:</span>
-                        <span className="font-mono">{selectedOrder.deliveryFee.toFixed(2)}{currencySymbol}</span>
+                        <span className="font-mono">{money(selectedOrder.deliveryFee)}{currencySymbol}</span>
                       </div>
                     )}
                     <div className="flex justify-between text-gray-900 font-bold border-t border-gray-100 pt-2 text-sm">
                       <span>{t("common.total")}:</span>
-                      <span className="font-mono text-orange-600">{selectedOrder.total.toFixed(2)}{currencySymbol}</span>
+                      <span className="font-mono text-orange-600">{money(getOrderTotal(selectedOrder))}{currencySymbol}</span>
                     </div>
                     <div className="text-[10px] text-neutral-500 font-medium">
                       💶 {t("common.paymentMethod")}: *{selectedOrder.paymentMethod}*
@@ -305,7 +342,7 @@ export default function LiveOrdersList({
               
               <div className="flex gap-2">
                 {getOrderStatusFlow(selectedOrder.status, selectedOrder.orderType).map((nextSt) => {
-                  const info = statusColors[nextSt] || { bg: "bg-red-500 text-white", label: nextSt };
+                  const info = getStatusInfo(nextSt);
                   return (
                     <button
                       key={nextSt}

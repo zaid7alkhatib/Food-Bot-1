@@ -27,6 +27,37 @@ export default function ThermalPrinter({
 
   const [isSimulatingPrint, setIsSimulatingPrint] = useState(false);
 
+  const toAmount = (value: unknown): number => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
+  const money = (value: unknown): string => toAmount(value).toFixed(2);
+
+  const getItemTotal = (item: any): number => {
+    if (Number.isFinite(Number(item?.totalPrice))) return Number(item.totalPrice);
+
+    const base = toAmount(item?.basePrice) * Math.max(1, toAmount(item?.quantity) || 1);
+    const modifiersTotal = Array.isArray(item?.selectedModifiers)
+      ? item.selectedModifiers.reduce((sum: number, mod: any) => sum + toAmount(mod?.option?.priceAdjustment), 0)
+      : 0;
+    const upsellTotal = toAmount(item?.selectedUpsell?.price);
+
+    return base + modifiersTotal + upsellTotal;
+  };
+
+  const getOrderItems = (order?: Order | null) => Array.isArray(order?.items) ? order.items : [];
+
+  const getOrderSubtotal = (order: Order): number => {
+    if (Number.isFinite(Number(order.subtotal))) return Number(order.subtotal);
+    return getOrderItems(order).reduce((sum, item) => sum + getItemTotal(item), 0);
+  };
+
+  const getOrderTotal = (order: Order): number => {
+    if (Number.isFinite(Number(order.total))) return Number(order.total);
+    return getOrderSubtotal(order) + toAmount(order.deliveryFee);
+  };
+
   const simulateTestBuzzer = () => {
     try {
       const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -244,15 +275,15 @@ export default function ThermalPrinter({
                   <span>{t("common.total").toUpperCase()}</span>
                 </div>
                 
-                {activeOrderToPrint.items.map((item, id) => (
+                {getOrderItems(activeOrderToPrint).map((item, id) => (
                   <div key={id} className="space-y-0.5 text-[11px]">
                     <div className="flex justify-between font-bold">
-                      <span>{item.quantity}x {text(item.name)}</span>
-                      <span>{item.totalPrice.toFixed(2)}{currencySymbol}</span>
+                      <span>{item.quantity || 1}x {text(item.name)}</span>
+                      <span>{money(getItemTotal(item))}{currencySymbol}</span>
                     </div>
-                    {item.selectedModifiers.map((mod, mId) => (
+                    {(item.selectedModifiers || []).map((mod, mId) => (
                       <div key={mId} className="text-[9px] text-neutral-600 pl-2">
-                        + {text(mod.groupName)}: {text(mod.option.name)}
+                        + {text(mod.groupName)}: {text(mod.option?.name)}
                       </div>
                     ))}
                     {item.selectedUpsell && (
@@ -268,17 +299,17 @@ export default function ThermalPrinter({
               <div className="py-3 border-b border-dashed border-neutral-400 space-y-1 text-right">
                 <div className="flex justify-between">
                   <span>{t("common.subtotal").toUpperCase()}:</span>
-                  <span>{activeOrderToPrint.subtotal.toFixed(2)}{currencySymbol}</span>
+                  <span>{money(getOrderSubtotal(activeOrderToPrint))}{currencySymbol}</span>
                 </div>
                 {activeOrderToPrint.orderType === "delivery" && (
                   <div className="flex justify-between">
                     <span>{t("common.deliveryFee").toUpperCase()}:</span>
-                    <span>{activeOrderToPrint.deliveryFee.toFixed(2)}{currencySymbol}</span>
+                    <span>{money(activeOrderToPrint.deliveryFee)}{currencySymbol}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-bold border-t border-neutral-200 pt-1 text-sm">
                   <span>{t("printer.grandTotal").toUpperCase()}:</span>
-                  <span>{activeOrderToPrint.total.toFixed(2)}{currencySymbol}</span>
+                  <span>{money(getOrderTotal(activeOrderToPrint))}{currencySymbol}</span>
                 </div>
               </div>
 
@@ -295,7 +326,7 @@ export default function ThermalPrinter({
                 {/* Visual printed barcode simulator */}
                 <div className="flex flex-col items-center pt-2 gap-1 justify-center">
                   <div className="h-6 w-36 bg-[repeating-linear-gradient(90deg,#000,#000_1px,transparent_1px,transparent_3px,#000_3px,#000_5px,transparent_5px,transparent_6px)]"></div>
-                  <span className="text-[8px] font-mono tracking-widest">*{activeOrderToPrint.id.substring(4)}*</span>
+                  <span className="text-[8px] font-mono tracking-widest">*{(activeOrderToPrint.id || activeOrderToPrint.orderNumber).substring(4)}*</span>
                 </div>
               </div>
 
