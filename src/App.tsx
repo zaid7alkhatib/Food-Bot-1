@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   TrendingUp,
   ShoppingBag,
@@ -6,14 +6,13 @@ import {
   Printer,
   Megaphone,
   Settings,
-  Grid,
-  Bell,
   Languages,
   Activity,
-  UserCheck,
-  CheckCircle,
   HelpCircle,
+  LogOut,
+  Zap,
 } from "lucide-react";
+import { io, Socket } from "socket.io-client";
 import PhoneSimulator from "./components/PhoneSimulator";
 import DashboardOverview from "./components/DashboardOverview";
 import LiveOrdersList from "./components/LiveOrdersList";
@@ -21,9 +20,12 @@ import ThermalPrinter from "./components/ThermalPrinter";
 import ChatCenter from "./components/ChatCenter";
 import CampaignTab from "./components/CampaignTab";
 import MenuEditor from "./components/MenuEditor";
+import LoginPage from "./components/LoginPage";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 import { Order, OrderStatus, Conversation, MenuItem, Category, Campaign, Feedback } from "./types";
 
-export default function App() {
+function Dashboard() {
+  const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<"overview" | "orders" | "chat" | "campaigns" | "menu" | "hardware">("overview");
 
   // State populated from the server
@@ -36,6 +38,7 @@ export default function App() {
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const [currencySymbol, setCurrencySymbol] = useState("€");
   const [geminiStatus, setGeminiStatus] = useState(false);
+  const [socketConnected, setSocketConnected] = useState(false);
 
   // Active printing order
   const [selectedOrderToPrint, setSelectedOrderToPrint] = useState<Order | null>(null);
@@ -44,7 +47,11 @@ export default function App() {
   // Loading flags
   const [isLoading, setIsLoading] = useState(true);
 
-  // Poll state every 3 seconds to keep phone simulator events & cashiers dashboards in absolute lock-step real-time sync!
+  const socketRef = useRef<Socket | null>(null);
+
+  // ------------------------------------------------------------------
+  // Socket.io + initial data fetch
+  // ------------------------------------------------------------------
   const fetchSystemState = async () => {
     try {
       const response = await fetch("/api/state");
@@ -58,14 +65,6 @@ export default function App() {
         setCampaigns(data.campaigns);
         setFeedbacks(data.feedbacks);
         setGeminiStatus(data.geminiStatus);
-
-        // Auto print logic simulation if enabled and a new "received" order emerges
-        if (autoPrintEnabled) {
-          const freshReceived = data.orders.find((o: Order) => o.status === "received");
-          if (freshReceived && (!selectedOrderToPrint || selectedOrderToPrint.id !== freshReceived.id)) {
-            setSelectedOrderToPrint(freshReceived);
-          }
-        }
       }
     } catch (err) {
       console.error("Failed to sync client state:", err);
@@ -75,12 +74,79 @@ export default function App() {
   };
 
   useEffect(() => {
+    // Initial fetch
     fetchSystemState();
-    const interval = setInterval(fetchSystemState, 3000);
-    return () => clearInterval(interval);
+
+    // Setup Socket.io
+    const socket = io({
+      transports: ["websocket", "polling"],
+    });
+    socketRef.current = socket;
+
+    socket.on("connect", () => {
+      console.log("[Socket.io] Connected:", socket.id);
+      setSocketConnected(true);
+      socket.emit("join", "dashboard");
+    });
+
+    socket.on("disconnect", () => {
+      console.log("[Socket.io] Disconnected");
+      setSocketConnected(false);
+    });
+
+    socket.on("order:new", (newOrder: Order) => {
+      setOrders((prev) => [newOrder, ...prev]);
+      playAlertNotification();
+      if (autoPrintEnabled && newOrder.status === "received") {
+        setSelectedOrderToPrint(newOrder);
+      }
+    });
+
+    socket.on("order:updated", ({ orderId, status }: { orderId: string; status: OrderStatus }) => {
+      setOrders((prev) =>
+        prev.map((o) => (o.id === orderId ? { ...o, status, updatedAt: new Date().toISOString() } : o))
+      );
+      playAlertNotification();
+    });
+
+    socket.on("conversation:updated", (updatedConvo: Conversation) => {
+      setConversations((prev) => {
+        const exists = prev.find((c) => c.id === updatedConvo.id);
+        if (exists) {
+          return prev.map((c) => (c.id === updatedConvo.id ? updatedConvo : c));
+        }
+        return [updatedConvo, ...prev];
+      });
+    });
+
+    socket.on("campaign:sent", () => {
+      fetchSystemState();
+    });
+
+    socket.on("feedback:new", () => {
+      fetchSystemState();
+    });
+
+    socket.on("menu:updated", () => {
+      fetchSystemState();
+    });
+
+    // Fallback polling every 10s if socket is disconnected
+    const pollInterval = setInterval(() => {
+      if (!socket.connected) {
+        fetchSystemState();
+      }
+    }, 10000);
+
+    return () => {
+      socket.disconnect();
+      clearInterval(pollInterval);
+    };
   }, [autoPrintEnabled]);
 
-  // Update order status on server
+  // ------------------------------------------------------------------
+  // Handlers
+  // ------------------------------------------------------------------
   const handleUpdateOrderStatus = async (id: string, nextStatus: OrderStatus) => {
     try {
       const response = await fetch(`/api/orders/${id}/status`, {
@@ -92,13 +158,12 @@ export default function App() {
         const data = await response.json();
         setOrders(data.orders);
         setConversations(data.conversations);
-        
-        // Update printing reference if active
+
         if (selectedOrderToPrint?.id === id) {
           const matched = data.orders.find((o: Order) => o.id === id);
           if (matched) setSelectedOrderToPrint(matched);
         }
-        
+
         playAlertNotification();
       }
     } catch (err) {
@@ -106,7 +171,6 @@ export default function App() {
     }
   };
 
-  // Sound generator helper for state events
   const playAlertNotification = () => {
     try {
       const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -114,7 +178,7 @@ export default function App() {
       const gain = audioCtx.createGain();
       osc.connect(gain);
       gain.connect(audioCtx.destination);
-      osc.frequency.setValueAtTime(440, audioCtx.currentTime); // Pitch A4
+      osc.frequency.setValueAtTime(440, audioCtx.currentTime);
       gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
       osc.start();
       osc.stop(audioCtx.currentTime + 0.15);
@@ -123,7 +187,6 @@ export default function App() {
     }
   };
 
-  // Direct support chat messaging
   const handleSendAdminMessage = async (convoId: string, text: string) => {
     try {
       const response = await fetch(`/api/conversations/${convoId}/messages`, {
@@ -132,14 +195,14 @@ export default function App() {
         body: JSON.stringify({ text, sender: "human" }),
       });
       if (response.ok) {
-        fetchSystemState();
+        const data = await response.json();
+        setConversations((prev) => prev.map((c) => (c.id === convoId ? data : c)));
       }
     } catch (err) {
       console.error("Admin chat failed", err);
     }
   };
 
-  // Autopilot toggle
   const handleToggleTakeover = async (convoId: string, botEnabled: boolean) => {
     try {
       const response = await fetch(`/api/conversations/${convoId}/takeover`, {
@@ -148,28 +211,29 @@ export default function App() {
         body: JSON.stringify({ botEnabled }),
       });
       if (response.ok) {
-        fetchSystemState();
+        const data = await response.json();
+        setConversations((prev) => prev.map((c) => (c.id === convoId ? data : c)));
       }
     } catch (err) {
       console.error("Takeover toggle error:", err);
     }
   };
 
-  // Marketing dispatch
   const handleDispatchCampaign = async (id: string) => {
     try {
-      const response = await fetch(`/api/campaigns/${id}/send`, {
-        method: "POST",
-      });
+      const response = await fetch(`/api/campaigns/${id}/send`, { method: "POST" });
       if (response.ok) {
-        fetchSystemState();
+        const data = await response.json();
+        setConversations(data.conversations);
+        setCampaigns((prev) =>
+          prev.map((c) => (c.id === id ? data.campaign : c))
+        );
       }
     } catch (err) {
       console.error("Campaign dispatch failed:", err);
     }
   };
 
-  // Dynamic add item
   const handleAddMenuItem = async (item: Partial<MenuItem>) => {
     try {
       const response = await fetch("/api/menu/items", {
@@ -178,7 +242,8 @@ export default function App() {
         body: JSON.stringify(item),
       });
       if (response.ok) {
-        fetchSystemState();
+        const newItem = await response.json();
+        setMenuItems((prev) => [...prev, newItem]);
       }
     } catch (err) {
       console.error("Failed adding product:", err);
@@ -193,7 +258,8 @@ export default function App() {
         body: JSON.stringify(updated),
       });
       if (response.ok) {
-        fetchSystemState();
+        const data = await response.json();
+        setMenuItems((prev) => prev.map((item) => (item.id === id ? data : item)));
       }
     } catch (err) {
       console.error("Failed update product:", err);
@@ -207,12 +273,10 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-neutral-800">
-      
-      {/* Upper Damascus Syrian Header bar */}
+      {/* Header */}
       <header className="bg-slate-900 text-white shadow-xl border-b-4 border-orange-500 z-30 select-none">
         <div className="max-w-7xl mx-auto px-4 py-3 sm:py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-          
-          {/* Brand logos */}
+          {/* Brand */}
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-xl bg-orange-500 text-white flex items-center justify-center font-bold text-xl shadow-lg ring-2 ring-white/20 transform rotate-[-2deg] select-none hover:rotate-[6deg] transition duration-200">
               🌯
@@ -229,9 +293,16 @@ export default function App() {
             </div>
           </div>
 
-          {/* Core Telemetry status */}
+          {/* Status + User */}
           <div className="flex flex-wrap items-center gap-3">
-            
+            {/* Socket.io status */}
+            <div className="flex items-center gap-2 bg-slate-800 border border-slate-700 rounded-xl px-3 py-1.5">
+              <Zap size={14} className={socketConnected ? "text-green-400" : "text-red-400"} />
+              <span className="text-[10px] text-slate-400 uppercase font-bold">
+                {socketConnected ? "Live" : "Polling"}
+              </span>
+            </div>
+
             {/* Gemini API Indicator */}
             <div className="flex items-center gap-2 bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-1.5">
               <Activity size={14} className={geminiStatus ? "text-green-400 animate-pulse" : "text-orange-400 animate-pulse"} />
@@ -243,7 +314,23 @@ export default function App() {
               </div>
             </div>
 
-            {/* Quick address badge */}
+            {/* User + Logout */}
+            {user && (
+              <div className="flex items-center gap-2">
+                <div className="hidden sm:flex flex-col text-right text-xs leading-tight text-slate-400">
+                  <span className="font-bold text-white">{user.name}</span>
+                  <span className="capitalize">{user.role.replace("_", " ")}</span>
+                </div>
+                <button
+                  onClick={logout}
+                  className="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-400 hover:text-white transition"
+                  title="Sign out"
+                >
+                  <LogOut size={16} />
+                </button>
+              </div>
+            )}
+
             <div className="hidden md:flex flex-col text-right text-xs leading-tight text-slate-400">
               <span className="font-bold text-white">Berliner Str. 179</span>
               <span>42277 Wuppertal, Germany</span>
@@ -252,13 +339,11 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main workspace frame splitter */}
+      {/* Main workspace */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 grid grid-cols-1 lg:grid-cols-12 gap-6 pb-12">
-        
-        {/* Left column: Smartphone interactive simulator */}
+        {/* Left column: Smartphone simulator */}
         <div className="lg:col-span-4 flex flex-col">
           <div className="sticky top-6 space-y-4">
-            
             <div className="flex items-center justify-between pb-1 border-b border-gray-200">
               <h2 className="text-xs font-extrabold uppercase tracking-widest text-slate-800 flex items-center gap-1.5">
                 <Languages size={15} />
@@ -279,7 +364,6 @@ export default function App() {
               currencySymbol={currencySymbol}
             />
 
-            {/* Extra guide tips below the phone */}
             <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 text-xs text-orange-950 leading-relaxed shadow-sm">
               <h5 className="font-bold flex items-center gap-1 mb-1 text-orange-950">
                 <HelpCircle size={13} />
@@ -292,12 +376,10 @@ export default function App() {
           </div>
         </div>
 
-        {/* Right column: Admin command control dashboards */}
+        {/* Right column: Admin dashboards */}
         <div className="lg:col-span-8 flex flex-col gap-5">
-          
-          {/* Main workspace Tab triggers */}
+          {/* Tab triggers */}
           <div className="flex flex-wrap border-b border-gray-200 gap-1 select-none">
-            
             <button
               onClick={() => setActiveTab("overview")}
               className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-t-xl flex items-center gap-2 transition cursor-pointer ${
@@ -374,7 +456,7 @@ export default function App() {
             </button>
           </div>
 
-          {/* Dynamic Tab Render panels */}
+          {/* Dynamic Tab Panels */}
           <div className="flex-1 min-h-[500px]">
             {isLoading ? (
               <div className="bg-white rounded-xl border border-gray-100 p-12 text-center flex flex-col items-center justify-center gap-2 shadow-sm">
@@ -438,14 +520,42 @@ export default function App() {
             )}
           </div>
         </div>
-
       </main>
 
-      {/* Humble Footer brandings */}
+      {/* Footer */}
       <footer className="bg-neutral-900 text-gray-400 py-6 border-t border-neutral-800 text-center text-xs mt-auto">
         <p>© 2026 MR. Tabboush Ordering & engagement system. Designed for Farman GmbH Syrian Cuisine operations.</p>
-        <p className="text-[10px] text-gray-600 mt-1">Simulated VPS Node running on Cloud container environment.</p>
+        <p className="text-[10px] text-gray-600 mt-1">Powered by MongoDB + Socket.io + Baileys on Node.js 20</p>
       </footer>
     </div>
   );
+}
+
+// ------------------------------------------------------------------
+// Root App with Auth Provider
+// ------------------------------------------------------------------
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppWithAuth />
+    </AuthProvider>
+  );
+}
+
+function AppWithAuth() {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="w-10 h-10 rounded-full border-4 border-orange-500 border-t-transparent animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LoginPage />;
+  }
+
+  return <Dashboard />;
 }
