@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express from "express";
 import path from "path";
 import fs from "fs";
@@ -28,12 +29,7 @@ import {
 import { defaultCurrency, orderStatusMessages } from "./src/mockData.js";
 
 // ------------------------------------------------------------------
-// 1. Connect to MongoDB
-// ------------------------------------------------------------------
-await connectDB();
-
-// ------------------------------------------------------------------
-// 2. Express + HTTP + Socket.io setup
+// 1. Express + HTTP + Socket.io setup
 // ------------------------------------------------------------------
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 const app = express();
@@ -57,7 +53,7 @@ initSocket(httpServer);
 startCronJobs();
 
 // ------------------------------------------------------------------
-// 3. Auth Routes
+// 2. Auth Routes
 // ------------------------------------------------------------------
 app.use("/api/auth", authRoutes);
 app.use("/api/branches", authMiddleware as any, branchesRoutes);
@@ -66,7 +62,7 @@ app.use("/api/reports", authMiddleware as any, reportsRoutes);
 app.use("/api/settings", authMiddleware as any, settingsRoutes);
 
 // ------------------------------------------------------------------
-// 4. Gemini lazy init
+// 3. Gemini lazy init
 // ------------------------------------------------------------------
 let aiInstance: GoogleGenAI | null = null;
 function getGeminiClient(): GoogleGenAI | null {
@@ -88,7 +84,7 @@ function getGeminiClient(): GoogleGenAI | null {
 }
 
 // ------------------------------------------------------------------
-// 5. REST API Routes (MongoDB backed)
+// 4. REST API Routes (MongoDB backed)
 // ------------------------------------------------------------------
 
 // GET /api/state — Full system snapshot (public for now, can be protected later)
@@ -406,7 +402,7 @@ app.put("/api/menu/items/:id", authMiddleware as any, async (req, res) => {
 });
 
 // ------------------------------------------------------------------
-// 6. Bot Reply Route (Gemini + Rule-Based Fallback)
+// 5. Bot Reply Route (Gemini + Rule-Based Fallback)
 // ------------------------------------------------------------------
 app.post("/api/bot-reply", async (req, res) => {
   try {
@@ -784,7 +780,7 @@ You MUST reply with a JSON object in this exact schema structure:
 });
 
 // ------------------------------------------------------------------
-// 7. WhatsApp Session Routes
+// 6. WhatsApp Session Routes
 // ------------------------------------------------------------------
 app.get("/api/whatsapp/sessions", authMiddleware as any, async (req, res) => {
   try {
@@ -834,9 +830,11 @@ app.post("/api/whatsapp/sessions/:id/disconnect", authMiddleware as any, async (
 });
 
 // ------------------------------------------------------------------
-// 8. Serve frontend assets & mount Vite in development
+// 7. Serve frontend assets & mount Vite in development
 // ------------------------------------------------------------------
 const startServer = async () => {
+  await connectDB();
+
   if (process.env.DISABLE_HMR === "true" || process.env.NODE_ENV === "production") {
     const distPath = path.join(process.cwd(), "dist");
     if (fs.existsSync(distPath)) {

@@ -3,7 +3,8 @@
 > Document version: 2026-06-03  
 > Repository: https://github.com/yfde2020/food-bot  
 > Base commit: `319dfc5` (Initial MVP prototype)  
-> Current commit: `684b052` (Production-ready backend foundation)
+> Latest implementation commit: `684b052` (API rate limiting with express-rate-limit)  
+> Current repository HEAD: `58bd2ef` (Progress documentation)
 
 ---
 
@@ -43,7 +44,7 @@ Installed and configured the full backend stack:
 - `node-cron` — Background job scheduler
 - `@whiskeysockets/baileys` — WhatsApp Web API
 
-Created **10 Mongoose models** mapping exactly to the plan:
+Created **10 Mongoose models** covering the MVP core of the plan:
 
 | Model | Purpose |
 |-------|---------|
@@ -65,10 +66,10 @@ Created database utilities:
 ### 2.2 Authentication System
 **Commit:** `3d16409`
 
-Implemented complete JWT-based authentication:
+Implemented JWT-based authentication:
 - `POST /api/auth/register` — Create new users with roles
 - `POST /api/auth/login` — Validate credentials, return JWT
-- `GET /api/auth/me` — Current user info
+- `GET /api/auth/me` — Current user info compatibility endpoint; currently public and returns a default admin stub
 - Passwords hashed with bcrypt (12 rounds)
 - JWT expires in 7 days
 - Frontend `AuthContext` with localStorage persistence
@@ -253,7 +254,7 @@ NODE_ENV=development
   - Delivery vs pickup counts
   - Average customer rating
   - Top 5 bestselling items (aggregated from all orders)
-  - Hourly revenue distribution
+  - Hourly revenue distribution placeholder derived from today's revenue
 - `GET /api/reports/orders` — Filtered order reports by date range, status, order type
 
 ### 7.2 Updated DashboardOverview
@@ -296,7 +297,7 @@ server.ts              (689 lines, all in one file)
 ### After (Current State)
 ```
 src/
-  components/          (9 UI components + LoginPage)
+  components/          (11 components total)
   context/
     AuthContext.tsx
   lib/
@@ -326,9 +327,9 @@ src/
     whatsapp.ts        (Baileys)
   seed.ts              (Database seeder)
   App.tsx
-  mockData.ts          (Now only templates + currency)
+  mockData.ts          (Static menu seed data, default branch/currency, status templates)
   types.ts
-server.ts              (Refactored, 821+ lines, modular)
+server.ts              (Refactored, 870 lines, modular)
 ```
 
 ---
@@ -339,7 +340,7 @@ server.ts              (Refactored, 821+ lines, modular)
 |----------|--------|------|-------------|
 | `/api/auth/register` | POST | Public | Create user |
 | `/api/auth/login` | POST | Public | Get JWT |
-| `/api/auth/me` | GET | Public | Current user |
+| `/api/auth/me` | GET | Public | Default admin compatibility stub |
 | `/api/state` | GET | Public | Full system snapshot |
 | `/api/orders` | POST | ✅ | Create order |
 | `/api/orders/:id/status` | PUT | ✅ | Update status |
@@ -371,14 +372,20 @@ server.ts              (Refactored, 821+ lines, modular)
 ### Missing for Full Plan Compliance
 | Feature | Plan Section | Current Status |
 |---------|-------------|----------------|
+| Standalone role/permission model | 11, 18, 19 | `User.role` and `requireRole` helper exist, but no `Role` model or route-level role gates |
+| Standalone currency/language models | 3.3, 3.4, 18 | Stored as restaurant fields/templates, not dynamic entities |
+| Customer model | 18 | Customer data is stored on orders/conversations, no dedicated `Customer` model |
+| Modifier and upsell management APIs | 4.3, 4.4, 17, 18 | Embedded in `MenuItem`, no separate CRUD APIs or models |
+| Dynamic message templates | 3.3, 5.2, 23 | Templates still live in code/mock data, not database-managed |
 | ESC/POS thermal printer | 9.1 | UI only, no real printer library |
 | Delivery geocoding | 7 | Hardcoded 4km radius |
-| i18next integration | 3.3 | Texts hardcoded in 3 languages |
-| Audit logs | 19 | Model not created |
+| i18next integration | 3.3 | Translation objects exist, but no i18next integration |
+| Audit logs / request logging | 19 | Not implemented |
 | Input validation (Zod/Joi) | 19 | Basic only |
 | Unit/integration tests | 20 | None |
 | Docker / CI-CD | 20 | None |
-| Multi-tenant multi-restaurant | 2 | Data model ready, not wired |
+| Production database/backups | 19, 20 | Local MongoDB config only |
+| Multi-tenant multi-restaurant isolation | 2 | References exist, but route scoping is not enforced |
 
 ---
 
@@ -413,7 +420,28 @@ open http://localhost:3000
 
 ---
 
-## 13. Timeline Assessment
+## 13. Commit Coverage Audit
+
+Checked with `git log --reverse --stat --oneline` from the root commit through `HEAD`.
+
+| Commit | Summary | Covered In This Report |
+|--------|---------|------------------------|
+| `319dfc5` | Initial Vite/React/Express MVP and original `plan.md` | Section 1 |
+| `bbc8774` | MongoDB models, auth utilities, Socket.io service, Baileys scaffold, cron jobs, seed script | Sections 2.1, 2.3, 3.1, 4.1, 6.3, 8 |
+| `3d16409` | Login page, `AuthContext`, Socket.io client | Sections 2.2, 3.2 |
+| `43fd248` | WhatsApp session UI and Baileys routes | Section 4.2 |
+| `b58e8ed` | Branch settings UI, branches API, categories API | Sections 5.1, 5.3 |
+| `0679341` | Auth middleware on protected APIs and frontend auth headers | Section 6.1 |
+| `4069999` | Reports API and real dashboard data wiring | Section 7 |
+| `5645bc6` | Restaurant settings API and UI | Section 5.2 |
+| `684b052` | API rate limiting | Section 6.2 |
+| `58bd2ef` | Added this progress report | Header and this audit section |
+
+No implementation commit is missing from the progress sections after this audit. The remaining gaps are plan-compliance gaps listed in Section 11.
+
+---
+
+## 14. Timeline Assessment
 
 | Plan Phase | Estimated | Actual Status |
 |------------|-----------|---------------|
@@ -424,4 +452,4 @@ open http://localhost:3000
 | Phase 5 — Marketing & Feedback | Week 4 | ✅ Core features complete |
 | Phase 6 — Testing & Go-Live | Week 5 | 🔴 Not started |
 
-**Verdict:** Backend is **production-ready for MVP**. Frontend is **feature-complete for admin operations**. The biggest remaining risk is **real WhatsApp phone testing** and **thermal printer hardware integration**.
+**Verdict:** The MVP backend foundation and admin frontend are in place. The biggest remaining launch risks are **real WhatsApp phone testing**, **thermal printer hardware integration**, and the plan-compliance gaps in Section 11.
