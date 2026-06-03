@@ -1,5 +1,6 @@
 import "dotenv/config";
 import express from "express";
+import mongoose from "mongoose";
 import path from "path";
 import fs from "fs";
 import http from "http";
@@ -24,6 +25,7 @@ import {
   Conversation,
   Campaign,
   Feedback,
+  Restaurant,
   WhatsAppSession,
 } from "./src/models/index.js";
 import { defaultCurrency, orderStatusMessages } from "./src/mockData.js";
@@ -383,9 +385,28 @@ app.post("/api/feedbacks", authMiddleware as any, async (req, res) => {
 // POST /api/menu/items
 app.post("/api/menu/items", authMiddleware as any, async (req, res) => {
   try {
+    const restaurant = req.body.restaurantId
+      ? await Restaurant.findById(req.body.restaurantId).lean()
+      : await Restaurant.findOne({ isActive: true }).lean();
+
+    let category = null;
+    if (mongoose.isValidObjectId(req.body.categoryId)) {
+      category = await Category.findById(req.body.categoryId).lean();
+    }
+    if (!category) {
+      category = await Category.findOne({ isActive: true }).sort({ sortOrder: 1 }).lean();
+    }
+
+    if (!restaurant || !category) {
+      res.status(400).json({ error: "Restaurant and category are required before creating menu items" });
+      return;
+    }
+
     const count = await MenuItem.countDocuments();
     const item = new MenuItem({
       ...req.body,
+      restaurantId: restaurant._id,
+      categoryId: category._id,
       sortOrder: req.body.sortOrder || count + 1,
       isActive: true,
       isBestSeller: false,
@@ -432,14 +453,20 @@ app.post("/api/bot-reply", async (req, res) => {
     const dbOrders = await Order.find().sort({ createdAt: -1 }).lean();
 
     if (!convo) {
+      const [defaultRestaurant, defaultBranch] = await Promise.all([
+        Restaurant.findOne({ isActive: true }).lean(),
+        Branch.findOne({ isActive: true }).lean(),
+      ]);
       convo = new Conversation({
         customerName: "Gast " + phone.substring(phone.length - 4),
         whatsAppPhone: phone,
+        restaurantId: defaultRestaurant?._id,
+        branchId: defaultBranch?._id,
         botEnabled: true,
         messages: [],
         currentStep: "welcome",
         unsubmittedOrder: {
-          branchId: "wuppertal-1",
+          branchId: defaultBranch?._id?.toString() || "",
           customerName: "Gast " + phone.substring(phone.length - 4),
           whatsAppPhone: phone,
           items: [],
@@ -465,7 +492,7 @@ app.post("/api/bot-reply", async (req, res) => {
 
     // If human mode, don't auto-reply
     if (!convo.botEnabled) {
-      res.json({ conversation: convo, dbOrders });
+      res.json({ conversation: convo, dbOrders, botReplyText: null });
       return;
     }
 
@@ -735,8 +762,8 @@ You MUST reply with a JSON object in this exact schema structure:
 
           finalPlacedOrder = {
             orderNumber: ordNum,
-            restaurantId: convo.restaurantId,
-            branchId: convo.branchId || (await Branch.findOne())?._id,
+            restaurantId: convo.restaurantId || (await Restaurant.findOne({ isActive: true }))?._id,
+            branchId: convo.branchId || (await Branch.findOne({ isActive: true }))?._id,
             customerName: convo.customerName,
             whatsAppPhone: convo.whatsAppPhone,
             orderType: convo.unsubmittedOrder?.orderType || "delivery",
@@ -791,7 +818,7 @@ You MUST reply with a JSON object in this exact schema structure:
     emitGlobal("conversation:updated", convo);
 
     const allOrders = await Order.find().sort({ createdAt: -1 }).lean();
-    res.json({ conversation: convo, dbOrders: allOrders });
+    res.json({ conversation: convo, dbOrders: allOrders, botReplyText });
   } catch (err) {
     console.error("[API] POST /api/bot-reply error:", err);
     res.status(500).json({ error: "Bot processing failed" });

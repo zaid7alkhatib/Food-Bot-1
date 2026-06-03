@@ -11,6 +11,44 @@ import { WhatsAppSession } from "../models/index.js";
 
 const sessions = new Map<string, WASocket>();
 
+function getInternalBotUrl() {
+  return process.env.INTERNAL_APP_URL || `http://127.0.0.1:${process.env.PORT || 3000}`;
+}
+
+function getMessageText(message: any): string {
+  return (
+    message.conversation ||
+    message.extendedTextMessage?.text ||
+    message.imageMessage?.caption ||
+    message.videoMessage?.caption ||
+    ""
+  );
+}
+
+function getCustomerPhone(remoteJid: string): string {
+  return remoteJid.replace(/@s\.whatsapp\.net|@g\.us|@lid/g, "");
+}
+
+async function processIncomingBotMessage(sock: WASocket, remoteJid: string, text: string) {
+  const response = await fetch(`${getInternalBotUrl()}/api/bot-reply`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      phone: getCustomerPhone(remoteJid),
+      message: text,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Bot endpoint returned ${response.status}`);
+  }
+
+  const data = await response.json();
+  if (data?.botReplyText) {
+    await sock.sendMessage(remoteJid, { text: data.botReplyText });
+  }
+}
+
 export async function startWhatsAppSession(sessionName: string, onQR?: (qr: string) => void) {
   const sessionDir = path.join(process.cwd(), "bailey_sessions", sessionName);
 
@@ -68,11 +106,19 @@ export async function startWhatsAppSession(sessionName: string, onQR?: (qr: stri
   sock.ev.on("messages.upsert", async (m) => {
     if (m.type === "notify") {
       for (const msg of m.messages) {
-        if (!msg.key.fromMe && msg.message) {
-          const phone = msg.key.remoteJid?.replace(/@s\.whatsapp\.net|@g\.us/, "");
-          const text = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
+        const remoteJid = msg.key.remoteJid;
+        if (!msg.key.fromMe && remoteJid && !remoteJid.endsWith("@g.us") && remoteJid !== "status@broadcast" && msg.message) {
+          const text = getMessageText(msg.message);
+          if (!text.trim()) continue;
+
+          const phone = getCustomerPhone(remoteJid);
           console.log(`[WhatsApp] Message from ${phone}: ${text}`);
-          // TODO: Integrate with bot engine to process incoming orders
+
+          try {
+            await processIncomingBotMessage(sock, remoteJid, text);
+          } catch (err) {
+            console.error(`[WhatsApp] Bot reply failed for ${phone}:`, err);
+          }
         }
       }
     }

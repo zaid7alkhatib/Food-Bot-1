@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Plus, Trash, Edit3, Languages, Save, Check, ShoppingBag, FolderOpen } from "lucide-react";
 import { MenuItem, Category, Translation } from "../types";
 import { useI18n } from "../i18n";
@@ -19,7 +19,7 @@ export default function MenuEditor({
   currencySymbol,
 }: MenuEditorProps) {
   const { t, text } = useI18n();
-  const [activeCategoryId, setActiveCategoryId] = useState<string>(categories[0]?.id || "cat-shawarma");
+  const [activeCategoryId, setActiveCategoryId] = useState<string>("");
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
 
   // Form Fields State
@@ -34,6 +34,12 @@ export default function MenuEditor({
   const [isBestSeller, setIsBestSeller] = useState(false);
 
   const [activeTranslationTab, setActiveTranslationTab] = useState<"de" | "ar" | "en">("de");
+
+  useEffect(() => {
+    if (!activeCategoryId && categories[0]?.id) {
+      setActiveCategoryId(categories[0].id);
+    }
+  }, [activeCategoryId, categories]);
 
   const filteredItems = menuItems.filter((i) => i.categoryId === activeCategoryId);
 
