@@ -12,6 +12,7 @@ import {
   LogOut,
   Zap,
   Smartphone,
+  Building2,
 } from "lucide-react";
 import { io, Socket } from "socket.io-client";
 import PhoneSimulator from "./components/PhoneSimulator";
@@ -23,6 +24,7 @@ import CampaignTab from "./components/CampaignTab";
 import MenuEditor from "./components/MenuEditor";
 import WhatsAppSessions from "./components/WhatsAppSessions";
 import BranchSettings from "./components/BranchSettings";
+import RestaurantSettings from "./components/RestaurantSettings";
 import LoginPage from "./components/LoginPage";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { Order, OrderStatus, Conversation, MenuItem, Category, Campaign, Feedback } from "./types";
@@ -34,7 +36,7 @@ function Dashboard() {
     "Content-Type": "application/json",
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   });
-  const [activeTab, setActiveTab] = useState<"overview" | "orders" | "chat" | "campaigns" | "menu" | "hardware" | "whatsapp" | "settings">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "orders" | "chat" | "campaigns" | "menu" | "hardware" | "whatsapp" | "settings" | "restaurant">("overview");
 
   // State populated from the server
   const [branchInfo, setBranchInfo] = useState<any>(null);
@@ -486,6 +488,18 @@ function Dashboard() {
               <Settings size={14} />
               Branch
             </button>
+
+            <button
+              onClick={() => setActiveTab("restaurant")}
+              className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-t-xl flex items-center gap-2 transition cursor-pointer ${
+                activeTab === "restaurant"
+                  ? "bg-white border-t-2 border-orange-500 text-orange-700 font-semibold shadow-sm"
+                  : "text-gray-500 hover:text-orange-600 hover:bg-neutral-100"
+              }`}
+            >
+              <Building2 size={14} />
+              Restaurant
+            </button>
           </div>
 
           {/* Dynamic Tab Panels */}
@@ -547,6 +561,8 @@ function Dashboard() {
                 {activeTab === "whatsapp" && <WhatsAppSessions />}
 
                 {activeTab === "settings" && <BranchSettings />}
+
+                {activeTab === "restaurant" && <RestaurantSettings />}
               </>
             )}
           </div>
