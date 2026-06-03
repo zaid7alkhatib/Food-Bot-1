@@ -498,12 +498,7 @@ function Dashboard() {
             ) : (
               <>
                 {activeTab === "overview" && (
-                  <DashboardOverview
-                    orders={orders}
-                    feedbacks={feedbacks}
-                    conversations={conversations}
-                    currencySymbol={currencySymbol}
-                  />
+                  <DashboardOverview currencySymbol={currencySymbol} />
                 )}
 
                 {activeTab === "orders" && (

@@ -9,6 +9,7 @@ import { authMiddleware } from "./src/lib/auth.js";
 import authRoutes from "./src/routes/auth.js";
 import branchesRoutes from "./src/routes/branches.js";
 import categoriesRoutes from "./src/routes/categories.js";
+import reportsRoutes from "./src/routes/reports.js";
 import { initSocket, emitGlobal } from "./src/services/socket.js";
 import { startCronJobs } from "./src/services/cron.js";
 import { startWhatsAppSession, stopWhatsAppSession } from "./src/services/whatsapp.js";
@@ -49,6 +50,7 @@ startCronJobs();
 app.use("/api/auth", authRoutes);
 app.use("/api/branches", authMiddleware as any, branchesRoutes);
 app.use("/api/menu/categories", authMiddleware as any, categoriesRoutes);
+app.use("/api/reports", authMiddleware as any, reportsRoutes);
 
 // ------------------------------------------------------------------
 // 4. Gemini lazy init
