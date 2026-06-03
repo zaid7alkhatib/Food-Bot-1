@@ -1,0 +1,6 @@
+{
+  "name": "MR. Tabboush WhatsApp Ordering System",
+  "description": "Multi-tenant ready, multi-branch, multilingual WhatsApp ordering and customer engagement system with live dashboard, thermal kitchen printer simulator, and smart conversational AI engine.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
