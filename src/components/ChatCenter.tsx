@@ -23,6 +23,12 @@ export default function ChatCenter({
   const chatBottomRef = useRef<HTMLDivElement>(null);
 
   const selectedConvo = conversations.find((c) => c.id === selectedConvoId);
+  const languageLabel = (language?: Conversation["customerLanguage"]) => {
+    if (language === "ar") return "AR";
+    if (language === "en") return "EN";
+    if (language === "de") return "DE";
+    return "AUTO";
+  };
 
   useEffect(() => {
     if ((!selectedConvoId || !selectedConvo) && conversations[0]?.id) {
@@ -72,15 +78,20 @@ export default function ChatCenter({
                     <User size={13} className="text-gray-400" />
                     {convo.customerName}
                   </span>
-                  {!convo.botEnabled ? (
-                    <span className="text-[8px] bg-orange-100 border border-orange-200 text-orange-700 font-bold px-1.5 py-0.5 rounded uppercase">
-                      👤 {t("chat.agentMode")}
+                  <div className="flex items-center gap-1">
+                    <span className="text-[8px] bg-slate-100 border border-slate-200 text-slate-600 font-bold px-1.5 py-0.5 rounded uppercase">
+                      {languageLabel(convo.customerLanguage)}
                     </span>
-                  ) : (
-                    <span className="text-[8px] bg-emerald-100 border border-emerald-200 text-emerald-800 font-bold px-1.5 py-0.5 rounded uppercase">
-                      🤖 {t("chat.autoBot")}
-                    </span>
-                  )}
+                    {!convo.botEnabled ? (
+                      <span className="text-[8px] bg-orange-100 border border-orange-200 text-orange-700 font-bold px-1.5 py-0.5 rounded uppercase">
+                        👤 {t("chat.agentMode")}
+                      </span>
+                    ) : (
+                      <span className="text-[8px] bg-emerald-100 border border-emerald-200 text-emerald-800 font-bold px-1.5 py-0.5 rounded uppercase">
+                        🤖 {t("chat.autoBot")}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 <p className="text-[11px] text-gray-400 truncate max-w-[200px]">
@@ -110,6 +121,7 @@ export default function ChatCenter({
                 </h4>
                 <p className="text-[10px] font-mono text-gray-400 mt-0.5">
                   {isWhatsAppPhone(selectedConvo.whatsAppPhone) ? t("common.phone") : "WhatsApp ID"}: {selectedConvo.whatsAppPhone}
+                  <span className="ml-2 font-bold text-slate-500">LANG: {languageLabel(selectedConvo.customerLanguage)}</span>
                 </p>
               </div>
 

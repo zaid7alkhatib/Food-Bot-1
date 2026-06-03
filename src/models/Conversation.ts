@@ -48,6 +48,7 @@ export interface IConversation extends Document {
   whatsAppJid?: string;
   whatsAppPhoneJid?: string;
   whatsAppLid?: string;
+  customerLanguage?: "ar" | "de" | "en";
   restaurantId?: mongoose.Types.ObjectId;
   branchId?: mongoose.Types.ObjectId;
   botEnabled: boolean;
@@ -69,6 +70,7 @@ const ConversationSchema = new Schema<IConversation>(
     whatsAppJid: String,
     whatsAppPhoneJid: String,
     whatsAppLid: String,
+    customerLanguage: { type: String, enum: ["ar", "de", "en"] },
     restaurantId: { type: Schema.Types.ObjectId, ref: "Restaurant" },
     branchId: { type: Schema.Types.ObjectId, ref: "Branch" },
     botEnabled: { type: Boolean, default: true },

@@ -163,13 +163,14 @@ export interface Conversation {
   whatsAppJid?: string;
   whatsAppPhoneJid?: string;
   whatsAppLid?: string;
+  customerLanguage?: "ar" | "de" | "en";
   botEnabled: boolean;
   assignedTo?: string;
   takeoverReason?: string;
   createdAt: string;
   updatedAt: string;
   messages: Message[];
-  currentStep?: "welcome" | "type" | "menu" | "customizing" | "address" | "pickup_time" | "confirming" | "completed";
+  currentStep?: "welcome" | "language_selection" | "type" | "menu" | "customizing" | "address" | "pickup_time" | "confirming" | "completed";
   unsubmittedOrder?: Partial<Order>;
 }
 

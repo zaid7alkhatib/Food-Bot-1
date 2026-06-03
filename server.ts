@@ -115,6 +115,66 @@ function translatedText(value: any, lang: "ar" | "de" | "en"): string {
   return value[lang] || value.de || value.en || value.ar || "";
 }
 
+type CustomerLanguage = "ar" | "de" | "en";
+
+function isCustomerLanguage(value: unknown): value is CustomerLanguage {
+  return value === "ar" || value === "de" || value === "en";
+}
+
+function detectCustomerLanguage(message: string): CustomerLanguage | null {
+  const text = message.toLowerCase().trim();
+  if (!text) return null;
+  if (/[\u0600-\u06FF]/.test(message)) return "ar";
+  if (/\b(deutsch|german|hallo|guten|bestellen|lieferung|abholung|speisekarte|menü|ja|nein|danke)\b/i.test(text)) return "de";
+  if (/\b(english|hello|hi|order|delivery|pickup|menu|yes|no|thanks)\b/i.test(text)) return "en";
+  return null;
+}
+
+function parseLanguageSelection(message: string): CustomerLanguage | null {
+  const text = message.toLowerCase().trim();
+  if (/^(1|de|deutsch|german|alemani|allemand)$/.test(text) || text.includes("deutsch")) return "de";
+  if (/^(2|ar|arabic|arabisch|عربي|العربية|عربية)$/.test(text) || text.includes("عرب")) return "ar";
+  if (/^(3|en|english|englisch|انجليزي|إنجليزي)$/.test(text) || text.includes("english")) return "en";
+  return null;
+}
+
+function detectExplicitLanguageRequest(message: string): CustomerLanguage | null {
+  const text = message.toLowerCase().trim();
+  if (/(english|englisch|انجليزي|إنجليزي|بالانجليزي|بالإنجليزي)/i.test(text)) return "en";
+  if (/(deutsch|german|alemani|allemand|بالألماني|بالالماني)/i.test(text)) return "de";
+  if (/(arabic|arabisch|عربي|العربية|بالعربي)/i.test(text)) return "ar";
+  return null;
+}
+
+function getLanguageSelectionPrompt(): string {
+  return [
+    "Willkommen bei MR. Tabboush! 🌯",
+    "أهلاً بك في مستر طابوش! 🌯",
+    "Welcome to MR. Tabboush! 🌯",
+    "",
+    "Bitte wählen Sie Ihre Sprache / الرجاء اختيار اللغة / Please choose your language:",
+    "*1* Deutsch",
+    "*2* العربية",
+    "*3* English",
+  ].join("\n");
+}
+
+function getWelcomeReply(lang: CustomerLanguage): string {
+  if (lang === "ar") {
+    return "أهلاً بك في مستر طابوش! 🌯 أشهى المأكولات الشامية في فوبيرتال.\n\nكيف ترغب في استلام طلبك؟\nالرجاء كتابة:\n*1* للتوصيل المنزلي (دليفري)\n*2* للاستلام من المطعم (تيك أواي)";
+  }
+  if (lang === "en") {
+    return "Welcome to MR. Tabboush! 🌯 Finest Damascus Shawarma in Wuppertal.\n\nHow would you like to receive your food?\nReply with:\n*1* for Home Delivery\n*2* for Self Pickup";
+  }
+  return "Willkommen bei MR. Tabboush! 🌯 Feinstes syrisches Shawarma in Wuppertal.\n\nWie möchten Sie Ihre Bestellung erhalten?\nAntworten Sie mit:\n*1* für Hauslieferung (Delivery)\n*2* für Abholung (Pickup)";
+}
+
+function getLanguageSwitchReply(lang: CustomerLanguage): string {
+  if (lang === "ar") return "تم تغيير اللغة إلى العربية. تابع طلبك من فضلك، وسأرد عليك بالعربية. ✅";
+  if (lang === "en") return "Language switched to English. Please continue your order and I will reply in English. ✅";
+  return "Sprache auf Deutsch geändert. Bitte fahren Sie mit Ihrer Bestellung fort, ich antworte jetzt auf Deutsch. ✅";
+}
+
 function hasPricedUpsell(value: any): boolean {
   return !!value && Number.isFinite(Number(value.price));
 }
@@ -325,9 +385,9 @@ app.put("/api/orders/:id/status", authMiddleware as any, requireRole(...ORDER_RO
       if (template) {
         const lastCustMsg = convo.messages.filter((m: any) => m.sender === "customer").pop();
         const text = lastCustMsg ? lastCustMsg.text.toLowerCase() : "";
-        let lang: "ar" | "de" | "en" = "de";
-        if (/[\u0600-\u06FF]/.test(text)) lang = "ar";
-        else if (/hello|hi|order|pickup/i.test(text)) lang = "en";
+        const lang: CustomerLanguage = isCustomerLanguage(convo.customerLanguage)
+          ? convo.customerLanguage
+          : detectCustomerLanguage(text) || "de";
 
         let msgText = template[lang] || template.de;
         msgText = msgText
@@ -674,8 +734,45 @@ app.post("/api/bot-reply", async (req, res) => {
     let botReplyText = "";
     let nextStep = convo.currentStep || "welcome";
     let finalPlacedOrder: any = null;
+    const text = message.toLowerCase();
+    const storedLanguage = isCustomerLanguage(convo.customerLanguage) ? convo.customerLanguage : null;
+    const detectedLanguage = detectCustomerLanguage(message);
+    const explicitLanguage = detectExplicitLanguageRequest(message);
+    let lang: CustomerLanguage = storedLanguage || detectedLanguage || "de";
 
-    if (aiClient) {
+    if (nextStep === "language_selection") {
+      const selectedLanguage = parseLanguageSelection(message);
+      if (selectedLanguage) {
+        lang = selectedLanguage;
+        convo.customerLanguage = selectedLanguage;
+        botReplyText = getWelcomeReply(selectedLanguage);
+        nextStep = "type";
+      } else {
+        botReplyText = getLanguageSelectionPrompt();
+        nextStep = "language_selection";
+      }
+    } else if (!storedLanguage && nextStep === "welcome") {
+      if (detectedLanguage) {
+        lang = detectedLanguage;
+        convo.customerLanguage = detectedLanguage;
+      } else {
+        botReplyText = getLanguageSelectionPrompt();
+        nextStep = "language_selection";
+      }
+    } else if (explicitLanguage) {
+      lang = explicitLanguage;
+      convo.customerLanguage = explicitLanguage;
+      if (storedLanguage && explicitLanguage !== storedLanguage) {
+        botReplyText = getLanguageSwitchReply(explicitLanguage);
+      }
+    } else if (!storedLanguage && detectedLanguage) {
+      lang = detectedLanguage;
+      convo.customerLanguage = detectedLanguage;
+    } else if (!storedLanguage && nextStep !== "welcome") {
+      convo.customerLanguage = lang;
+    }
+
+    if (aiClient && !botReplyText) {
       try {
         const parsedMenu = dbMenuItems.map((item: any) => ({
           id: item._id?.toString() || item.id,
@@ -693,6 +790,7 @@ Current state of their incomplete order schema: ${JSON.stringify(convo.unsubmitt
 
 Customer Phone: ${phone}
 Customer Name: ${convo.customerName}
+Stored Customer Language: ${lang}
 Delivery Area: Only within 4 km of Berliner Str. 179. Delivery fee is 1.50€. Minimum order is 10.00€. Payment is Cash only.
 
 Available Menu items to offer:
@@ -704,8 +802,9 @@ ${convo.messages.slice(-8).map((m: any) => m.sender.toUpperCase() + ": " + m.tex
 NEW incoming customer message is: "${message}"
 
 Your task is to:
-1. Understand the message (support Arabic, German, or English dynamically depending on how the user talks to you).
+1. Understand the message, but always reply in the stored customer language "${lang}" unless the customer explicitly asks to switch language.
 2. Move the customer through the ordering flowchart:
+   - "language_selection" state: If the customer has not selected a language, ask them to choose 1 Deutsch, 2 العربية, or 3 English.
    - "welcome" state: Say hello, state that we do Delivery (1.50€ fee within 4km) or Pickup. Ask them to choose Type (Delivery or Pickup).
    - "type" state: Read choice. If they say pickup, set currentStep to "pickup_time" and ask what time they will pick it up (e.g. "19:30"). If delivery, set currentStep to "address" and ask for their delivery address in Wuppertal.
    - "address"/"pickup_time" state: Save address or pickup time. Transition to "menu" and list our delicious categories (Shawarma, Broasted, Grilled Chicken, Drinks) and recommend things, ask them what they'd like to eat.
@@ -724,7 +823,7 @@ Your task is to:
 You MUST reply with a JSON object in this exact schema structure:
 {
   "botReply": "The actual message text to send back to the customer",
-  "nextStep": "welcome" | "type" | "menu" | "customizing" | "address" | "pickup_time" | "confirming" | "completed",
+  "nextStep": "welcome" | "language_selection" | "type" | "menu" | "customizing" | "address" | "pickup_time" | "confirming" | "completed",
   "updatedUnsubmittedOrder": <Object representing the updated Partial<Order>>,
   "placedOrderPayload": <If they confirmed the order in this turn, provide the complete Order object. Otherwise return null. MUST generate unique random orderNumber like TAB-1004>
 }
@@ -757,22 +856,13 @@ You MUST reply with a JSON object in this exact schema structure:
 
     // Fallback Rule-Based Bot Engine
     if (!botReplyText) {
-      const text = message.toLowerCase();
-      let lang: "ar" | "de" | "en" = "de";
-      if (/[\u0600-\u06FF]/.test(message)) lang = "ar";
-      else if (/hi|hello|english|menu|order/i.test(text)) lang = "en";
-
       const isAr = lang === "ar";
       const isEn = lang === "en";
 
       const step = convo.currentStep || "welcome";
 
       if (step === "welcome") {
-        botReplyText = isAr
-          ? "أهلاً بك في مستر طابوش! 🌯 أشهى المأكولات الشامية في فوبيرتال.\n\nكيف ترغب في استلام طلبك؟\nالرجاء كتابة:\n*1* للتوصيل المنزلي (دليفري)\n*2* للاستلام من المطعم (تيك أواي)"
-          : isEn
-          ? "Welcome to MR. Tabboush! 🌯 Finest Damascus Shawarma in Wuppertal.\n\nHow would you like to receive your food?\nReply with:\n*1* for Home Delivery\n*2* for Self Pickup"
-          : "Willkommen bei MR. Tabboush! 🌯 Feinstes syrisches Shawarma in Wuppertal.\n\nWie möchten Sie Ihre Bestellung erhalten?\nAntworten Sie mit:\n*1* für Hauslieferung (Delivery)\n*2* für Abholung (Pickup)";
+        botReplyText = getWelcomeReply(lang);
         nextStep = "type";
       } else if (step === "type") {
         if (text.includes("1") || text.includes("towsil") || text.includes("delivery") || text.includes("توصيل")) {
