@@ -6,6 +6,8 @@ import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import { connectDB } from "./src/lib/db.js";
 import authRoutes from "./src/routes/auth.js";
+import branchesRoutes from "./src/routes/branches.js";
+import categoriesRoutes from "./src/routes/categories.js";
 import { initSocket, emitGlobal } from "./src/services/socket.js";
 import { startCronJobs } from "./src/services/cron.js";
 import { startWhatsAppSession, stopWhatsAppSession } from "./src/services/whatsapp.js";
@@ -44,6 +46,8 @@ startCronJobs();
 // 3. Auth Routes
 // ------------------------------------------------------------------
 app.use("/api/auth", authRoutes);
+app.use("/api/branches", branchesRoutes);
+app.use("/api/menu/categories", categoriesRoutes);
 
 // ------------------------------------------------------------------
 // 4. Gemini lazy init
