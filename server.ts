@@ -5,6 +5,7 @@ import http from "http";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import { connectDB } from "./src/lib/db.js";
+import { authMiddleware } from "./src/lib/auth.js";
 import authRoutes from "./src/routes/auth.js";
 import branchesRoutes from "./src/routes/branches.js";
 import categoriesRoutes from "./src/routes/categories.js";
@@ -46,8 +47,8 @@ startCronJobs();
 // 3. Auth Routes
 // ------------------------------------------------------------------
 app.use("/api/auth", authRoutes);
-app.use("/api/branches", branchesRoutes);
-app.use("/api/menu/categories", categoriesRoutes);
+app.use("/api/branches", authMiddleware as any, branchesRoutes);
+app.use("/api/menu/categories", authMiddleware as any, categoriesRoutes);
 
 // ------------------------------------------------------------------
 // 4. Gemini lazy init
@@ -75,7 +76,7 @@ function getGeminiClient(): GoogleGenAI | null {
 // 5. REST API Routes (MongoDB backed)
 // ------------------------------------------------------------------
 
-// GET /api/state — Full system snapshot
+// GET /api/state — Full system snapshot (public for now, can be protected later)
 app.get("/api/state", async (req, res) => {
   try {
     const [branches, categories, menuItems, orders, campaigns, feedbacks, conversations] =
@@ -122,7 +123,7 @@ app.get("/api/state", async (req, res) => {
 });
 
 // POST /api/orders
-app.post("/api/orders", async (req, res) => {
+app.post("/api/orders", authMiddleware as any, async (req, res) => {
   try {
     const count = await Order.countDocuments();
     const newOrder = new Order({
@@ -140,7 +141,7 @@ app.post("/api/orders", async (req, res) => {
 });
 
 // PUT /api/orders/:id/status
-app.put("/api/orders/:id/status", async (req, res) => {
+app.put("/api/orders/:id/status", authMiddleware as any, async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -204,7 +205,7 @@ app.put("/api/orders/:id/status", async (req, res) => {
 });
 
 // POST /api/conversations/:convoId/messages
-app.post("/api/conversations/:convoId/messages", async (req, res) => {
+app.post("/api/conversations/:convoId/messages", authMiddleware as any, async (req, res) => {
   try {
     const { convoId } = req.params;
     const { text, sender } = req.body;
@@ -239,7 +240,7 @@ app.post("/api/conversations/:convoId/messages", async (req, res) => {
 });
 
 // POST /api/conversations/:convoId/takeover
-app.post("/api/conversations/:convoId/takeover", async (req, res) => {
+app.post("/api/conversations/:convoId/takeover", authMiddleware as any, async (req, res) => {
   try {
     const { convoId } = req.params;
     const { botEnabled } = req.body;
@@ -272,7 +273,7 @@ app.post("/api/conversations/:convoId/takeover", async (req, res) => {
 });
 
 // POST /api/campaigns/:id/send
-app.post("/api/campaigns/:id/send", async (req, res) => {
+app.post("/api/campaigns/:id/send", authMiddleware as any, async (req, res) => {
   try {
     const { id } = req.params;
     const campaign = await Campaign.findByIdAndUpdate(
@@ -329,7 +330,7 @@ app.post("/api/campaigns/:id/send", async (req, res) => {
 });
 
 // POST /api/feedbacks
-app.post("/api/feedbacks", async (req, res) => {
+app.post("/api/feedbacks", authMiddleware as any, async (req, res) => {
   try {
     const { orderId, rating, comment, customerName, whatsAppPhone } = req.body;
     const feedback = new Feedback({
@@ -350,7 +351,7 @@ app.post("/api/feedbacks", async (req, res) => {
 });
 
 // POST /api/menu/items
-app.post("/api/menu/items", async (req, res) => {
+app.post("/api/menu/items", authMiddleware as any, async (req, res) => {
   try {
     const count = await MenuItem.countDocuments();
     const item = new MenuItem({
@@ -373,7 +374,7 @@ app.post("/api/menu/items", async (req, res) => {
 });
 
 // PUT /api/menu/items/:id
-app.put("/api/menu/items/:id", async (req, res) => {
+app.put("/api/menu/items/:id", authMiddleware as any, async (req, res) => {
   try {
     const { id } = req.params;
     const item = await MenuItem.findByIdAndUpdate(id, req.body, { new: true });
@@ -770,7 +771,7 @@ You MUST reply with a JSON object in this exact schema structure:
 // ------------------------------------------------------------------
 // 7. WhatsApp Session Routes
 // ------------------------------------------------------------------
-app.get("/api/whatsapp/sessions", async (req, res) => {
+app.get("/api/whatsapp/sessions", authMiddleware as any, async (req, res) => {
   try {
     const sessions = await WhatsAppSession.find().populate("branchId").lean();
     res.json(sessions);
@@ -779,7 +780,7 @@ app.get("/api/whatsapp/sessions", async (req, res) => {
   }
 });
 
-app.post("/api/whatsapp/sessions/:id/connect", async (req, res) => {
+app.post("/api/whatsapp/sessions/:id/connect", authMiddleware as any, async (req, res) => {
   try {
     const { id } = req.params;
     const session = await WhatsAppSession.findById(id);
@@ -800,7 +801,7 @@ app.post("/api/whatsapp/sessions/:id/connect", async (req, res) => {
   }
 });
 
-app.post("/api/whatsapp/sessions/:id/disconnect", async (req, res) => {
+app.post("/api/whatsapp/sessions/:id/disconnect", authMiddleware as any, async (req, res) => {
   try {
     const { id } = req.params;
     const session = await WhatsAppSession.findById(id);

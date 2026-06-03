@@ -28,7 +28,12 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import { Order, OrderStatus, Conversation, MenuItem, Category, Campaign, Feedback } from "./types";
 
 function Dashboard() {
-  const { user, logout } = useAuth();
+  const { user, logout, token } = useAuth();
+
+  const authHeaders = () => ({
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  });
   const [activeTab, setActiveTab] = useState<"overview" | "orders" | "chat" | "campaigns" | "menu" | "hardware" | "whatsapp" | "settings">("overview");
 
   // State populated from the server
@@ -57,7 +62,7 @@ function Dashboard() {
   // ------------------------------------------------------------------
   const fetchSystemState = async () => {
     try {
-      const response = await fetch("/api/state");
+      const response = await fetch("/api/state", { headers: token ? { Authorization: `Bearer ${token}` } : {} });
       if (response.ok) {
         const data = await response.json();
         setBranchInfo(data.branch);
@@ -154,7 +159,7 @@ function Dashboard() {
     try {
       const response = await fetch(`/api/orders/${id}/status`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders(),
         body: JSON.stringify({ status: nextStatus }),
       });
       if (response.ok) {
@@ -194,7 +199,7 @@ function Dashboard() {
     try {
       const response = await fetch(`/api/conversations/${convoId}/messages`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders(),
         body: JSON.stringify({ text, sender: "human" }),
       });
       if (response.ok) {
@@ -210,7 +215,7 @@ function Dashboard() {
     try {
       const response = await fetch(`/api/conversations/${convoId}/takeover`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders(),
         body: JSON.stringify({ botEnabled }),
       });
       if (response.ok) {
@@ -224,7 +229,7 @@ function Dashboard() {
 
   const handleDispatchCampaign = async (id: string) => {
     try {
-      const response = await fetch(`/api/campaigns/${id}/send`, { method: "POST" });
+      const response = await fetch(`/api/campaigns/${id}/send`, { method: "POST", headers: token ? { Authorization: `Bearer ${token}` } : {} });
       if (response.ok) {
         const data = await response.json();
         setConversations(data.conversations);
@@ -241,7 +246,7 @@ function Dashboard() {
     try {
       const response = await fetch("/api/menu/items", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders(),
         body: JSON.stringify(item),
       });
       if (response.ok) {
@@ -257,7 +262,7 @@ function Dashboard() {
     try {
       const response = await fetch(`/api/menu/items/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders(),
         body: JSON.stringify(updated),
       });
       if (response.ok) {
