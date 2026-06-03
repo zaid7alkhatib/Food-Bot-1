@@ -3,6 +3,7 @@ import path from "path";
 import fs from "fs";
 import http from "http";
 import { createServer as createViteServer } from "vite";
+import rateLimit from "express-rate-limit";
 import { GoogleGenAI } from "@google/genai";
 import { connectDB } from "./src/lib/db.js";
 import { authMiddleware } from "./src/lib/auth.js";
@@ -38,6 +39,16 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 const app = express();
 const httpServer = http.createServer(app);
 app.use(express.json());
+
+// Rate limiting
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 200, // limit each IP to 200 requests per windowMs
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests, please try again later." },
+});
+app.use("/api/", apiLimiter);
 
 // Initialize Socket.io
 initSocket(httpServer);
