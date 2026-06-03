@@ -83,6 +83,25 @@ function getGeminiClient(): GoogleGenAI | null {
   return aiInstance;
 }
 
+function toFiniteNumber(value: unknown, fallback = 0): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function formatMoney(value: unknown): string {
+  return toFiniteNumber(value).toFixed(2);
+}
+
+function translatedText(value: any, lang: "ar" | "de" | "en"): string {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  return value[lang] || value.de || value.en || value.ar || "";
+}
+
+function hasPricedUpsell(value: any): boolean {
+  return !!value && Number.isFinite(Number(value.price));
+}
+
 // ------------------------------------------------------------------
 // 4. REST API Routes (MongoDB backed)
 // ------------------------------------------------------------------
@@ -664,13 +683,13 @@ You MUST reply with a JSON object in this exact schema structure:
         if (isAr) {
           billSummary = `📋 *ملخص طلبك النهائي من مستر طابوش*\n--------------\n`;
           (convo.unsubmittedOrder?.items || []).forEach((i: any) => {
-            billSummary += `▪️ ${i.quantity}x ${i.name.ar} (${i.basePrice.toFixed(2)}€)\n`;
-            if (i.selectedUpsell) billSummary += ` └ ➕ ${i.selectedUpsell.name.ar} (+${i.selectedUpsell.price.toFixed(2)}€)\n`;
+            billSummary += `▪️ ${i.quantity}x ${translatedText(i.name, "ar")} (${formatMoney(i.basePrice)}€)\n`;
+            if (hasPricedUpsell(i.selectedUpsell)) billSummary += ` └ ➕ ${translatedText(i.selectedUpsell.name, "ar")} (+${formatMoney(i.selectedUpsell.price)}€)\n`;
           });
           billSummary += `--------------\n`;
-          billSummary += `المجموع الفرعي: ${sub.toFixed(2)}€\n`;
-          if (fee > 0) billSummary += `أجرة التوصيل: ${fee.toFixed(2)}€\n`;
-          billSummary += `*الإجمالي النهائي: ${total.toFixed(2)}€*\n\n`;
+          billSummary += `المجموع الفرعي: ${formatMoney(sub)}€\n`;
+          if (fee > 0) billSummary += `أجرة التوصيل: ${formatMoney(fee)}€\n`;
+          billSummary += `*الإجمالي النهائي: ${formatMoney(total)}€*\n\n`;
           billSummary += convo.unsubmittedOrder?.orderType === "delivery"
             ? `📍 التوصيل إلى: _${convo.unsubmittedOrder?.deliveryAddress}_\n`
             : `⏰ الاستلام من المطعم الساعة: _${convo.unsubmittedOrder?.pickupTime}_\n`;
@@ -679,13 +698,13 @@ You MUST reply with a JSON object in this exact schema structure:
         } else if (isEn) {
           billSummary = `📋 *MR. Tabboush Order Receipt*\n--------------\n`;
           (convo.unsubmittedOrder?.items || []).forEach((i: any) => {
-            billSummary += `▪️ ${i.quantity}x ${i.name.en} (€${i.basePrice.toFixed(2)})\n`;
-            if (i.selectedUpsell) billSummary += ` └ ➕ ${i.selectedUpsell.name.en} (+€${i.selectedUpsell.price.toFixed(2)})\n`;
+            billSummary += `▪️ ${i.quantity}x ${translatedText(i.name, "en")} (€${formatMoney(i.basePrice)})\n`;
+            if (hasPricedUpsell(i.selectedUpsell)) billSummary += ` └ ➕ ${translatedText(i.selectedUpsell.name, "en")} (+€${formatMoney(i.selectedUpsell.price)})\n`;
           });
           billSummary += `--------------\n`;
-          billSummary += `Subtotal: €${sub.toFixed(2)}\n`;
-          if (fee > 0) billSummary += `Delivery Fee: €${fee.toFixed(2)}\n`;
-          billSummary += `*Grand Total: €${total.toFixed(2)}*\n\n`;
+          billSummary += `Subtotal: €${formatMoney(sub)}\n`;
+          if (fee > 0) billSummary += `Delivery Fee: €${formatMoney(fee)}\n`;
+          billSummary += `*Grand Total: €${formatMoney(total)}*\n\n`;
           billSummary += convo.unsubmittedOrder?.orderType === "delivery"
             ? `📍 Ship Address: _${convo.unsubmittedOrder?.deliveryAddress}_\n`
             : `⏰ Self pickup at: _${convo.unsubmittedOrder?.pickupTime}_\n`;
@@ -694,13 +713,13 @@ You MUST reply with a JSON object in this exact schema structure:
         } else {
           billSummary = `📋 *Rechnungsübersicht MR. Tabboush*\n--------------\n`;
           (convo.unsubmittedOrder?.items || []).forEach((i: any) => {
-            billSummary += `▪️ ${i.quantity}x ${i.name.de} (${i.basePrice.toFixed(2)} €)\n`;
-            if (i.selectedUpsell) billSummary += ` └ ➕ ${i.selectedUpsell.name.de} (+${i.selectedUpsell.price.toFixed(2)} €)\n`;
+            billSummary += `▪️ ${i.quantity}x ${translatedText(i.name, "de")} (${formatMoney(i.basePrice)} €)\n`;
+            if (hasPricedUpsell(i.selectedUpsell)) billSummary += ` └ ➕ ${translatedText(i.selectedUpsell.name, "de")} (+${formatMoney(i.selectedUpsell.price)} €)\n`;
           });
           billSummary += `--------------\n`;
-          billSummary += `Zwischensumme: ${sub.toFixed(2)} €\n`;
-          if (fee > 0) billSummary += `Liefergebühr: ${fee.toFixed(2)} €\n`;
-          billSummary += `*Gesamtbetrag: ${total.toFixed(2)} €*\n\n`;
+          billSummary += `Zwischensumme: ${formatMoney(sub)} €\n`;
+          if (fee > 0) billSummary += `Liefergebühr: ${formatMoney(fee)} €\n`;
+          billSummary += `*Gesamtbetrag: ${formatMoney(total)} €*\n\n`;
           billSummary += convo.unsubmittedOrder?.orderType === "delivery"
             ? `📍 Lieferadresse: _${convo.unsubmittedOrder?.deliveryAddress}_\n`
             : `⏰ Abholzeit: _${convo.unsubmittedOrder?.pickupTime} Uhr_\n`;

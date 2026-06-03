@@ -1,6 +1,6 @@
 import {
-  default as makeWASocket,
   DisconnectReason,
+  makeWASocket,
   useMultiFileAuthState,
   WASocket,
 } from "@whiskeysockets/baileys";
