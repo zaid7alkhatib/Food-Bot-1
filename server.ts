@@ -131,7 +131,7 @@ function detectCustomerLanguage(message: string): CustomerLanguage | null {
 }
 
 function parseLanguageSelection(message: string): CustomerLanguage | null {
-  const text = message.toLowerCase().trim();
+  const text = message.toLowerCase().trim().replace(/^\*+|\*+$/g, "");
   if (/^(1|de|deutsch|german|alemani|allemand)$/.test(text) || text.includes("deutsch")) return "de";
   if (/^(2|ar|arabic|arabisch|عربي|العربية|عربية)$/.test(text) || text.includes("عرب")) return "ar";
   if (/^(3|en|english|englisch|انجليزي|إنجليزي)$/.test(text) || text.includes("english")) return "en";
@@ -156,57 +156,68 @@ function getLanguageSelectionPrompt(): string {
     "*1* Deutsch",
     "*2* العربية",
     "*3* English",
+    "",
+    "Shortcut / اختصار / Kurzbefehl: *00* Help / Hilfe / مساعدة",
   ].join("\n");
 }
 
 function getShortHelpLine(lang: CustomerLanguage): string {
-  if (lang === "ar") return "\n\nمساعدة سريعة: اكتب *مساعدة* لرؤية الأوامر. يمكنك أيضاً كتابة: رجوع، إلغاء، طلب جديد، تغيير اللغة.";
-  if (lang === "en") return "\n\nTip: type *help* to see commands. You can also type: back, cancel, new order, change language.";
-  return "\n\nTipp: Schreiben Sie *Hilfe*, um Befehle zu sehen. Sie können auch schreiben: zurück, abbrechen, neue Bestellung, Sprache ändern.";
+  if (lang === "ar") return "\n\nاختصارات: *00* مساعدة، *0* رجوع، *8* اللغة، *9* إلغاء، *99* طلب جديد.";
+  if (lang === "en") return "\n\nShortcuts: *00* help, *0* back, *8* language, *9* cancel, *99* new order.";
+  return "\n\nKurzbefehle: *00* Hilfe, *0* zurück, *8* Sprache, *9* abbrechen, *99* neu starten.";
 }
 
 function getHelpReply(lang: CustomerLanguage): string {
   if (lang === "ar") {
     return [
-      "هذه الأوامر متاحة أثناء المحادثة:",
+      "يمكنك استخدام هذه الاختصارات أثناء المحادثة:",
       "",
-      "*رجوع* - العودة خطوة للخلف",
-      "*إلغاء* - إلغاء مسودة الطلب الحالية",
-      "*طلب جديد* - البدء من جديد",
+      "*00* - مساعدة",
+      "*0* - العودة خطوة للخلف",
+      "*8* - اختيار لغة أخرى",
+      "*9* - إلغاء مسودة الطلب الحالية",
+      "*99* - بدء طلب جديد",
+      "",
+      "الأوامر النصية التفصيلية تعمل أيضاً:",
       "*تغيير العنوان* - تعديل عنوان التوصيل",
       "*تغيير وقت الاستلام* - تعديل وقت الاستلام",
       "*تغيير طريقة الاستلام* - تغيير توصيل/استلام",
       "*تغيير الطلب* - اختيار الوجبات من جديد",
-      "*تغيير اللغة* - اختيار لغة أخرى",
     ].join("\n");
   }
 
   if (lang === "en") {
     return [
-      "You can use these commands anytime:",
+      "You can use these shortcuts anytime:",
       "",
-      "*back* - go one step back",
-      "*cancel* - cancel the current draft order",
-      "*new order* - start again",
+      "*00* - help",
+      "*0* - go one step back",
+      "*8* - choose another language",
+      "*9* - cancel the current draft order",
+      "*99* - start a new order",
+      "",
+      "Detailed text commands still work:",
       "*change address* - edit delivery address",
       "*change time* - edit pickup time",
       "*change type* - change delivery/pickup",
       "*change order* - choose food again",
-      "*change language* - choose another language",
     ].join("\n");
   }
 
   return [
-    "Sie können diese Befehle jederzeit verwenden:",
+    "Sie können diese Kurzbefehle jederzeit verwenden:",
     "",
-    "*zurück* - einen Schritt zurück",
-    "*abbrechen* - aktuelle Bestellskizze abbrechen",
-    "*neue Bestellung* - neu starten",
+    "*00* - Hilfe",
+    "*0* - einen Schritt zurück",
+    "*8* - andere Sprache wählen",
+    "*9* - aktuelle Bestellskizze abbrechen",
+    "*99* - neue Bestellung starten",
+    "",
+    "Detaillierte Textbefehle funktionieren weiterhin:",
     "*Adresse ändern* - Lieferadresse ändern",
     "*Abholzeit ändern* - Abholzeit ändern",
     "*Lieferung ändern* - Lieferung/Abholung ändern",
     "*Bestellung ändern* - Gerichte neu auswählen",
-    "*Sprache ändern* - andere Sprache wählen",
   ].join("\n");
 }
 
@@ -272,8 +283,14 @@ type FlowCommand =
   | "change_order";
 
 function detectFlowCommand(message: string): FlowCommand | null {
-  const text = message.toLowerCase().trim();
+  const text = message.toLowerCase().trim().replace(/^\*+|\*+$/g, "");
   if (!text) return null;
+
+  if (text === "00") return "help";
+  if (text === "0") return "back";
+  if (text === "8") return "change_language";
+  if (text === "9") return "cancel";
+  if (text === "99") return "restart";
 
   if (/^(help|hilfe|مساعدة|ساعدني|الاوامر|الأوامر)$/i.test(text)) return "help";
   if (/(change|switch).*(language)|sprache.*(ändern|wechseln)|تغيير.*(اللغة|اللغه)|بدل.*(اللغة|اللغه)/i.test(text)) return "change_language";
@@ -1052,8 +1069,8 @@ NEW incoming customer message is: "${message}"
 Your task is to:
 1. Understand the message, but always reply in the stored customer language "${lang}" unless the customer explicitly asks to switch language.
 2. Move the customer through the ordering flowchart:
-   - Control commands are handled by the server before this prompt, but respect them if visible in history: back/zurück/رجوع means one practical step back; restart/neue Bestellung/طلب جديد means reset draft and start again; cancel/abbrechen/إلغاء means cancel the current draft; change address/time/type/order should ask for the relevant field again.
-   - For welcome, address, pickup time, menu, and confirmation replies, include a short localized note that the customer can type help/Hilfe/مساعدة to see commands such as back, cancel, new order, and change language.
+   - Control commands are handled by the server before this prompt, but respect them if visible in history: 00/help/Hilfe/مساعدة means show help; 0/back/zurück/رجوع means one practical step back; 8/change language/Sprache ändern/تغيير اللغة means ask for language again; 9/cancel/abbrechen/إلغاء means cancel the current draft; 99/restart/neue Bestellung/طلب جديد means reset draft and start again; change address/time/type/order should ask for the relevant field again.
+   - For welcome, address, pickup time, menu, and confirmation replies, include a short localized note with the numeric shortcuts: 00 help, 0 back, 8 language, 9 cancel, 99 new order.
    - "language_selection" state: If the customer has not selected a language, ask them to choose 1 Deutsch, 2 العربية, or 3 English.
    - "welcome" state: Say hello, state that we do Delivery (1.50€ fee within 4km) or Pickup. Ask them to choose Type (Delivery or Pickup).
    - "type" state: Read choice. If they say pickup, set currentStep to "pickup_time" and ask what time they will pick it up (e.g. "19:30"). If delivery, set currentStep to "address" and ask for their delivery address in Wuppertal.
