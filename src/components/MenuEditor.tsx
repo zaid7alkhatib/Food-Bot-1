@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { Plus, Trash, Edit3, Languages, Save, Check, ShoppingBag, FolderOpen } from "lucide-react";
-import { MenuItem, Category, Translation } from "../types";
+import { Plus, Trash, Edit3, Languages, Save, ShoppingBag, FolderOpen, Image as ImageIcon } from "lucide-react";
+import { MenuItem, Category, UpsellSuggestion } from "../types";
 import { useI18n } from "../i18n";
 
 interface MenuEditorProps {
@@ -9,6 +9,34 @@ interface MenuEditorProps {
   onAddItem: (item: Partial<MenuItem>) => void;
   onUpdateItem: (id: string, updated: Partial<MenuItem>) => void;
   currencySymbol: string;
+}
+
+const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1561651823-34fed0225408?w=500&auto=format&fit=crop";
+
+function emptyUpsellSuggestion(): UpsellSuggestion {
+  return {
+    id: `up-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+    suggestedItemName: { ar: "", de: "", en: "" },
+    suggestedItemId: "",
+    price: 0,
+    description: { ar: "", de: "", en: "" },
+    isActive: true,
+  };
+}
+
+function normalizeUpsellSuggestions(upsells: UpsellSuggestion[] = []): UpsellSuggestion[] {
+  return upsells.map((upsell) => ({
+    id: upsell.id || `up-${Math.random().toString(36).slice(2, 8)}`,
+    suggestedItemName: {
+      ar: upsell.suggestedItemName?.ar || "",
+      de: upsell.suggestedItemName?.de || "",
+      en: upsell.suggestedItemName?.en || "",
+    },
+    suggestedItemId: upsell.suggestedItemId || "",
+    price: Number(upsell.price) || 0,
+    description: upsell.description || { ar: "", de: "", en: "" },
+    isActive: upsell.isActive !== false,
+  }));
 }
 
 export default function MenuEditor({
@@ -32,6 +60,9 @@ export default function MenuEditor({
   const [basePrice, setBasePrice] = useState(0);
   const [sku, setSku] = useState("");
   const [isBestSeller, setIsBestSeller] = useState(false);
+  const [imageUrl, setImageUrl] = useState("");
+  const [prepMinutes, setPrepMinutes] = useState(10);
+  const [upsellDrafts, setUpsellDrafts] = useState<UpsellSuggestion[]>([]);
 
   const [activeTranslationTab, setActiveTranslationTab] = useState<"de" | "ar" | "en">("de");
 
@@ -42,6 +73,7 @@ export default function MenuEditor({
   }, [activeCategoryId, categories]);
 
   const filteredItems = menuItems.filter((i) => i.categoryId === activeCategoryId);
+  const selectableUpsellItems = menuItems.filter((item) => item.id !== editingItemId);
 
   const handleStartEdit = (item: MenuItem) => {
     setEditingItemId(item.id);
@@ -54,6 +86,9 @@ export default function MenuEditor({
     setBasePrice(item.basePrice);
     setSku(item.skucode);
     setIsBestSeller(item.isBestSeller);
+    setImageUrl(item.image || "");
+    setPrepMinutes(item.preparationTimeMinutes || 10);
+    setUpsellDrafts(normalizeUpsellSuggestions(item.upsellSuggestions));
   };
 
   const handleSaveEdit = (id: string) => {
@@ -61,10 +96,38 @@ export default function MenuEditor({
       name: { ar: nameAr, de: nameDe, en: nameEn },
       description: { ar: descAr, de: descDe, en: descEn },
       basePrice: Number(basePrice),
+      image: imageUrl.trim(),
       skucode: sku,
-      isBestSeller
+      preparationTimeMinutes: Number(prepMinutes) || 0,
+      isBestSeller,
+      upsellSuggestions: normalizeUpsellSuggestions(upsellDrafts).filter((upsell) => upsell.suggestedItemName.ar || upsell.suggestedItemName.de || upsell.suggestedItemName.en),
     });
     setEditingItemId(null);
+  };
+
+  const updateUpsellDraft = (index: number, patch: Partial<UpsellSuggestion>) => {
+    setUpsellDrafts((prev) => prev.map((upsell, i) => i === index ? { ...upsell, ...patch } : upsell));
+  };
+
+  const updateUpsellName = (index: number, lang: "ar" | "de" | "en", value: string) => {
+    setUpsellDrafts((prev) => prev.map((upsell, i) => i === index
+      ? { ...upsell, suggestedItemName: { ...upsell.suggestedItemName, [lang]: value } }
+      : upsell
+    ));
+  };
+
+  const handleUpsellLinkedItemChange = (index: number, suggestedItemId: string) => {
+    const linkedItem = menuItems.find((item) => item.id === suggestedItemId);
+    setUpsellDrafts((prev) => prev.map((upsell, i) => {
+      if (i !== index) return upsell;
+      if (!linkedItem) return { ...upsell, suggestedItemId: "" };
+      return {
+        ...upsell,
+        suggestedItemId,
+        suggestedItemName: linkedItem.name,
+        price: linkedItem.basePrice,
+      };
+    }));
   };
 
   const handleAddNewItem = () => {
@@ -80,6 +143,8 @@ export default function MenuEditor({
       image: "https://images.unsplash.com/photo-1561651823-34fed0225408?w=500&auto=format&fit=crop",
       skucode: "SHW-NEW-" + Math.floor(Math.random() * 100),
       preparationTimeMinutes: 8,
+      modifierGroups: [],
+      upsellSuggestions: [],
     };
     onAddItem(defaultNew);
   };
@@ -141,13 +206,17 @@ export default function MenuEditor({
           ) : (
             filteredItems.map((item) => {
               const isEditing = editingItemId === item.id;
+              const activeUpsells = (item.upsellSuggestions || []).filter((upsell) => upsell.isActive !== false);
               return (
                 <div key={item.id} className="pt-4 first:pt-0 flex flex-col md:flex-row gap-4 items-start">
                   
                   {/* Product thumbnail visualization */}
                   <img
-                    src={item.image}
+                    src={item.image || FALLBACK_IMAGE}
                     alt={item.name.en}
+                    onError={(e) => {
+                      e.currentTarget.src = FALLBACK_IMAGE;
+                    }}
                     className="w-20 h-20 rounded-lg object-cover border border-gray-100 shrink-0 shadow-sm"
                   />
 
@@ -271,6 +340,17 @@ export default function MenuEditor({
                             className="w-full bg-white p-2 border border-neutral-300 rounded outline-none"
                           />
                         </div>
+                        <div>
+                          <label className="block text-[10px] text-gray-400 font-bold mb-1">{t("menu.prepMinutes")}:</label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={prepMinutes}
+                            onChange={(e) => setPrepMinutes(Number(e.target.value))}
+                            className="w-full bg-white p-2 border border-neutral-300 rounded outline-none"
+                          />
+                        </div>
                         <div className="col-span-2 flex items-center gap-2 pt-3">
                           <input
                             type="checkbox"
@@ -283,6 +363,120 @@ export default function MenuEditor({
                             {t("menu.bestsellerFlag")} 🔥
                           </label>
                         </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-[88px_1fr] gap-3 pt-3 border-t border-neutral-200">
+                        <img
+                          src={imageUrl || item.image || FALLBACK_IMAGE}
+                          alt={nameEn || item.name.en}
+                          onError={(e) => {
+                            e.currentTarget.src = FALLBACK_IMAGE;
+                          }}
+                          className="w-20 h-20 rounded-lg object-cover border border-neutral-200 bg-white"
+                        />
+                        <div>
+                          <label className="block text-[10px] text-gray-400 font-bold mb-1 flex items-center gap-1">
+                            <ImageIcon size={12} />
+                            {t("menu.imageUrl")}
+                          </label>
+                          <input
+                            type="url"
+                            value={imageUrl}
+                            onChange={(e) => setImageUrl(e.target.value)}
+                            placeholder="https://..."
+                            className="w-full bg-white p-2 border border-neutral-300 rounded outline-none"
+                          />
+                          <p className="text-[10px] text-gray-400 mt-1">{t("menu.imageHint")}</p>
+                        </div>
+                      </div>
+
+                      <div className="pt-3 border-t border-neutral-200 space-y-2">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <h4 className="text-[11px] font-bold text-neutral-800 uppercase">{t("menu.suggestedExtras")}</h4>
+                            <p className="text-[10px] text-gray-400">{t("menu.suggestedExtrasHint")}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setUpsellDrafts((prev) => [...prev, emptyUpsellSuggestion()])}
+                            className="px-2 py-1 bg-white border border-neutral-200 hover:border-orange-400 text-neutral-700 rounded text-[10px] font-bold flex items-center gap-1"
+                          >
+                            <Plus size={11} />
+                            {t("menu.addExtra")}
+                          </button>
+                        </div>
+
+                        {upsellDrafts.length === 0 ? (
+                          <div className="text-[11px] text-gray-400 bg-white border border-dashed border-neutral-200 rounded-lg p-3">
+                            {t("menu.noExtras")}
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            {upsellDrafts.map((upsell, index) => (
+                              <div key={upsell.id} className="bg-white border border-neutral-200 rounded-lg p-3 space-y-2">
+                                <div className="flex items-center justify-between gap-3">
+                                  <label className="flex items-center gap-2 text-[11px] font-bold text-neutral-700">
+                                    <input
+                                      type="checkbox"
+                                      checked={upsell.isActive}
+                                      onChange={(e) => updateUpsellDraft(index, { isActive: e.target.checked })}
+                                      className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded"
+                                    />
+                                    {t("menu.extraActive")}
+                                  </label>
+                                  <button
+                                    type="button"
+                                    onClick={() => setUpsellDrafts((prev) => prev.filter((_, i) => i !== index))}
+                                    className="p-1 text-red-500 hover:bg-red-50 rounded"
+                                    aria-label={t("menu.removeExtra")}
+                                  >
+                                    <Trash size={13} />
+                                  </button>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                                  <div>
+                                    <label className="block text-[10px] text-gray-400 font-bold mb-1">{t("menu.linkedItem")}</label>
+                                    <select
+                                      value={upsell.suggestedItemId || ""}
+                                      onChange={(e) => handleUpsellLinkedItemChange(index, e.target.value)}
+                                      className="w-full bg-white p-2 border border-neutral-300 rounded outline-none"
+                                    >
+                                      <option value="">{t("menu.customOffer")}</option>
+                                      {selectableUpsellItems.map((candidate) => (
+                                        <option key={candidate.id} value={candidate.id}>
+                                          {text(candidate.name)} ({candidate.basePrice.toFixed(2)}{currencySymbol})
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+
+                                  <div>
+                                    <label className="block text-[10px] text-gray-400 font-bold mb-1">{t("menu.extraName")}</label>
+                                    <input
+                                      type="text"
+                                      value={upsell.suggestedItemName[activeTranslationTab] || ""}
+                                      onChange={(e) => updateUpsellName(index, activeTranslationTab, e.target.value)}
+                                      className="w-full bg-white p-2 border border-neutral-300 rounded outline-none"
+                                    />
+                                  </div>
+
+                                  <div>
+                                    <label className="block text-[10px] text-gray-400 font-bold mb-1">{t("menu.extraPrice")} ({currencySymbol})</label>
+                                    <input
+                                      type="number"
+                                      step="0.1"
+                                      min="0"
+                                      value={upsell.price}
+                                      onChange={(e) => updateUpsellDraft(index, { price: Number(e.target.value) })}
+                                      className="w-full bg-white p-2 border border-neutral-300 rounded outline-none"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
 
                       {/* Control buttons */}
@@ -327,6 +521,16 @@ export default function MenuEditor({
                           <span>SKU: {item.skucode}</span>
                           <span>{t("common.prep")}: {item.preparationTimeMinutes} {t("common.minutes")}</span>
                         </div>
+
+                        {activeUpsells.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 pt-1">
+                            {activeUpsells.map((upsell) => (
+                              <span key={upsell.id} className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 rounded-full font-bold">
+                                + {text(upsell.suggestedItemName)} ({upsell.price.toFixed(2)}{currencySymbol})
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
 
                       <div className="flex flex-col items-end gap-2.5 shrink-0">

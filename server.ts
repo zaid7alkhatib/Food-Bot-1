@@ -309,6 +309,87 @@ function hasPricedUpsell(value: any): boolean {
   return !!value && Number.isFinite(Number(value.price));
 }
 
+function getActiveUpsellSuggestion(menuItem: any) {
+  return (menuItem?.upsellSuggestions || []).find((suggestion: any) => suggestion?.isActive !== false && Number.isFinite(Number(suggestion.price)));
+}
+
+function normalizeUpsellSuggestion(suggestion: any) {
+  return {
+    id: suggestion?.id || `up-${Math.random().toString(36).slice(2, 8)}`,
+    name: suggestion?.suggestedItemName || suggestion?.name || { ar: "", de: "", en: "" },
+    price: toFiniteNumber(suggestion?.price, 0),
+  };
+}
+
+function getUpsellPrompt(lang: CustomerLanguage, upsell: any): string {
+  const price = formatMoney(upsell.price);
+  if (lang === "ar") {
+    return `⚡ هل ترغب في إضافة *${translatedText(upsell.name, "ar")}* مقابل +${price}€؟\nأجب بـ:\n*نعم* للإضافة\n*لا* للانتقال لتأكيد الفاتورة مباشرة` + getShortHelpLine(lang);
+  }
+  if (lang === "en") {
+    return `⚡ Would you like to add *${translatedText(upsell.name, "en")}* for +€${price}?\nReply:\n*YES* to add it\n*NO* to proceed with checkout` + getShortHelpLine(lang);
+  }
+  return `⚡ Möchten Sie *${translatedText(upsell.name, "de")}* für +${price} € hinzufügen?\nAntworten Sie:\n*JA* zum Hinzufügen\n*NEIN* um die Bestellung direkt abzuschließen` + getShortHelpLine(lang);
+}
+
+function buildConfirmationSummary(convo: any, lang: CustomerLanguage): string {
+  const sub = convo.unsubmittedOrder?.subtotal || 0;
+  const fee = convo.unsubmittedOrder?.deliveryFee || 0;
+  const total = sub + fee;
+
+  if (lang === "ar") {
+    let billSummary = `📋 *ملخص طلبك النهائي من مستر طابوش*\n--------------\n`;
+    (convo.unsubmittedOrder?.items || []).forEach((i: any) => {
+      billSummary += `▪️ ${i.quantity}x ${translatedText(i.name, "ar")} (${formatMoney(i.basePrice)}€)\n`;
+      if (hasPricedUpsell(i.selectedUpsell)) billSummary += ` └ ➕ ${translatedText(i.selectedUpsell.name, "ar")} (+${formatMoney(i.selectedUpsell.price)}€)\n`;
+    });
+    billSummary += `--------------\n`;
+    billSummary += `المجموع الفرعي: ${formatMoney(sub)}€\n`;
+    if (fee > 0) billSummary += `أجرة التوصيل: ${formatMoney(fee)}€\n`;
+    billSummary += `*الإجمالي النهائي: ${formatMoney(total)}€*\n\n`;
+    billSummary += convo.unsubmittedOrder?.orderType === "delivery"
+      ? `📍 التوصيل إلى: _${convo.unsubmittedOrder?.deliveryAddress}_\n`
+      : `⏰ الاستلام من المطعم الساعة: _${convo.unsubmittedOrder?.pickupTime}_\n`;
+    billSummary += `💶 طريقة الدفع: *كاش نقداً عند الاستلام*\n`;
+    billSummary += `\nيرجى الرد بـ *1* أو *تأكيد* لتأكيد الطلب وإرساله فوراً للمطبخ طازجاً!`;
+    return billSummary + getShortHelpLine(lang);
+  }
+
+  if (lang === "en") {
+    let billSummary = `📋 *MR. Tabboush Order Receipt*\n--------------\n`;
+    (convo.unsubmittedOrder?.items || []).forEach((i: any) => {
+      billSummary += `▪️ ${i.quantity}x ${translatedText(i.name, "en")} (€${formatMoney(i.basePrice)})\n`;
+      if (hasPricedUpsell(i.selectedUpsell)) billSummary += ` └ ➕ ${translatedText(i.selectedUpsell.name, "en")} (+€${formatMoney(i.selectedUpsell.price)})\n`;
+    });
+    billSummary += `--------------\n`;
+    billSummary += `Subtotal: €${formatMoney(sub)}\n`;
+    if (fee > 0) billSummary += `Delivery Fee: €${formatMoney(fee)}\n`;
+    billSummary += `*Grand Total: €${formatMoney(total)}*\n\n`;
+    billSummary += convo.unsubmittedOrder?.orderType === "delivery"
+      ? `📍 Ship Address: _${convo.unsubmittedOrder?.deliveryAddress}_\n`
+      : `⏰ Self pickup at: _${convo.unsubmittedOrder?.pickupTime}_\n`;
+    billSummary += `💶 Payment: *CASH ONLY upon delivery*\n`;
+    billSummary += `\nReply with *1* or *CONFIRM* to submit your order to the kitchen!`;
+    return billSummary + getShortHelpLine(lang);
+  }
+
+  let billSummary = `📋 *Rechnungsübersicht MR. Tabboush*\n--------------\n`;
+  (convo.unsubmittedOrder?.items || []).forEach((i: any) => {
+    billSummary += `▪️ ${i.quantity}x ${translatedText(i.name, "de")} (${formatMoney(i.basePrice)} €)\n`;
+    if (hasPricedUpsell(i.selectedUpsell)) billSummary += ` └ ➕ ${translatedText(i.selectedUpsell.name, "de")} (+${formatMoney(i.selectedUpsell.price)} €)\n`;
+  });
+  billSummary += `--------------\n`;
+  billSummary += `Zwischensumme: ${formatMoney(sub)} €\n`;
+  if (fee > 0) billSummary += `Liefergebühr: ${formatMoney(fee)} €\n`;
+  billSummary += `*Gesamtbetrag: ${formatMoney(total)} €*\n\n`;
+  billSummary += convo.unsubmittedOrder?.orderType === "delivery"
+    ? `📍 Lieferadresse: _${convo.unsubmittedOrder?.deliveryAddress}_\n`
+    : `⏰ Abholzeit: _${convo.unsubmittedOrder?.pickupTime} Uhr_\n`;
+  billSummary += `💶 Zahlung: *BARZAHLUNG bei Übergabe*\n`;
+  billSummary += `\nAntworten Sie mit *1* oder *BESTÄTIGEN*, um die Bestellung abzuschicken!`;
+  return billSummary + getShortHelpLine(lang);
+}
+
 function serializeDoc(doc: any) {
   const raw = typeof doc?.toObject === "function" ? doc.toObject() : doc;
   return {
@@ -1188,6 +1269,11 @@ You MUST reply with a JSON object in this exact schema structure:
             selectedModifiers: [],
             totalPrice: selectedItem.basePrice,
           };
+          const activeUpsell = getActiveUpsellSuggestion(selectedItem);
+          const pendingUpsell = activeUpsell ? normalizeUpsellSuggestion(activeUpsell) : null;
+          if (pendingUpsell) {
+            (orderItem as any).pendingUpsell = pendingUpsell;
+          }
           convo.unsubmittedOrder = {
             ...convo.unsubmittedOrder,
             items: [orderItem],
@@ -1195,12 +1281,19 @@ You MUST reply with a JSON object in this exact schema structure:
             total: selectedItem.basePrice + (convo.unsubmittedOrder?.deliveryFee || 0),
           };
 
-          botReplyText = isAr
-            ? `📝 تمت إضافة *${selectedItem.name.ar}* لقائمتك برصيد ${selectedItem.basePrice.toFixed(2)}€.\n\n⚡ هل ترغب في ترقية الوجبة بكوكا كولا أو بطاطا مقرمشة إضافية مقابل +3.00€ فقط؟\nأجب بـ:\n*نعم* للإضافة الكومبو\n*لا* للانتقال لتأكيد الفاتورة مباشرة`
+          const addedText = isAr
+            ? `📝 تمت إضافة *${selectedItem.name.ar}* لقائمتك برصيد ${formatMoney(selectedItem.basePrice)}€.`
             : isEn
-            ? `📝 Added *${selectedItem.name.en}* to your order for €${selectedItem.basePrice.toFixed(2)}.\n\n⚡ Would you like to upgrade with our special French fries and Coca Cola soft drink for only +€3.00?\nReply:\n*YES* to add combo upgrade\n*NO* to proceed with checkout`
-            : `📝 *${selectedItem.name.de}* wurde für ${selectedItem.basePrice.toFixed(2)} € hinzugefügt.\n\n⚡ Möchten Sie Ihre Bestellung für nur +3,00 € mit knusprigen Pommes und einer kalten Cola upgraden?\nAntworten Sie:\n*JA* für das Spar-Combo-Upgrade\n*NEIN* um die Bestellung direkt abzuschließen`;
-          nextStep = "customizing";
+            ? `📝 Added *${selectedItem.name.en}* to your order for €${formatMoney(selectedItem.basePrice)}.`
+            : `📝 *${selectedItem.name.de}* wurde für ${formatMoney(selectedItem.basePrice)} € hinzugefügt.`;
+
+          if (pendingUpsell) {
+            botReplyText = `${addedText}\n\n${getUpsellPrompt(lang, pendingUpsell)}`;
+            nextStep = "customizing";
+          } else {
+            botReplyText = `${addedText}\n\n${buildConfirmationSummary(convo, lang)}`;
+            nextStep = "confirming";
+          }
         } else {
           botReplyText = isAr
             ? "نعتذر منك، لم نفهم اختيارك بشكل دقيق. يرجى كتابة اسم الوجبة أو رقمها (مثال: شاورما أو 1):"
@@ -1211,75 +1304,29 @@ You MUST reply with a JSON object in this exact schema structure:
         const items = convo.unsubmittedOrder?.items || [];
         if (addedCombo && items.length > 0) {
           const item = items[0];
-          item.selectedUpsell = {
+          const pendingUpsell = item.pendingUpsell;
+          item.selectedUpsell = pendingUpsell || {
             id: "up-fries",
-            name: { ar: "ترقية وجبة كومبو دبل مع كولا وبطاطا", de: "Unde Combo upgrade Pommes + Cola", en: "Fries + Cola drink combo upgrade" },
+            name: { ar: "ترقية وجبة كومبو دبل مع كولا وبطاطا", de: "Combo-Upgrade Pommes + Cola", en: "Fries + Cola drink combo upgrade" },
             price: 3.0,
           };
-          item.totalPrice += 3.0;
+          item.pendingUpsell = undefined;
+          const upsellPrice = toFiniteNumber(item.selectedUpsell.price, 0);
+          item.totalPrice += upsellPrice;
           convo.unsubmittedOrder = {
             ...convo.unsubmittedOrder,
             items,
-            subtotal: (convo.unsubmittedOrder?.subtotal || 0) + 3.0,
-            total: (convo.unsubmittedOrder?.total || 0) + 3.0,
+            subtotal: (convo.unsubmittedOrder?.subtotal || 0) + upsellPrice,
+            total: (convo.unsubmittedOrder?.total || 0) + upsellPrice,
           };
-        }
-
-        const sub = convo.unsubmittedOrder?.subtotal || 0;
-        const fee = convo.unsubmittedOrder?.deliveryFee || 0;
-        const total = sub + fee;
-
-        let billSummary = "";
-        if (isAr) {
-          billSummary = `📋 *ملخص طلبك النهائي من مستر طابوش*\n--------------\n`;
-          (convo.unsubmittedOrder?.items || []).forEach((i: any) => {
-            billSummary += `▪️ ${i.quantity}x ${translatedText(i.name, "ar")} (${formatMoney(i.basePrice)}€)\n`;
-            if (hasPricedUpsell(i.selectedUpsell)) billSummary += ` └ ➕ ${translatedText(i.selectedUpsell.name, "ar")} (+${formatMoney(i.selectedUpsell.price)}€)\n`;
-          });
-          billSummary += `--------------\n`;
-          billSummary += `المجموع الفرعي: ${formatMoney(sub)}€\n`;
-          if (fee > 0) billSummary += `أجرة التوصيل: ${formatMoney(fee)}€\n`;
-          billSummary += `*الإجمالي النهائي: ${formatMoney(total)}€*\n\n`;
-          billSummary += convo.unsubmittedOrder?.orderType === "delivery"
-            ? `📍 التوصيل إلى: _${convo.unsubmittedOrder?.deliveryAddress}_\n`
-            : `⏰ الاستلام من المطعم الساعة: _${convo.unsubmittedOrder?.pickupTime}_\n`;
-          billSummary += `💶 طريقة الدفع: *كاش نقداً عند الاستلام*\n`;
-          billSummary += `\nيرجى الرد بـ *1* أو *تأكيد* لتأكيد الطلب وإرساله فوراً للمطبخ طازجاً!`;
-          billSummary += getShortHelpLine(lang);
-        } else if (isEn) {
-          billSummary = `📋 *MR. Tabboush Order Receipt*\n--------------\n`;
-          (convo.unsubmittedOrder?.items || []).forEach((i: any) => {
-            billSummary += `▪️ ${i.quantity}x ${translatedText(i.name, "en")} (€${formatMoney(i.basePrice)})\n`;
-            if (hasPricedUpsell(i.selectedUpsell)) billSummary += ` └ ➕ ${translatedText(i.selectedUpsell.name, "en")} (+€${formatMoney(i.selectedUpsell.price)})\n`;
-          });
-          billSummary += `--------------\n`;
-          billSummary += `Subtotal: €${formatMoney(sub)}\n`;
-          if (fee > 0) billSummary += `Delivery Fee: €${formatMoney(fee)}\n`;
-          billSummary += `*Grand Total: €${formatMoney(total)}*\n\n`;
-          billSummary += convo.unsubmittedOrder?.orderType === "delivery"
-            ? `📍 Ship Address: _${convo.unsubmittedOrder?.deliveryAddress}_\n`
-            : `⏰ Self pickup at: _${convo.unsubmittedOrder?.pickupTime}_\n`;
-          billSummary += `💶 Payment: *CASH ONLY upon delivery*\n`;
-          billSummary += `\nReply with *1* or *CONFIRM* to submit your order to the kitchen!`;
-          billSummary += getShortHelpLine(lang);
         } else {
-          billSummary = `📋 *Rechnungsübersicht MR. Tabboush*\n--------------\n`;
-          (convo.unsubmittedOrder?.items || []).forEach((i: any) => {
-            billSummary += `▪️ ${i.quantity}x ${translatedText(i.name, "de")} (${formatMoney(i.basePrice)} €)\n`;
-            if (hasPricedUpsell(i.selectedUpsell)) billSummary += ` └ ➕ ${translatedText(i.selectedUpsell.name, "de")} (+${formatMoney(i.selectedUpsell.price)} €)\n`;
+          items.forEach((item: any) => {
+            item.pendingUpsell = undefined;
           });
-          billSummary += `--------------\n`;
-          billSummary += `Zwischensumme: ${formatMoney(sub)} €\n`;
-          if (fee > 0) billSummary += `Liefergebühr: ${formatMoney(fee)} €\n`;
-          billSummary += `*Gesamtbetrag: ${formatMoney(total)} €*\n\n`;
-          billSummary += convo.unsubmittedOrder?.orderType === "delivery"
-            ? `📍 Lieferadresse: _${convo.unsubmittedOrder?.deliveryAddress}_\n`
-            : `⏰ Abholzeit: _${convo.unsubmittedOrder?.pickupTime} Uhr_\n`;
-          billSummary += `💶 Zahlung: *BARZAHLUNG bei Übergabe*\n`;
-          billSummary += `\nAntworten Sie mit *1* oder *BESTÄTIGEN*, um die Bestellung abzuschicken!`;
-          billSummary += getShortHelpLine(lang);
+          convo.unsubmittedOrder = { ...convo.unsubmittedOrder, items };
         }
-        botReplyText = billSummary;
+
+        botReplyText = buildConfirmationSummary(convo, lang);
         nextStep = "confirming";
       } else if (step === "confirming") {
         if (text.includes("1") || text.includes("yes") || text.includes("best") || text.includes("ta") || text.includes("نعم") || text.includes("تأكيد")) {

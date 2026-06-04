@@ -18,6 +18,7 @@ const UnsubmittedOrderItemSchema = new Schema(
     quantity: Number,
     selectedModifiers: [],
     selectedUpsell: { id: String, name: { ar: String, de: String, en: String }, price: Number },
+    pendingUpsell: { id: String, name: { ar: String, de: String, en: String }, price: Number },
     totalPrice: Number,
   },
   { _id: false }
