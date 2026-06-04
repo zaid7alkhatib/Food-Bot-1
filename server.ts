@@ -159,14 +159,65 @@ function getLanguageSelectionPrompt(): string {
   ].join("\n");
 }
 
+function getShortHelpLine(lang: CustomerLanguage): string {
+  if (lang === "ar") return "\n\nمساعدة سريعة: اكتب *مساعدة* لرؤية الأوامر. يمكنك أيضاً كتابة: رجوع، إلغاء، طلب جديد، تغيير اللغة.";
+  if (lang === "en") return "\n\nTip: type *help* to see commands. You can also type: back, cancel, new order, change language.";
+  return "\n\nTipp: Schreiben Sie *Hilfe*, um Befehle zu sehen. Sie können auch schreiben: zurück, abbrechen, neue Bestellung, Sprache ändern.";
+}
+
+function getHelpReply(lang: CustomerLanguage): string {
+  if (lang === "ar") {
+    return [
+      "هذه الأوامر متاحة أثناء المحادثة:",
+      "",
+      "*رجوع* - العودة خطوة للخلف",
+      "*إلغاء* - إلغاء مسودة الطلب الحالية",
+      "*طلب جديد* - البدء من جديد",
+      "*تغيير العنوان* - تعديل عنوان التوصيل",
+      "*تغيير وقت الاستلام* - تعديل وقت الاستلام",
+      "*تغيير طريقة الاستلام* - تغيير توصيل/استلام",
+      "*تغيير الطلب* - اختيار الوجبات من جديد",
+      "*تغيير اللغة* - اختيار لغة أخرى",
+    ].join("\n");
+  }
+
+  if (lang === "en") {
+    return [
+      "You can use these commands anytime:",
+      "",
+      "*back* - go one step back",
+      "*cancel* - cancel the current draft order",
+      "*new order* - start again",
+      "*change address* - edit delivery address",
+      "*change time* - edit pickup time",
+      "*change type* - change delivery/pickup",
+      "*change order* - choose food again",
+      "*change language* - choose another language",
+    ].join("\n");
+  }
+
+  return [
+    "Sie können diese Befehle jederzeit verwenden:",
+    "",
+    "*zurück* - einen Schritt zurück",
+    "*abbrechen* - aktuelle Bestellskizze abbrechen",
+    "*neue Bestellung* - neu starten",
+    "*Adresse ändern* - Lieferadresse ändern",
+    "*Abholzeit ändern* - Abholzeit ändern",
+    "*Lieferung ändern* - Lieferung/Abholung ändern",
+    "*Bestellung ändern* - Gerichte neu auswählen",
+    "*Sprache ändern* - andere Sprache wählen",
+  ].join("\n");
+}
+
 function getWelcomeReply(lang: CustomerLanguage): string {
   if (lang === "ar") {
-    return "أهلاً بك في مستر طابوش! 🌯 أشهى المأكولات الشامية في فوبيرتال.\n\nكيف ترغب في استلام طلبك؟\nالرجاء كتابة:\n*1* للتوصيل المنزلي (دليفري)\n*2* للاستلام من المطعم (تيك أواي)";
+    return "أهلاً بك في مستر طابوش! 🌯 أشهى المأكولات الشامية في فوبيرتال.\n\nكيف ترغب في استلام طلبك؟\nالرجاء كتابة:\n*1* للتوصيل المنزلي (دليفري)\n*2* للاستلام من المطعم (تيك أواي)" + getShortHelpLine(lang);
   }
   if (lang === "en") {
-    return "Welcome to MR. Tabboush! 🌯 Finest Damascus Shawarma in Wuppertal.\n\nHow would you like to receive your food?\nReply with:\n*1* for Home Delivery\n*2* for Self Pickup";
+    return "Welcome to MR. Tabboush! 🌯 Finest Damascus Shawarma in Wuppertal.\n\nHow would you like to receive your food?\nReply with:\n*1* for Home Delivery\n*2* for Self Pickup" + getShortHelpLine(lang);
   }
-  return "Willkommen bei MR. Tabboush! 🌯 Feinstes syrisches Shawarma in Wuppertal.\n\nWie möchten Sie Ihre Bestellung erhalten?\nAntworten Sie mit:\n*1* für Hauslieferung (Delivery)\n*2* für Abholung (Pickup)";
+  return "Willkommen bei MR. Tabboush! 🌯 Feinstes syrisches Shawarma in Wuppertal.\n\nWie möchten Sie Ihre Bestellung erhalten?\nAntworten Sie mit:\n*1* für Hauslieferung (Delivery)\n*2* für Abholung (Pickup)" + getShortHelpLine(lang);
 }
 
 function getLanguageSwitchReply(lang: CustomerLanguage): string {
@@ -176,25 +227,25 @@ function getLanguageSwitchReply(lang: CustomerLanguage): string {
 }
 
 function getAddressPrompt(lang: CustomerLanguage): string {
-  if (lang === "ar") return "رائع! خدمة التوصيل متوفرة داخل 4 كم. يرجى إرسال عنوان التوصيل بالتفصيل في فوبيرتال:";
-  if (lang === "en") return "Great! Home delivery is available within 4 km of our branch. Please type your detailed delivery address in Wuppertal:";
-  return "Super! Der Lieferservice ist innerhalb von 4 km verfügbar. Bitte senden Sie uns Ihre Lieferadresse in Wuppertal:";
+  if (lang === "ar") return "رائع! خدمة التوصيل متوفرة داخل 4 كم. يرجى إرسال عنوان التوصيل بالتفصيل في فوبيرتال:" + getShortHelpLine(lang);
+  if (lang === "en") return "Great! Home delivery is available within 4 km of our branch. Please type your detailed delivery address in Wuppertal:" + getShortHelpLine(lang);
+  return "Super! Der Lieferservice ist innerhalb von 4 km verfügbar. Bitte senden Sie uns Ihre Lieferadresse in Wuppertal:" + getShortHelpLine(lang);
 }
 
 function getPickupTimePrompt(lang: CustomerLanguage): string {
-  if (lang === "ar") return "ممتاز! تفضل بالاستلام من المطعم بـ Berliner Str. 179.\nما هو وقت الاستلام المناسب لك؟ (مثال: 19:30)";
-  if (lang === "en") return "Great choice! Pickup is ready at Berliner Str. 179.\nWhat time would you like to pick up your order? (e.g., 20:15)";
-  return "Alles klar! Sie können Ihre Bestellung in der Berliner Str. 179 abholen.\nUm wie viel Uhr möchten Sie Ihr Essen abholen? (z.B., 19:45)";
+  if (lang === "ar") return "ممتاز! تفضل بالاستلام من المطعم بـ Berliner Str. 179.\nما هو وقت الاستلام المناسب لك؟ (مثال: 19:30)" + getShortHelpLine(lang);
+  if (lang === "en") return "Great choice! Pickup is ready at Berliner Str. 179.\nWhat time would you like to pick up your order? (e.g., 20:15)" + getShortHelpLine(lang);
+  return "Alles klar! Sie können Ihre Bestellung in der Berliner Str. 179 abholen.\nUm wie viel Uhr möchten Sie Ihr Essen abholen? (z.B., 19:45)" + getShortHelpLine(lang);
 }
 
 function getMenuPrompt(lang: CustomerLanguage): string {
   if (lang === "ar") {
-    return "إليك قائمة الطعام المتوفرة لدينا:\n\n1. وجبة شاورما عربي دجاج - 9.50€\n2. شاورما دجاج سوبر - 6.50€\n3. بروستد دجاج 4 قطع - 11.00€\n4. دجاجة مشوية عالفحم - 14.50€\n5. لبن عيران طازج - 1.80€\n\nاكتب اسم الوجبة أو الرقم للطلب:";
+    return "إليك قائمة الطعام المتوفرة لدينا:\n\n1. وجبة شاورما عربي دجاج - 9.50€\n2. شاورما دجاج سوبر - 6.50€\n3. بروستد دجاج 4 قطع - 11.00€\n4. دجاجة مشوية عالفحم - 14.50€\n5. لبن عيران طازج - 1.80€\n\nاكتب اسم الوجبة أو الرقم للطلب:" + getShortHelpLine(lang);
   }
   if (lang === "en") {
-    return "Here is our current hot menu:\n\n1. Arabic Chicken Shawarma Meal - €9.50\n2. Chicken Shawarma Super (Wrap) - €6.50\n3. Crispy Broasted Chicken (4 Pcs) - €11.00\n4. Whole Charcoal Grilled Chicken - €14.50\n5. Cold Yogurt Ayran - €1.80\n\nPlease type the item name or number to add to your cart:";
+    return "Here is our current hot menu:\n\n1. Arabic Chicken Shawarma Meal - €9.50\n2. Chicken Shawarma Super (Wrap) - €6.50\n3. Crispy Broasted Chicken (4 Pcs) - €11.00\n4. Whole Charcoal Grilled Chicken - €14.50\n5. Cold Yogurt Ayran - €1.80\n\nPlease type the item name or number to add to your cart:" + getShortHelpLine(lang);
   }
-  return "Hier ist unsere leckere Speisekarte:\n\n1. Arabisches Hähnchen-Shawarma Teller - 9,50 €\n2. Hähnchen Shawarma Super (Wrap) - 6,50 €\n3. Knusper-Broasted Hähnchen (4 Stck) - 11,00 €\n4. Ganzes Grillhähnchen - 14,50 €\n5. Yogurt Ayran erfrischend - 1,80 €\n\nBitte antworten Sie mit der Nummer oder dem Namen, um zu wählen:";
+  return "Hier ist unsere leckere Speisekarte:\n\n1. Arabisches Hähnchen-Shawarma Teller - 9,50 €\n2. Hähnchen Shawarma Super (Wrap) - 6,50 €\n3. Knusper-Broasted Hähnchen (4 Stck) - 11,00 €\n4. Ganzes Grillhähnchen - 14,50 €\n5. Yogurt Ayran erfrischend - 1,80 €\n\nBitte antworten Sie mit der Nummer oder dem Namen, um zu wählen:" + getShortHelpLine(lang);
 }
 
 function getCancelReply(lang: CustomerLanguage): string {
@@ -210,6 +261,7 @@ function getBackUnavailableReply(lang: CustomerLanguage): string {
 }
 
 type FlowCommand =
+  | "help"
   | "restart"
   | "cancel"
   | "back"
@@ -223,6 +275,7 @@ function detectFlowCommand(message: string): FlowCommand | null {
   const text = message.toLowerCase().trim();
   if (!text) return null;
 
+  if (/^(help|hilfe|مساعدة|ساعدني|الاوامر|الأوامر)$/i.test(text)) return "help";
   if (/(change|switch).*(language)|sprache.*(ändern|wechseln)|تغيير.*(اللغة|اللغه)|بدل.*(اللغة|اللغه)/i.test(text)) return "change_language";
   if (/^(restart|start over|new order|reset order|neu starten|von vorne|neue bestellung|ابدأ من جديد|ابدا من جديد|طلب جديد|إعادة الطلب|اعادة الطلب)$/i.test(text)) return "restart";
   if (/^(cancel|cancel order|abort|abbrechen|stornieren|إلغاء|الغاء|ألغي|الغي)$/i.test(text)) return "cancel";
@@ -883,6 +936,9 @@ app.post("/api/bot-reply", async (req, res) => {
         convo.unsubmittedOrder = buildEmptyUnsubmittedOrder(convo);
         botReplyText = getCancelReply(lang);
         nextStep = "welcome";
+      } else if (selectionCommand === "help") {
+        botReplyText = `${getHelpReply(lang)}\n\n${getLanguageSelectionPrompt()}`;
+        nextStep = "language_selection";
       } else if (selectionCommand === "restart" || selectionCommand === "back") {
         botReplyText = getLanguageSelectionPrompt();
         nextStep = "language_selection";
@@ -912,7 +968,9 @@ app.post("/api/bot-reply", async (req, res) => {
     }
 
     const flowCommand = !botReplyText ? detectFlowCommand(message) : null;
-    if (flowCommand === "restart") {
+    if (flowCommand === "help") {
+      botReplyText = getHelpReply(lang);
+    } else if (flowCommand === "restart") {
       const result = applyRestart(convo, lang);
       botReplyText = result.botReplyText;
       nextStep = result.nextStep;
@@ -995,6 +1053,7 @@ Your task is to:
 1. Understand the message, but always reply in the stored customer language "${lang}" unless the customer explicitly asks to switch language.
 2. Move the customer through the ordering flowchart:
    - Control commands are handled by the server before this prompt, but respect them if visible in history: back/zurück/رجوع means one practical step back; restart/neue Bestellung/طلب جديد means reset draft and start again; cancel/abbrechen/إلغاء means cancel the current draft; change address/time/type/order should ask for the relevant field again.
+   - For welcome, address, pickup time, menu, and confirmation replies, include a short localized note that the customer can type help/Hilfe/مساعدة to see commands such as back, cancel, new order, and change language.
    - "language_selection" state: If the customer has not selected a language, ask them to choose 1 Deutsch, 2 العربية, or 3 English.
    - "welcome" state: Say hello, state that we do Delivery (1.50€ fee within 4km) or Pickup. Ask them to choose Type (Delivery or Pickup).
    - "type" state: Read choice. If they say pickup, set currentStep to "pickup_time" and ask what time they will pick it up (e.g. "19:30"). If delivery, set currentStep to "address" and ask for their delivery address in Wuppertal.
@@ -1169,6 +1228,7 @@ You MUST reply with a JSON object in this exact schema structure:
             : `⏰ الاستلام من المطعم الساعة: _${convo.unsubmittedOrder?.pickupTime}_\n`;
           billSummary += `💶 طريقة الدفع: *كاش نقداً عند الاستلام*\n`;
           billSummary += `\nيرجى الرد بـ *1* أو *تأكيد* لتأكيد الطلب وإرساله فوراً للمطبخ طازجاً!`;
+          billSummary += getShortHelpLine(lang);
         } else if (isEn) {
           billSummary = `📋 *MR. Tabboush Order Receipt*\n--------------\n`;
           (convo.unsubmittedOrder?.items || []).forEach((i: any) => {
@@ -1184,6 +1244,7 @@ You MUST reply with a JSON object in this exact schema structure:
             : `⏰ Self pickup at: _${convo.unsubmittedOrder?.pickupTime}_\n`;
           billSummary += `💶 Payment: *CASH ONLY upon delivery*\n`;
           billSummary += `\nReply with *1* or *CONFIRM* to submit your order to the kitchen!`;
+          billSummary += getShortHelpLine(lang);
         } else {
           billSummary = `📋 *Rechnungsübersicht MR. Tabboush*\n--------------\n`;
           (convo.unsubmittedOrder?.items || []).forEach((i: any) => {
@@ -1199,6 +1260,7 @@ You MUST reply with a JSON object in this exact schema structure:
             : `⏰ Abholzeit: _${convo.unsubmittedOrder?.pickupTime} Uhr_\n`;
           billSummary += `💶 Zahlung: *BARZAHLUNG bei Übergabe*\n`;
           billSummary += `\nAntworten Sie mit *1* oder *BESTÄTIGEN*, um die Bestellung abzuschicken!`;
+          billSummary += getShortHelpLine(lang);
         }
         botReplyText = billSummary;
         nextStep = "confirming";
