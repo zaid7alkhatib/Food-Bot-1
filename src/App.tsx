@@ -81,6 +81,23 @@ function normalizeConversations(conversations: any[] = []): Conversation[] {
   return conversations.map(normalizeConversation).filter((conversation) => conversation.id);
 }
 
+function normalizeCategory(category: any): Category {
+  const id = category.id || category._id;
+  return {
+    ...category,
+    id: id ? String(id) : "",
+  };
+}
+
+function normalizeMenuItem(item: any): MenuItem {
+  const id = item.id || item._id;
+  return {
+    ...item,
+    id: id ? String(id) : "",
+    categoryId: item.categoryId?.toString?.() || item.categoryId,
+  };
+}
+
 function mergeConversation(prev: Conversation[], incoming: any): Conversation[] {
   const normalized = normalizeConversation(incoming);
   if (!normalized.id) return prev;
@@ -318,7 +335,7 @@ function Dashboard() {
         body: JSON.stringify(item),
       });
       if (response.ok) {
-        const newItem = await response.json();
+        const newItem = normalizeMenuItem(await response.json());
         setMenuItems((prev) => [...prev, newItem]);
       }
     } catch (err) {
@@ -334,11 +351,87 @@ function Dashboard() {
         body: JSON.stringify(updated),
       });
       if (response.ok) {
-        const data = await response.json();
+        const data = normalizeMenuItem(await response.json());
         setMenuItems((prev) => prev.map((item) => (item.id === id ? data : item)));
       }
     } catch (err) {
       console.error("Failed update product:", err);
+    }
+  };
+
+  const handleDeleteMenuItem = async (id: string) => {
+    try {
+      const response = await fetch(`/api/menu/items/${id}`, {
+        method: "DELETE",
+        headers: authHeaders(),
+      });
+      if (response.ok) {
+        setMenuItems((prev) => prev.filter((item) => item.id !== id));
+      } else {
+        const data = await response.json().catch(() => null);
+        window.alert(data?.error || t("menu.deleteItemFailed"));
+      }
+    } catch (err) {
+      console.error("Failed delete product:", err);
+    }
+  };
+
+  const handleAddCategory = async (category: Partial<Category>) => {
+    try {
+      const response = await fetch("/api/menu/categories", {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify(category),
+      });
+      if (response.ok) {
+        const data = normalizeCategory(await response.json());
+        setCategories((prev) => [...prev, data].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)));
+      } else {
+        const data = await response.json().catch(() => null);
+        window.alert(data?.error || t("menu.saveCategoryFailed"));
+      }
+    } catch (err) {
+      console.error("Failed adding category:", err);
+    }
+  };
+
+  const handleUpdateCategory = async (id: string, updated: Partial<Category>) => {
+    try {
+      const response = await fetch(`/api/menu/categories/${id}`, {
+        method: "PUT",
+        headers: authHeaders(),
+        body: JSON.stringify(updated),
+      });
+      if (response.ok) {
+        const data = normalizeCategory(await response.json());
+        setCategories((prev) => prev.map((category) => (category.id === id ? data : category)));
+      } else {
+        const data = await response.json().catch(() => null);
+        window.alert(data?.error || t("menu.saveCategoryFailed"));
+      }
+    } catch (err) {
+      console.error("Failed update category:", err);
+    }
+  };
+
+  const handleDeleteCategory = async (id: string) => {
+    try {
+      const response = await fetch(`/api/menu/categories/${id}`, {
+        method: "DELETE",
+        headers: authHeaders(),
+      });
+      if (response.ok) {
+        setCategories((prev) => prev.filter((category) => category.id !== id));
+      } else {
+        const data = await response.json().catch(() => null);
+        window.alert(
+          data?.activeItemCount
+            ? t("menu.deleteCategoryBlocked").replace("{count}", String(data.activeItemCount))
+            : data?.error || t("menu.deleteCategoryFailed")
+        );
+      }
+    } catch (err) {
+      console.error("Failed delete category:", err);
     }
   };
 
@@ -537,6 +630,10 @@ function Dashboard() {
                     menuItems={menuItems}
                     onAddItem={handleAddMenuItem}
                     onUpdateItem={handleUpdateMenuItem}
+                    onDeleteItem={handleDeleteMenuItem}
+                    onAddCategory={handleAddCategory}
+                    onUpdateCategory={handleUpdateCategory}
+                    onDeleteCategory={handleDeleteCategory}
                     currencySymbol={currencySymbol}
                   />
                 )}

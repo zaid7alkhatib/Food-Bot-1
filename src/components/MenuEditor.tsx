@@ -8,6 +8,10 @@ interface MenuEditorProps {
   menuItems: MenuItem[];
   onAddItem: (item: Partial<MenuItem>) => void;
   onUpdateItem: (id: string, updated: Partial<MenuItem>) => void;
+  onDeleteItem: (id: string) => void;
+  onAddCategory: (category: Partial<Category>) => void;
+  onUpdateCategory: (id: string, updated: Partial<Category>) => void;
+  onDeleteCategory: (id: string) => void;
   currencySymbol: string;
 }
 
@@ -44,6 +48,10 @@ export default function MenuEditor({
   menuItems,
   onAddItem,
   onUpdateItem,
+  onDeleteItem,
+  onAddCategory,
+  onUpdateCategory,
+  onDeleteCategory,
   currencySymbol,
 }: MenuEditorProps) {
   const { t, text } = useI18n();
@@ -63,11 +71,22 @@ export default function MenuEditor({
   const [imageUrl, setImageUrl] = useState("");
   const [prepMinutes, setPrepMinutes] = useState(10);
   const [upsellDrafts, setUpsellDrafts] = useState<UpsellSuggestion[]>([]);
+  const [editingCategoryId, setEditingCategoryId] = useState<string | "new" | null>(null);
+  const [categoryNameAr, setCategoryNameAr] = useState("");
+  const [categoryNameDe, setCategoryNameDe] = useState("");
+  const [categoryNameEn, setCategoryNameEn] = useState("");
+  const [categoryDescAr, setCategoryDescAr] = useState("");
+  const [categoryDescDe, setCategoryDescDe] = useState("");
+  const [categoryDescEn, setCategoryDescEn] = useState("");
 
   const [activeTranslationTab, setActiveTranslationTab] = useState<"de" | "ar" | "en">("de");
 
   useEffect(() => {
-    if (!activeCategoryId && categories[0]?.id) {
+    if (categories.length === 0) {
+      setActiveCategoryId("");
+      return;
+    }
+    if (!activeCategoryId || !categories.some((category) => category.id === activeCategoryId)) {
       setActiveCategoryId(categories[0].id);
     }
   }, [activeCategoryId, categories]);
@@ -89,6 +108,56 @@ export default function MenuEditor({
     setImageUrl(item.image || "");
     setPrepMinutes(item.preparationTimeMinutes || 10);
     setUpsellDrafts(normalizeUpsellSuggestions(item.upsellSuggestions));
+  };
+
+  const handleStartAddCategory = () => {
+    setEditingCategoryId("new");
+    setCategoryNameAr("فئة جديدة");
+    setCategoryNameDe("Neue Kategorie");
+    setCategoryNameEn("New Category");
+    setCategoryDescAr("");
+    setCategoryDescDe("");
+    setCategoryDescEn("");
+  };
+
+  const handleStartEditCategory = (category: Category) => {
+    setEditingCategoryId(category.id);
+    setCategoryNameAr(category.name.ar || "");
+    setCategoryNameDe(category.name.de || "");
+    setCategoryNameEn(category.name.en || "");
+    setCategoryDescAr(category.description?.ar || "");
+    setCategoryDescDe(category.description?.de || "");
+    setCategoryDescEn(category.description?.en || "");
+  };
+
+  const handleSaveCategory = () => {
+    const payload: Partial<Category> = {
+      name: { ar: categoryNameAr, de: categoryNameDe, en: categoryNameEn },
+      description: { ar: categoryDescAr, de: categoryDescDe, en: categoryDescEn },
+      sortOrder: editingCategoryId === "new" ? categories.length + 1 : categories.find((category) => category.id === editingCategoryId)?.sortOrder || 0,
+      isActive: true,
+    };
+
+    if (editingCategoryId === "new") {
+      onAddCategory(payload);
+    } else if (editingCategoryId) {
+      onUpdateCategory(editingCategoryId, payload);
+    }
+    setEditingCategoryId(null);
+  };
+
+  const handleDeleteCategory = (category: Category) => {
+    const itemCount = menuItems.filter((item) => item.categoryId === category.id).length;
+    if (itemCount > 0) {
+      window.alert(t("menu.deleteCategoryBlocked").replace("{count}", String(itemCount)));
+      return;
+    }
+    if (window.confirm(t("menu.confirmDeleteCategory").replace("{name}", text(category.name)))) {
+      onDeleteCategory(category.id);
+      if (activeCategoryId === category.id) {
+        setActiveCategoryId(categories.find((candidate) => candidate.id !== category.id)?.id || "");
+      }
+    }
   };
 
   const handleSaveEdit = (id: string) => {
@@ -149,33 +218,130 @@ export default function MenuEditor({
     onAddItem(defaultNew);
   };
 
+  const handleDeleteItem = (item: MenuItem) => {
+    if (window.confirm(t("menu.confirmDeleteItem").replace("{name}", text(item.name)))) {
+      onDeleteItem(item.id);
+      if (editingItemId === item.id) {
+        setEditingItemId(null);
+      }
+    }
+  };
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-12 gap-5 h-full">
       
       {/* Category filters sidebar list */}
       <div className="md:col-span-3 flex flex-col bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden divide-y divide-gray-100">
-        <div className="bg-neutral-50 p-4 border-b border-gray-100 flex items-center gap-1.5">
-          <FolderOpen size={16} className="text-orange-500" />
-          <h3 className="text-xs font-semibold text-gray-900 uppercase tracking-wider">{t("menu.categories")}</h3>
-        </div>
-        {categories.map((cat) => (
+        <div className="bg-neutral-50 p-4 border-b border-gray-100 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <FolderOpen size={16} className="text-orange-500 shrink-0" />
+            <h3 className="text-xs font-semibold text-gray-900 uppercase tracking-wider truncate">{t("menu.categories")}</h3>
+          </div>
           <button
+            type="button"
+            onClick={handleStartAddCategory}
+            className="p-1.5 rounded-md bg-orange-600 hover:bg-orange-700 text-white transition"
+            aria-label={t("menu.addCategory")}
+            title={t("menu.addCategory")}
+          >
+            <Plus size={13} />
+          </button>
+        </div>
+        {editingCategoryId && (
+          <div className="p-3 bg-orange-50/60 border-b border-orange-100 space-y-2">
+            <div className="grid grid-cols-3 gap-1">
+              <input
+                type="text"
+                value={categoryNameDe}
+                onChange={(e) => setCategoryNameDe(e.target.value)}
+                placeholder="DE"
+                className="min-w-0 bg-white p-2 border border-orange-100 rounded text-[11px] outline-none"
+              />
+              <input
+                type="text"
+                value={categoryNameAr}
+                onChange={(e) => setCategoryNameAr(e.target.value)}
+                placeholder="AR"
+                className="min-w-0 bg-white p-2 border border-orange-100 rounded text-[11px] outline-none"
+              />
+              <input
+                type="text"
+                value={categoryNameEn}
+                onChange={(e) => setCategoryNameEn(e.target.value)}
+                placeholder="EN"
+                className="min-w-0 bg-white p-2 border border-orange-100 rounded text-[11px] outline-none"
+              />
+            </div>
+            <textarea
+              rows={2}
+              value={categoryDescDe}
+              onChange={(e) => {
+                setCategoryDescDe(e.target.value);
+                setCategoryDescAr((prev) => prev || e.target.value);
+                setCategoryDescEn((prev) => prev || e.target.value);
+              }}
+              placeholder={t("common.description")}
+              className="w-full bg-white p-2 border border-orange-100 rounded text-[11px] outline-none"
+            />
+            <div className="flex justify-end gap-1.5">
+              <button
+                type="button"
+                onClick={() => setEditingCategoryId(null)}
+                className="px-2 py-1 text-[10px] font-bold rounded bg-white border border-neutral-200 text-neutral-600"
+              >
+                {t("common.cancel")}
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveCategory}
+                className="px-2 py-1 text-[10px] font-bold rounded bg-emerald-600 text-white"
+              >
+                {t("common.saveChanges")}
+              </button>
+            </div>
+          </div>
+        )}
+        {categories.map((cat) => (
+          <div
             key={cat.id}
-            onClick={() => {
-              setActiveCategoryId(cat.id);
-              setEditingItemId(null);
-            }}
-            className={`w-full p-3 px-4 text-left font-serif text-sm font-medium transition flex items-center justify-between ${
+            className={`w-full p-3 px-4 text-left font-serif text-sm font-medium transition flex items-center gap-2 ${
               activeCategoryId === cat.id
                 ? "bg-orange-50 text-orange-900 border-l-4 border-orange-500 font-bold"
                 : "text-gray-600 hover:bg-neutral-50/50"
             }`}
           >
-            {text(cat.name)}
-            <span className="text-[10px] bg-neutral-100 text-neutral-500 px-1.5 py-0.5 rounded-full font-mono">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveCategoryId(cat.id);
+                setEditingItemId(null);
+              }}
+              className="flex-1 min-w-0 text-left truncate"
+            >
+              {text(cat.name)}
+            </button>
+            <span className="text-[10px] bg-neutral-100 text-neutral-500 px-1.5 py-0.5 rounded-full font-mono shrink-0">
               {menuItems.filter((i) => i.categoryId === cat.id).length}
             </span>
-          </button>
+            <button
+              type="button"
+              onClick={() => handleStartEditCategory(cat)}
+              className="p-1 text-neutral-400 hover:text-orange-600 rounded"
+              aria-label={t("menu.editCategory")}
+              title={t("menu.editCategory")}
+            >
+              <Edit3 size={11} />
+            </button>
+            <button
+              type="button"
+              onClick={() => handleDeleteCategory(cat)}
+              className="p-1 text-neutral-400 hover:text-red-600 rounded"
+              aria-label={t("menu.deleteCategory")}
+              title={t("menu.deleteCategory")}
+            >
+              <Trash size={11} />
+            </button>
+          </div>
         ))}
       </div>
 
@@ -544,6 +710,13 @@ export default function MenuEditor({
                         >
                           <Edit3 size={11} />
                           {t("menu.edit")}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteItem(item)}
+                          className="p-1 px-2.5 border border-red-100 hover:border-red-400 hover:text-red-600 text-red-500 rounded text-xs font-semibold flex items-center gap-1.5 transition leading-none shadow-sm"
+                        >
+                          <Trash size={11} />
+                          {t("menu.deleteItem")}
                         </button>
                       </div>
                     </div>

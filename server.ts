@@ -917,6 +917,23 @@ app.put("/api/menu/items/:id", authMiddleware as any, requireRole(...MENU_ROLES)
   }
 });
 
+// DELETE /api/menu/items/:id — soft delete so historical orders remain intact
+app.delete("/api/menu/items/:id", authMiddleware as any, requireRole(...MENU_ROLES) as any, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const item = await MenuItem.findByIdAndUpdate(id, { isActive: false }, { new: true });
+    if (!item) {
+      res.status(404).json({ error: "Item not found" });
+      return;
+    }
+    emitGlobal("menu:updated", item);
+    res.json({ message: "Menu item deactivated", item });
+  } catch (err) {
+    console.error("[API] DELETE /api/menu/items/:id error:", err);
+    res.status(500).json({ error: "Failed to delete menu item" });
+  }
+});
+
 // ------------------------------------------------------------------
 // 5. Bot Reply Route (Gemini + Rule-Based Fallback)
 // ------------------------------------------------------------------
