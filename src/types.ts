@@ -27,8 +27,10 @@ export interface Branch {
   country: string;
   phone: string;
   whatsAppNumber: string;
+  pickupEnabled: boolean;
+  deliveryEnabled: boolean;
   deliveryRadiusKm: number;
-  deliveryFeeFee: number;
+  deliveryFee: number;
   minOrderAmount: number;
   paymentMethods: string[];
   isOpen: boolean;

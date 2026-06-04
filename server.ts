@@ -117,6 +117,25 @@ function translatedText(value: any, lang: "ar" | "de" | "en"): string {
 
 type CustomerLanguage = "ar" | "de" | "en";
 
+type BranchFulfillmentConfig = {
+  branchId?: string;
+  branchAddress: string;
+  deliveryEnabled: boolean;
+  pickupEnabled: boolean;
+  deliveryRadiusKm: number;
+  deliveryFee: number;
+  minOrderAmount: number;
+};
+
+const DEFAULT_BRANCH_CONFIG: BranchFulfillmentConfig = {
+  branchAddress: "Berliner Str. 179",
+  deliveryEnabled: true,
+  pickupEnabled: true,
+  deliveryRadiusKm: 4,
+  deliveryFee: 1.5,
+  minOrderAmount: 10,
+};
+
 function isCustomerLanguage(value: unknown): value is CustomerLanguage {
   return value === "ar" || value === "de" || value === "en";
 }
@@ -221,32 +240,59 @@ function getHelpReply(lang: CustomerLanguage): string {
   ].join("\n");
 }
 
-function getWelcomeReply(lang: CustomerLanguage): string {
-  if (lang === "ar") {
-    return "أهلاً بك في مستر طابوش! 🌯 أشهى المأكولات الشامية في فوبيرتال.\n\nكيف ترغب في استلام طلبك؟\nالرجاء كتابة:\n*1* للتوصيل المنزلي (دليفري)\n*2* للاستلام من المطعم (تيك أواي)" + getShortHelpLine(lang);
-  }
-  if (lang === "en") {
-    return "Welcome to MR. Tabboush! 🌯 Finest Damascus Shawarma in Wuppertal.\n\nHow would you like to receive your food?\nReply with:\n*1* for Home Delivery\n*2* for Self Pickup" + getShortHelpLine(lang);
-  }
-  return "Willkommen bei MR. Tabboush! 🌯 Feinstes syrisches Shawarma in Wuppertal.\n\nWie möchten Sie Ihre Bestellung erhalten?\nAntworten Sie mit:\n*1* für Hauslieferung (Delivery)\n*2* für Abholung (Pickup)" + getShortHelpLine(lang);
-}
-
 function getLanguageSwitchReply(lang: CustomerLanguage): string {
   if (lang === "ar") return "تم تغيير اللغة إلى العربية. تابع طلبك من فضلك، وسأرد عليك بالعربية. ✅";
   if (lang === "en") return "Language switched to English. Please continue your order and I will reply in English. ✅";
   return "Sprache auf Deutsch geändert. Bitte fahren Sie mit Ihrer Bestellung fort, ich antworte jetzt auf Deutsch. ✅";
 }
 
-function getAddressPrompt(lang: CustomerLanguage): string {
-  if (lang === "ar") return "رائع! خدمة التوصيل متوفرة داخل 4 كم. يرجى إرسال عنوان التوصيل بالتفصيل في فوبيرتال:" + getShortHelpLine(lang);
-  if (lang === "en") return "Great! Home delivery is available within 4 km of our branch. Please type your detailed delivery address in Wuppertal:" + getShortHelpLine(lang);
-  return "Super! Der Lieferservice ist innerhalb von 4 km verfügbar. Bitte senden Sie uns Ihre Lieferadresse in Wuppertal:" + getShortHelpLine(lang);
+function getWelcomeReply(lang: CustomerLanguage, branchConfig: BranchFulfillmentConfig = DEFAULT_BRANCH_CONFIG): string {
+  const fee = formatMoney(branchConfig.deliveryFee);
+  const min = formatMoney(branchConfig.minOrderAmount);
+  const radius = formatMoney(branchConfig.deliveryRadiusKm);
+  const deliveryLine = branchConfig.deliveryEnabled
+    ? lang === "ar"
+      ? `*1* للتوصيل المنزلي (+${fee}€، ضمن ${radius} كم، الحد الأدنى ${min}€)`
+      : lang === "en"
+      ? `*1* for Home Delivery (+€${fee}, within ${radius} km, min. €${min})`
+      : `*1* für Hauslieferung (+${fee} €, innerhalb ${radius} km, Mindestbestellwert ${min} €)`
+    : null;
+  const pickupLine = branchConfig.pickupEnabled
+    ? lang === "ar"
+      ? "*2* للاستلام من المطعم (تيك أواي)"
+      : lang === "en"
+      ? "*2* for Self Pickup"
+      : "*2* für Abholung (Pickup)"
+    : null;
+  const choices = [deliveryLine, pickupLine].filter(Boolean).join("\n");
+
+  if (!choices) {
+    if (lang === "ar") return "نعتذر، التوصيل والاستلام غير متاحين حالياً. يرجى المحاولة لاحقاً.";
+    if (lang === "en") return "Sorry, delivery and pickup are currently unavailable. Please try again later.";
+    return "Entschuldigung, Lieferung und Abholung sind aktuell nicht verfügbar. Bitte versuchen Sie es später erneut.";
+  }
+
+  if (lang === "ar") {
+    return "أهلاً بك في مستر طابوش! 🌯 أشهى المأكولات الشامية في فوبيرتال.\n\nكيف ترغب في استلام طلبك؟\nالرجاء كتابة:\n" + choices + getShortHelpLine(lang);
+  }
+  if (lang === "en") {
+    return "Welcome to MR. Tabboush! 🌯 Finest Damascus Shawarma in Wuppertal.\n\nHow would you like to receive your food?\nReply with:\n" + choices + getShortHelpLine(lang);
+  }
+  return "Willkommen bei MR. Tabboush! 🌯 Feinstes syrisches Shawarma in Wuppertal.\n\nWie möchten Sie Ihre Bestellung erhalten?\nAntworten Sie mit:\n" + choices + getShortHelpLine(lang);
 }
 
-function getPickupTimePrompt(lang: CustomerLanguage): string {
-  if (lang === "ar") return "ممتاز! تفضل بالاستلام من المطعم بـ Berliner Str. 179.\nما هو وقت الاستلام المناسب لك؟ (مثال: 19:30)" + getShortHelpLine(lang);
-  if (lang === "en") return "Great choice! Pickup is ready at Berliner Str. 179.\nWhat time would you like to pick up your order? (e.g., 20:15)" + getShortHelpLine(lang);
-  return "Alles klar! Sie können Ihre Bestellung in der Berliner Str. 179 abholen.\nUm wie viel Uhr möchten Sie Ihr Essen abholen? (z.B., 19:45)" + getShortHelpLine(lang);
+function getAddressPrompt(lang: CustomerLanguage, branchConfig: BranchFulfillmentConfig = DEFAULT_BRANCH_CONFIG): string {
+  const radius = formatMoney(branchConfig.deliveryRadiusKm);
+  const min = formatMoney(branchConfig.minOrderAmount);
+  if (lang === "ar") return `رائع! خدمة التوصيل متوفرة ضمن ${radius} كم وبحد أدنى ${min}€. يرجى إرسال عنوان التوصيل بالتفصيل في فوبيرتال:` + getShortHelpLine(lang);
+  if (lang === "en") return `Great! Home delivery is available within ${radius} km with a minimum order of €${min}. Please type your detailed delivery address in Wuppertal:` + getShortHelpLine(lang);
+  return `Super! Der Lieferservice ist innerhalb von ${radius} km verfügbar. Mindestbestellwert: ${min} €. Bitte senden Sie uns Ihre Lieferadresse in Wuppertal:` + getShortHelpLine(lang);
+}
+
+function getPickupTimePrompt(lang: CustomerLanguage, branchConfig: BranchFulfillmentConfig = DEFAULT_BRANCH_CONFIG): string {
+  if (lang === "ar") return `ممتاز! تفضل بالاستلام من المطعم بـ ${branchConfig.branchAddress}.\nما هو وقت الاستلام المناسب لك؟ (مثال: 19:30)` + getShortHelpLine(lang);
+  if (lang === "en") return `Great choice! Pickup is ready at ${branchConfig.branchAddress}.\nWhat time would you like to pick up your order? (e.g., 20:15)` + getShortHelpLine(lang);
+  return `Alles klar! Sie können Ihre Bestellung in der ${branchConfig.branchAddress} abholen.\nUm wie viel Uhr möchten Sie Ihr Essen abholen? (z.B., 19:45)` + getShortHelpLine(lang);
 }
 
 function getMenuPrompt(lang: CustomerLanguage): string {
@@ -332,10 +378,11 @@ function getUpsellPrompt(lang: CustomerLanguage, upsell: any): string {
   return `⚡ Möchten Sie *${translatedText(upsell.name, "de")}* für +${price} € hinzufügen?\nAntworten Sie:\n*JA* zum Hinzufügen\n*NEIN* um die Bestellung direkt abzuschließen` + getShortHelpLine(lang);
 }
 
-function buildConfirmationSummary(convo: any, lang: CustomerLanguage): string {
+function buildConfirmationSummary(convo: any, lang: CustomerLanguage, branchConfig: BranchFulfillmentConfig = DEFAULT_BRANCH_CONFIG): string {
   const sub = convo.unsubmittedOrder?.subtotal || 0;
   const fee = convo.unsubmittedOrder?.deliveryFee || 0;
   const total = sub + fee;
+  const belowMinimum = isBelowDeliveryMinimum(convo, branchConfig);
 
   if (lang === "ar") {
     let billSummary = `📋 *ملخص طلبك النهائي من مستر طابوش*\n--------------\n`;
@@ -351,7 +398,9 @@ function buildConfirmationSummary(convo: any, lang: CustomerLanguage): string {
       ? `📍 التوصيل إلى: _${convo.unsubmittedOrder?.deliveryAddress}_\n`
       : `⏰ الاستلام من المطعم الساعة: _${convo.unsubmittedOrder?.pickupTime}_\n`;
     billSummary += `💶 طريقة الدفع: *كاش نقداً عند الاستلام*\n`;
-    billSummary += `\nيرجى الرد بـ *1* أو *تأكيد* لتأكيد الطلب وإرساله فوراً للمطبخ طازجاً!`;
+    billSummary += belowMinimum
+      ? `\n⚠️ الحد الأدنى للتوصيل هو ${formatMoney(branchConfig.minOrderAmount)}€ قبل رسوم التوصيل. يرجى تعديل الطلب قبل التأكيد.`
+      : `\nيرجى الرد بـ *1* أو *تأكيد* لتأكيد الطلب وإرساله فوراً للمطبخ طازجاً!`;
     return billSummary + getShortHelpLine(lang);
   }
 
@@ -369,7 +418,9 @@ function buildConfirmationSummary(convo: any, lang: CustomerLanguage): string {
       ? `📍 Ship Address: _${convo.unsubmittedOrder?.deliveryAddress}_\n`
       : `⏰ Self pickup at: _${convo.unsubmittedOrder?.pickupTime}_\n`;
     billSummary += `💶 Payment: *CASH ONLY upon delivery*\n`;
-    billSummary += `\nReply with *1* or *CONFIRM* to submit your order to the kitchen!`;
+    billSummary += belowMinimum
+      ? `\n⚠️ Minimum delivery order is €${formatMoney(branchConfig.minOrderAmount)} before delivery fee. Please change the order before confirming.`
+      : `\nReply with *1* or *CONFIRM* to submit your order to the kitchen!`;
     return billSummary + getShortHelpLine(lang);
   }
 
@@ -386,7 +437,9 @@ function buildConfirmationSummary(convo: any, lang: CustomerLanguage): string {
     ? `📍 Lieferadresse: _${convo.unsubmittedOrder?.deliveryAddress}_\n`
     : `⏰ Abholzeit: _${convo.unsubmittedOrder?.pickupTime} Uhr_\n`;
   billSummary += `💶 Zahlung: *BARZAHLUNG bei Übergabe*\n`;
-  billSummary += `\nAntworten Sie mit *1* oder *BESTÄTIGEN*, um die Bestellung abzuschicken!`;
+  billSummary += belowMinimum
+    ? `\n⚠️ Der Mindestbestellwert für Lieferung beträgt ${formatMoney(branchConfig.minOrderAmount)} € vor Liefergebühr. Bitte ändern Sie die Bestellung vor der Bestätigung.`
+    : `\nAntworten Sie mit *1* oder *BESTÄTIGEN*, um die Bestellung abzuschicken!`;
   return billSummary + getShortHelpLine(lang);
 }
 
@@ -464,6 +517,65 @@ function getConversationWhatsAppTarget(convo: any): string {
   return convo.whatsAppJid || convo.whatsAppPhoneJid || convo.whatsAppPhone;
 }
 
+function branchConfigFromBranch(branch: any): BranchFulfillmentConfig {
+  return {
+    branchId: branch?._id?.toString?.() || branch?.id?.toString?.(),
+    branchAddress: branch?.address || DEFAULT_BRANCH_CONFIG.branchAddress,
+    deliveryEnabled: branch?.deliveryEnabled !== false,
+    pickupEnabled: branch?.pickupEnabled !== false,
+    deliveryRadiusKm: toFiniteNumber(branch?.deliveryRadiusKm, DEFAULT_BRANCH_CONFIG.deliveryRadiusKm),
+    deliveryFee: toFiniteNumber(branch?.deliveryFee, DEFAULT_BRANCH_CONFIG.deliveryFee),
+    minOrderAmount: toFiniteNumber(branch?.minOrderAmount, DEFAULT_BRANCH_CONFIG.minOrderAmount),
+  };
+}
+
+async function loadBranchConfig(branchId?: unknown): Promise<BranchFulfillmentConfig> {
+  const id = branchId?.toString?.();
+  const branch = id && mongoose.isValidObjectId(id)
+    ? await Branch.findById(id).lean()
+    : await Branch.findOne({ isActive: true }).lean();
+  return branchConfigFromBranch(branch);
+}
+
+function isBelowDeliveryMinimum(convo: any, branchConfig: BranchFulfillmentConfig): boolean {
+  return convo.unsubmittedOrder?.orderType === "delivery"
+    && branchConfig.minOrderAmount > 0
+    && toFiniteNumber(convo.unsubmittedOrder?.subtotal, 0) < branchConfig.minOrderAmount;
+}
+
+function getMinimumOrderReply(lang: CustomerLanguage, subtotal: number, branchConfig: BranchFulfillmentConfig): string {
+  const missing = Math.max(0, branchConfig.minOrderAmount - subtotal);
+  if (lang === "ar") {
+    return `الحد الأدنى للتوصيل هو ${formatMoney(branchConfig.minOrderAmount)}€ قبل رسوم التوصيل. مجموع طلبك الحالي ${formatMoney(subtotal)}€، وينقصه ${formatMoney(missing)}€. يرجى اختيار صنف أكبر أو تعديل الطلب.`;
+  }
+  if (lang === "en") {
+    return `Minimum delivery order is €${formatMoney(branchConfig.minOrderAmount)} before the delivery fee. Your current subtotal is €${formatMoney(subtotal)}, so €${formatMoney(missing)} is still missing. Please choose a larger item or change the order.`;
+  }
+  return `Der Mindestbestellwert für Lieferung beträgt ${formatMoney(branchConfig.minOrderAmount)} € vor Liefergebühr. Ihr aktueller Warenwert ist ${formatMoney(subtotal)} €, es fehlen noch ${formatMoney(missing)} €. Bitte wählen Sie einen größeren Artikel oder ändern Sie die Bestellung.`;
+}
+
+function getDeliveryUnavailableReply(lang: CustomerLanguage, branchConfig: BranchFulfillmentConfig): string {
+  if (branchConfig.pickupEnabled) {
+    if (lang === "ar") return "التوصيل غير متاح حالياً. يمكنك اختيار الاستلام من المطعم بكتابة *2*.";
+    if (lang === "en") return "Delivery is currently unavailable. Please choose pickup by replying with *2*.";
+    return "Lieferung ist aktuell nicht verfügbar. Bitte wählen Sie Abholung mit *2*.";
+  }
+  if (lang === "ar") return "التوصيل غير متاح حالياً.";
+  if (lang === "en") return "Delivery is currently unavailable.";
+  return "Lieferung ist aktuell nicht verfügbar.";
+}
+
+function getPickupUnavailableReply(lang: CustomerLanguage, branchConfig: BranchFulfillmentConfig): string {
+  if (branchConfig.deliveryEnabled) {
+    if (lang === "ar") return "الاستلام من المطعم غير متاح حالياً. يمكنك اختيار التوصيل بكتابة *1*.";
+    if (lang === "en") return "Pickup is currently unavailable. Please choose delivery by replying with *1*.";
+    return "Abholung ist aktuell nicht verfügbar. Bitte wählen Sie Lieferung mit *1*.";
+  }
+  if (lang === "ar") return "الاستلام من المطعم غير متاح حالياً.";
+  if (lang === "en") return "Pickup is currently unavailable.";
+  return "Abholung ist aktuell nicht verfügbar.";
+}
+
 function buildEmptyUnsubmittedOrder(convo: any) {
   return {
     branchId: convo.branchId?._id?.toString?.() || convo.branchId?.toString?.() || "",
@@ -471,15 +583,15 @@ function buildEmptyUnsubmittedOrder(convo: any) {
     whatsAppPhone: convo.whatsAppPhone,
     items: [],
     subtotal: 0,
-    deliveryFee: 1.5,
-    total: 1.5,
+    deliveryFee: 0,
+    total: 0,
     status: "received",
     paymentMethod: "Cash on Delivery",
   };
 }
 
-function resetOrderItems(convo: any) {
-  const deliveryFee = convo.unsubmittedOrder?.orderType === "delivery" ? 1.5 : 0;
+function resetOrderItems(convo: any, branchConfig: BranchFulfillmentConfig = DEFAULT_BRANCH_CONFIG) {
+  const deliveryFee = convo.unsubmittedOrder?.orderType === "delivery" ? branchConfig.deliveryFee : 0;
   convo.unsubmittedOrder = {
     ...convo.unsubmittedOrder,
     items: [],
@@ -489,47 +601,47 @@ function resetOrderItems(convo: any) {
   };
 }
 
-function applyRestart(convo: any, lang: CustomerLanguage) {
+function applyRestart(convo: any, lang: CustomerLanguage, branchConfig: BranchFulfillmentConfig = DEFAULT_BRANCH_CONFIG) {
   convo.unsubmittedOrder = buildEmptyUnsubmittedOrder(convo);
   return {
-    botReplyText: getWelcomeReply(lang),
+    botReplyText: getWelcomeReply(lang, branchConfig),
     nextStep: "type",
   };
 }
 
-function applyBack(convo: any, lang: CustomerLanguage, currentStep: string) {
+function applyBack(convo: any, lang: CustomerLanguage, currentStep: string, branchConfig: BranchFulfillmentConfig = DEFAULT_BRANCH_CONFIG) {
   if (currentStep === "address" || currentStep === "pickup_time") {
     convo.unsubmittedOrder = {
       ...convo.unsubmittedOrder,
       orderType: undefined,
-      deliveryFee: 1.5,
-      total: convo.unsubmittedOrder?.subtotal || 1.5,
+      deliveryFee: 0,
+      total: convo.unsubmittedOrder?.subtotal || 0,
       deliveryAddress: undefined,
       pickupTime: undefined,
     };
-    return { botReplyText: getWelcomeReply(lang), nextStep: "type" };
+    return { botReplyText: getWelcomeReply(lang, branchConfig), nextStep: "type" };
   }
 
   if (currentStep === "menu") {
     if (convo.unsubmittedOrder?.orderType === "pickup") {
       convo.unsubmittedOrder = { ...convo.unsubmittedOrder, pickupTime: undefined };
-      return { botReplyText: getPickupTimePrompt(lang), nextStep: "pickup_time" };
+      return { botReplyText: getPickupTimePrompt(lang, branchConfig), nextStep: "pickup_time" };
     }
     convo.unsubmittedOrder = { ...convo.unsubmittedOrder, deliveryAddress: undefined };
-    return { botReplyText: getAddressPrompt(lang), nextStep: "address" };
+    return { botReplyText: getAddressPrompt(lang, branchConfig), nextStep: "address" };
   }
 
   if (currentStep === "customizing" || currentStep === "confirming") {
-    resetOrderItems(convo);
+    resetOrderItems(convo, branchConfig);
     return { botReplyText: getMenuPrompt(lang), nextStep: "menu" };
   }
 
   if (currentStep === "completed") {
-    return applyRestart(convo, lang);
+    return applyRestart(convo, lang, branchConfig);
   }
 
   if (currentStep === "type" || currentStep === "welcome") {
-    return { botReplyText: getWelcomeReply(lang), nextStep: "type" };
+    return { botReplyText: getWelcomeReply(lang, branchConfig), nextStep: "type" };
   }
 
   return { botReplyText: getBackUnavailableReply(lang), nextStep: currentStep || "welcome" };
@@ -1002,8 +1114,8 @@ app.post("/api/bot-reply", async (req, res) => {
           whatsAppPhone: phone,
           items: [],
           subtotal: 0,
-          deliveryFee: 1.5,
-          total: 1.5,
+          deliveryFee: 0,
+          total: 0,
           status: "received",
           paymentMethod: "Cash on Delivery",
         },
@@ -1011,6 +1123,8 @@ app.post("/api/bot-reply", async (req, res) => {
     } else {
       await updateConversationIdentity(convo, identity);
     }
+
+    const branchConfig = await loadBranchConfig(convo.branchId);
 
     // Push user message
     const userMsg = {
@@ -1045,7 +1159,7 @@ app.post("/api/bot-reply", async (req, res) => {
       if (selectedLanguage) {
         lang = selectedLanguage;
         convo.customerLanguage = selectedLanguage;
-        botReplyText = getWelcomeReply(selectedLanguage);
+        botReplyText = getWelcomeReply(selectedLanguage, branchConfig);
         nextStep = "type";
       } else if (selectionCommand === "cancel") {
         convo.unsubmittedOrder = buildEmptyUnsubmittedOrder(convo);
@@ -1086,7 +1200,7 @@ app.post("/api/bot-reply", async (req, res) => {
     if (flowCommand === "help") {
       botReplyText = getHelpReply(lang);
     } else if (flowCommand === "restart") {
-      const result = applyRestart(convo, lang);
+      const result = applyRestart(convo, lang, branchConfig);
       botReplyText = result.botReplyText;
       nextStep = result.nextStep;
     } else if (flowCommand === "cancel") {
@@ -1094,32 +1208,42 @@ app.post("/api/bot-reply", async (req, res) => {
       botReplyText = getCancelReply(lang);
       nextStep = "welcome";
     } else if (flowCommand === "back") {
-      const result = applyBack(convo, lang, nextStep);
+      const result = applyBack(convo, lang, nextStep, branchConfig);
       botReplyText = result.botReplyText;
       nextStep = result.nextStep;
     } else if (flowCommand === "change_language") {
       botReplyText = getLanguageSelectionPrompt();
       nextStep = "language_selection";
     } else if (flowCommand === "change_address") {
-      convo.unsubmittedOrder = {
-        ...convo.unsubmittedOrder,
-        orderType: "delivery",
-        deliveryFee: 1.5,
-        deliveryAddress: undefined,
-        total: (convo.unsubmittedOrder?.subtotal || 0) + 1.5,
-      };
-      botReplyText = getAddressPrompt(lang);
-      nextStep = "address";
+      if (!branchConfig.deliveryEnabled) {
+        botReplyText = getDeliveryUnavailableReply(lang, branchConfig);
+        nextStep = "type";
+      } else {
+        convo.unsubmittedOrder = {
+          ...convo.unsubmittedOrder,
+          orderType: "delivery",
+          deliveryFee: branchConfig.deliveryFee,
+          deliveryAddress: undefined,
+          total: (convo.unsubmittedOrder?.subtotal || 0) + branchConfig.deliveryFee,
+        };
+        botReplyText = getAddressPrompt(lang, branchConfig);
+        nextStep = "address";
+      }
     } else if (flowCommand === "change_pickup_time") {
-      convo.unsubmittedOrder = {
-        ...convo.unsubmittedOrder,
-        orderType: "pickup",
-        deliveryFee: 0,
-        pickupTime: undefined,
-        total: convo.unsubmittedOrder?.subtotal || 0,
-      };
-      botReplyText = getPickupTimePrompt(lang);
-      nextStep = "pickup_time";
+      if (!branchConfig.pickupEnabled) {
+        botReplyText = getPickupUnavailableReply(lang, branchConfig);
+        nextStep = "type";
+      } else {
+        convo.unsubmittedOrder = {
+          ...convo.unsubmittedOrder,
+          orderType: "pickup",
+          deliveryFee: 0,
+          pickupTime: undefined,
+          total: convo.unsubmittedOrder?.subtotal || 0,
+        };
+        botReplyText = getPickupTimePrompt(lang, branchConfig);
+        nextStep = "pickup_time";
+      }
     } else if (flowCommand === "change_type") {
       convo.unsubmittedOrder = {
         ...convo.unsubmittedOrder,
@@ -1127,10 +1251,10 @@ app.post("/api/bot-reply", async (req, res) => {
         deliveryAddress: undefined,
         pickupTime: undefined,
       };
-      botReplyText = getWelcomeReply(lang);
+      botReplyText = getWelcomeReply(lang, branchConfig);
       nextStep = "type";
     } else if (flowCommand === "change_order") {
-      resetOrderItems(convo);
+      resetOrderItems(convo, branchConfig);
       botReplyText = getMenuPrompt(lang);
       nextStep = "menu";
     }
@@ -1154,7 +1278,14 @@ Current state of their incomplete order schema: ${JSON.stringify(convo.unsubmitt
 Customer Phone: ${phone}
 Customer Name: ${convo.customerName}
 Stored Customer Language: ${lang}
-Delivery Area: Only within 4 km of Berliner Str. 179. Delivery fee is 1.50€. Minimum order is 10.00€. Payment is Cash only.
+Fulfillment config:
+- Branch address: ${branchConfig.branchAddress}
+- Delivery enabled: ${branchConfig.deliveryEnabled}
+- Pickup enabled: ${branchConfig.pickupEnabled}
+- Delivery area text: within ${formatMoney(branchConfig.deliveryRadiusKm)} km of the branch. Real geocoding is not available yet.
+- Delivery fee: ${formatMoney(branchConfig.deliveryFee)}€.
+- Minimum delivery order before delivery fee: ${formatMoney(branchConfig.minOrderAmount)}€.
+- Payment is Cash only.
 
 Available Menu items to offer:
 ${JSON.stringify(parsedMenu)}
@@ -1170,13 +1301,13 @@ Your task is to:
    - Control commands are handled by the server before this prompt, but respect them if visible in history: 00/help/Hilfe/مساعدة means show help; 0/back/zurück/رجوع means one practical step back; 8/change language/Sprache ändern/تغيير اللغة means ask for language again; 9/cancel/abbrechen/إلغاء means cancel the current draft; 99/restart/neue Bestellung/طلب جديد means reset draft and start again; change address/time/type/order should ask for the relevant field again.
    - For welcome, address, pickup time, menu, and confirmation replies, include a short localized note with the numeric shortcuts: 00 help, 0 back, 8 language, 9 cancel, 99 new order.
    - "language_selection" state: If the customer has not selected a language, ask them to choose 1 Deutsch, 2 العربية, or 3 English.
-   - "welcome" state: Say hello, state that we do Delivery (1.50€ fee within 4km) or Pickup. Ask them to choose Type (Delivery or Pickup).
+   - "welcome" state: Say hello, state the configured delivery fee/radius/minimum and available fulfillment methods. Ask them to choose Type (Delivery or Pickup), only offering enabled methods.
    - "type" state: Read choice. If they say pickup, set currentStep to "pickup_time" and ask what time they will pick it up (e.g. "19:30"). If delivery, set currentStep to "address" and ask for their delivery address in Wuppertal.
    - "address"/"pickup_time" state: Save address or pickup time. Transition to "menu" and list our delicious categories (Shawarma, Broasted, Grilled Chicken, Drinks) and recommend things, ask them what they'd like to eat.
    - "menu" state: If they specify what dish they want, parse it, add it to the unsubmittedOrder items list. If the item has Modifiers, list those options and ask them to choose. Or present their upsell suggestion as an irresistible offer. If they want nothing else, advance to "confirming".
    - "customizing" state: Apply modifiers based on their choices. Ask if they want to add anything else from drinks or desserts, or confirm.
    - "confirming" state: Display a gorgeous, formatted receipt / order summary in their language:
-     * Order Type: Delivery (+1.50€) or Pickup
+     * Order Type: Delivery (+configured fee) or Pickup
      * Chosen items with selected modifiers/upsells and calculated totals
      * Subtotal, shipping fee, final grand total
      * Delivery Address or Pickup Time
@@ -1227,25 +1358,37 @@ You MUST reply with a JSON object in this exact schema structure:
       const step = convo.currentStep || "welcome";
 
       if (step === "welcome") {
-        botReplyText = getWelcomeReply(lang);
+        botReplyText = getWelcomeReply(lang, branchConfig);
         nextStep = "type";
       } else if (step === "type") {
         if (text.includes("1") || text.includes("towsil") || text.includes("delivery") || text.includes("توصيل")) {
-          convo.unsubmittedOrder = {
-            ...convo.unsubmittedOrder,
-            orderType: "delivery",
-            deliveryFee: 1.5,
-          };
-          botReplyText = getAddressPrompt(lang);
-          nextStep = "address";
+          if (!branchConfig.deliveryEnabled) {
+            botReplyText = getDeliveryUnavailableReply(lang, branchConfig);
+            nextStep = "type";
+          } else {
+            convo.unsubmittedOrder = {
+              ...convo.unsubmittedOrder,
+              orderType: "delivery",
+              deliveryFee: branchConfig.deliveryFee,
+              total: (convo.unsubmittedOrder?.subtotal || 0) + branchConfig.deliveryFee,
+            };
+            botReplyText = getAddressPrompt(lang, branchConfig);
+            nextStep = "address";
+          }
         } else {
-          convo.unsubmittedOrder = {
-            ...convo.unsubmittedOrder,
-            orderType: "pickup",
-            deliveryFee: 0,
-          };
-          botReplyText = getPickupTimePrompt(lang);
-          nextStep = "pickup_time";
+          if (!branchConfig.pickupEnabled) {
+            botReplyText = getPickupUnavailableReply(lang, branchConfig);
+            nextStep = "type";
+          } else {
+            convo.unsubmittedOrder = {
+              ...convo.unsubmittedOrder,
+              orderType: "pickup",
+              deliveryFee: 0,
+              total: convo.unsubmittedOrder?.subtotal || 0,
+            };
+            botReplyText = getPickupTimePrompt(lang, branchConfig);
+            nextStep = "pickup_time";
+          }
         }
       } else if (step === "address") {
         convo.unsubmittedOrder = { ...convo.unsubmittedOrder, deliveryAddress: message };
@@ -1308,7 +1451,7 @@ You MUST reply with a JSON object in this exact schema structure:
             botReplyText = `${addedText}\n\n${getUpsellPrompt(lang, pendingUpsell)}`;
             nextStep = "customizing";
           } else {
-            botReplyText = `${addedText}\n\n${buildConfirmationSummary(convo, lang)}`;
+            botReplyText = `${addedText}\n\n${buildConfirmationSummary(convo, lang, branchConfig)}`;
             nextStep = "confirming";
           }
         } else {
@@ -1343,40 +1486,45 @@ You MUST reply with a JSON object in this exact schema structure:
           convo.unsubmittedOrder = { ...convo.unsubmittedOrder, items };
         }
 
-        botReplyText = buildConfirmationSummary(convo, lang);
+        botReplyText = buildConfirmationSummary(convo, lang, branchConfig);
         nextStep = "confirming";
       } else if (step === "confirming") {
         if (text.includes("1") || text.includes("yes") || text.includes("best") || text.includes("ta") || text.includes("نعم") || text.includes("تأكيد")) {
-          const count = await Order.countDocuments();
-          const ordNum = `TAB-${1004 + count}`;
+          if (isBelowDeliveryMinimum(convo, branchConfig)) {
+            botReplyText = `${getMinimumOrderReply(lang, toFiniteNumber(convo.unsubmittedOrder?.subtotal, 0), branchConfig)}\n\n${getMenuPrompt(lang)}`;
+            nextStep = "menu";
+          } else {
+            const count = await Order.countDocuments();
+            const ordNum = `TAB-${1004 + count}`;
 
-          finalPlacedOrder = {
-            orderNumber: ordNum,
-            restaurantId: convo.restaurantId || (await Restaurant.findOne({ isActive: true }))?._id,
-            branchId: convo.branchId || (await Branch.findOne({ isActive: true }))?._id,
-            customerName: convo.customerName,
-            whatsAppPhone: convo.whatsAppPhone,
-            whatsAppJid: convo.whatsAppJid,
-            whatsAppPhoneJid: convo.whatsAppPhoneJid,
-            whatsAppLid: convo.whatsAppLid,
-            orderType: convo.unsubmittedOrder?.orderType || "delivery",
-            items: convo.unsubmittedOrder?.items || [],
-            subtotal: convo.unsubmittedOrder?.subtotal || 0,
-            deliveryFee: convo.unsubmittedOrder?.deliveryFee || 0,
-            total: convo.unsubmittedOrder?.total || 0,
-            status: "received",
-            paymentMethod: convo.unsubmittedOrder?.paymentMethod || "Cash on Delivery",
-            deliveryAddress: convo.unsubmittedOrder?.deliveryAddress,
-            pickupTime: convo.unsubmittedOrder?.pickupTime,
-            notes: convo.unsubmittedOrder?.notes || "Created via WhatsApp Bot",
-          };
+            finalPlacedOrder = {
+              orderNumber: ordNum,
+              restaurantId: convo.restaurantId || (await Restaurant.findOne({ isActive: true }))?._id,
+              branchId: convo.branchId || (await Branch.findOne({ isActive: true }))?._id,
+              customerName: convo.customerName,
+              whatsAppPhone: convo.whatsAppPhone,
+              whatsAppJid: convo.whatsAppJid,
+              whatsAppPhoneJid: convo.whatsAppPhoneJid,
+              whatsAppLid: convo.whatsAppLid,
+              orderType: convo.unsubmittedOrder?.orderType || "delivery",
+              items: convo.unsubmittedOrder?.items || [],
+              subtotal: convo.unsubmittedOrder?.subtotal || 0,
+              deliveryFee: convo.unsubmittedOrder?.deliveryFee || 0,
+              total: convo.unsubmittedOrder?.total || 0,
+              status: "received",
+              paymentMethod: convo.unsubmittedOrder?.paymentMethod || "Cash on Delivery",
+              deliveryAddress: convo.unsubmittedOrder?.deliveryAddress,
+              pickupTime: convo.unsubmittedOrder?.pickupTime,
+              notes: convo.unsubmittedOrder?.notes || "Created via WhatsApp Bot",
+            };
 
-          botReplyText = isAr
-            ? `🎉 رائع! تم إرسال طلبك رقم *${ordNum}* بنجاح للمطبخ وسينتهي تحضيره قريباً.\nسوف نرسل لك تحديثاً فور البدء بالتحضير. شكراً لطلبك من مستر طابوش! ❤️`
-            : isEn
-            ? `🎉 Wonderful! Your order *${ordNum}* has been submitted to our kitchen. We will start preparing it shortly.\nYou will receive automatic status alerts here. Thank you! ❤️`
-            : `🎉 Super! Ihre Bestellung *${ordNum}* wurde an das Küchenteam übermittelt und wird zubereitet.\nWir benachrichtigen Sie gleich über den Status. Vielen Dank! ❤️`;
-          nextStep = "completed";
+            botReplyText = isAr
+              ? `🎉 رائع! تم إرسال طلبك رقم *${ordNum}* بنجاح للمطبخ وسينتهي تحضيره قريباً.\nسوف نرسل لك تحديثاً فور البدء بالتحضير. شكراً لطلبك من مستر طابوش! ❤️`
+              : isEn
+              ? `🎉 Wonderful! Your order *${ordNum}* has been submitted to our kitchen. We will start preparing it shortly.\nYou will receive automatic status alerts here. Thank you! ❤️`
+              : `🎉 Super! Ihre Bestellung *${ordNum}* wurde an das Küchenteam übermittelt und wird zubereitet.\nWir benachrichtigen Sie gleich über den Status. Vielen Dank! ❤️`;
+            nextStep = "completed";
+          }
         } else {
           botReplyText = isAr
             ? "لم يتم تأكيد طلبك بشكل صحيح. لتأكيده، اكتب *1* أو *تأكيد*."
