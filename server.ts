@@ -295,14 +295,124 @@ function getPickupTimePrompt(lang: CustomerLanguage, branchConfig: BranchFulfill
   return `Alles klar! Sie können Ihre Bestellung in der ${branchConfig.branchAddress} abholen.\nUm wie viel Uhr möchten Sie Ihr Essen abholen? (z.B., 19:45)` + getShortHelpLine(lang);
 }
 
-function getMenuPrompt(lang: CustomerLanguage): string {
-  if (lang === "ar") {
-    return "إليك قائمة الطعام المتوفرة لدينا:\n\n1. وجبة شاورما عربي دجاج - 9.50€\n2. شاورما دجاج سوبر - 6.50€\n3. بروستد دجاج 4 قطع - 11.00€\n4. دجاجة مشوية عالفحم - 14.50€\n5. لبن عيران طازج - 1.80€\n\nاكتب اسم الوجبة أو الرقم للطلب:" + getShortHelpLine(lang);
+function documentId(value: any): string {
+  return value?._id?.toString?.() || value?.id?.toString?.() || value?.toString?.() || "";
+}
+
+function orderTypeForMenu(convo: any): "delivery" | "pickup" | undefined {
+  const orderType = convo?.unsubmittedOrder?.orderType;
+  return orderType === "delivery" || orderType === "pickup" ? orderType : undefined;
+}
+
+function menuItemCode(index: number): string {
+  return String(index + 1).padStart(2, "0");
+}
+
+function categoryMatchesBranch(category: any, branchConfig: BranchFulfillmentConfig): boolean {
+  const branchIds = Array.isArray(category?.branchIds)
+    ? category.branchIds.map(documentId).filter(Boolean)
+    : [];
+  return !branchConfig.branchId || branchIds.length === 0 || branchIds.includes(branchConfig.branchId);
+}
+
+function categoryAvailableForOrderType(category: any, orderType?: "delivery" | "pickup"): boolean {
+  if (orderType === "delivery") return category?.availableForDelivery !== false;
+  if (orderType === "pickup") return category?.availableForPickup !== false;
+  return true;
+}
+
+function menuItemAvailableForOrderType(item: any, orderType?: "delivery" | "pickup"): boolean {
+  if (orderType === "delivery") return item?.isAvailableForDelivery !== false;
+  if (orderType === "pickup") return item?.isAvailableForPickup !== false;
+  return true;
+}
+
+function buildVisibleMenuEntries(
+  menuItems: any[],
+  categories: any[],
+  branchConfig: BranchFulfillmentConfig,
+  orderType?: "delivery" | "pickup"
+) {
+  const sortedCategories = [...categories]
+    .filter((category) => category?.isActive !== false && categoryMatchesBranch(category, branchConfig))
+    .sort((a, b) => toFiniteNumber(a?.sortOrder, 0) - toFiniteNumber(b?.sortOrder, 0));
+  const allCategoryById = new Map(categories.map((category) => [documentId(category), category]));
+  const categoryById = new Map(sortedCategories.map((category) => [documentId(category), category]));
+
+  return [...menuItems]
+    .filter((item) => {
+      if (item?.isActive === false || !menuItemAvailableForOrderType(item, orderType)) return false;
+
+      const itemCategoryId = documentId(item?.categoryId);
+      const rawCategory = itemCategoryId ? allCategoryById.get(itemCategoryId) : null;
+      const category = itemCategoryId ? categoryById.get(itemCategoryId) : null;
+      if (rawCategory && !category) return false;
+      if (!category) return true;
+
+      return categoryAvailableForOrderType(category, orderType);
+    })
+    .map((item) => ({
+      item,
+      category: categoryById.get(documentId(item?.categoryId)) || null,
+    }))
+    .sort((a, b) => {
+      const categorySortA = toFiniteNumber(a.category?.sortOrder, 9999);
+      const categorySortB = toFiniteNumber(b.category?.sortOrder, 9999);
+      if (categorySortA !== categorySortB) return categorySortA - categorySortB;
+
+      const itemSortA = toFiniteNumber(a.item?.sortOrder, 0);
+      const itemSortB = toFiniteNumber(b.item?.sortOrder, 0);
+      if (itemSortA !== itemSortB) return itemSortA - itemSortB;
+
+      return translatedText(a.item?.name, "de").localeCompare(translatedText(b.item?.name, "de"));
+    });
+}
+
+function getMenuPrompt(
+  lang: CustomerLanguage,
+  menuItems: any[],
+  categories: any[],
+  branchConfig: BranchFulfillmentConfig,
+  orderType?: "delivery" | "pickup"
+): string {
+  const entries = buildVisibleMenuEntries(menuItems, categories, branchConfig, orderType);
+
+  if (entries.length === 0) {
+    if (lang === "ar") return "القائمة غير متاحة حالياً لهذا الفرع أو طريقة الاستلام. يرجى التواصل مع الموظف للمساعدة." + getShortHelpLine(lang);
+    if (lang === "en") return "The menu is currently unavailable for this branch or fulfillment type. Please contact support for help." + getShortHelpLine(lang);
+    return "Die Speisekarte ist für diese Filiale oder Bestellart aktuell nicht verfügbar. Bitte wenden Sie sich an den Support." + getShortHelpLine(lang);
   }
-  if (lang === "en") {
-    return "Here is our current hot menu:\n\n1. Arabic Chicken Shawarma Meal - €9.50\n2. Chicken Shawarma Super (Wrap) - €6.50\n3. Crispy Broasted Chicken (4 Pcs) - €11.00\n4. Whole Charcoal Grilled Chicken - €14.50\n5. Cold Yogurt Ayran - €1.80\n\nPlease type the item name or number to add to your cart:" + getShortHelpLine(lang);
-  }
-  return "Hier ist unsere leckere Speisekarte:\n\n1. Arabisches Hähnchen-Shawarma Teller - 9,50 €\n2. Hähnchen Shawarma Super (Wrap) - 6,50 €\n3. Knusper-Broasted Hähnchen (4 Stck) - 11,00 €\n4. Ganzes Grillhähnchen - 14,50 €\n5. Yogurt Ayran erfrischend - 1,80 €\n\nBitte antworten Sie mit der Nummer oder dem Namen, um zu wählen:" + getShortHelpLine(lang);
+
+  const body: string[] = [];
+  let currentCategory = "";
+  entries.forEach(({ item, category }, index) => {
+    const categoryName = translatedText(category?.name, lang) || (
+      lang === "ar" ? "أصناف أخرى" : lang === "en" ? "Other items" : "Weitere Gerichte"
+    );
+    if (categoryName !== currentCategory) {
+      if (body.length > 0) body.push("");
+      body.push(`*${categoryName}*`);
+      currentCategory = categoryName;
+    }
+
+    const itemName = translatedText(item?.name, lang) || translatedText(item?.name, "de") || "Menu item";
+    const price = lang === "en" ? `€${formatMoney(item?.basePrice)}` : `${formatMoney(item?.basePrice)} €`;
+    const bestSeller = item?.isBestSeller ? " 🔥" : "";
+    body.push(`*${menuItemCode(index)}* ${itemName}${bestSeller} - ${price}`);
+  });
+
+  const intro = lang === "ar"
+    ? "إليك قائمة الطعام المتوفرة لدينا:"
+    : lang === "en"
+    ? "Here is our current menu:"
+    : "Hier ist unsere aktuelle Speisekarte:";
+  const instruction = lang === "ar"
+    ? "اكتب رمز الصنف مثل *01* أو اسم الوجبة للطلب:"
+    : lang === "en"
+    ? "Reply with the item code, e.g. *01*, or type the item name:"
+    : "Antworten Sie mit dem Artikelcode, z.B. *01*, oder dem Namen:";
+
+  return [intro, "", ...body, "", instruction].join("\n") + getShortHelpLine(lang);
 }
 
 function getCancelReply(lang: CustomerLanguage): string {
@@ -376,6 +486,69 @@ function getUpsellPrompt(lang: CustomerLanguage, upsell: any): string {
     return `⚡ Would you like to add *${translatedText(upsell.name, "en")}* for +€${price}?\nReply:\n*YES* to add it\n*NO* to proceed with checkout` + getShortHelpLine(lang);
   }
   return `⚡ Möchten Sie *${translatedText(upsell.name, "de")}* für +${price} € hinzufügen?\nAntworten Sie:\n*JA* zum Hinzufügen\n*NEIN* um die Bestellung direkt abzuschließen` + getShortHelpLine(lang);
+}
+
+function normalizeMenuSearchText(value: unknown): string {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\p{L}\p{N}\s-]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function findMenuItemFromMessage(
+  message: string,
+  menuItems: any[],
+  categories: any[],
+  branchConfig: BranchFulfillmentConfig,
+  orderType?: "delivery" | "pickup"
+) {
+  const entries = buildVisibleMenuEntries(menuItems, categories, branchConfig, orderType);
+  const cleaned = message.trim().replace(/^\*+|\*+$/g, "");
+
+  if (/^\d+$/.test(cleaned)) {
+    const selectedIndex = Number(cleaned) - 1;
+    if (selectedIndex >= 0 && selectedIndex < entries.length) {
+      return entries[selectedIndex].item;
+    }
+  }
+
+  const normalizedMessage = normalizeMenuSearchText(message);
+  if (!normalizedMessage) return null;
+
+  const messageWords = normalizedMessage.split(" ").filter((word) => word.length >= 3);
+  let bestMatch: { item: any; score: number } | null = null;
+
+  for (const { item } of entries) {
+    const searchableValues = [
+      item?.skucode,
+      item?.name?.ar,
+      item?.name?.de,
+      item?.name?.en,
+      item?.description?.ar,
+      item?.description?.de,
+      item?.description?.en,
+    ].map(normalizeMenuSearchText).filter(Boolean);
+
+    let score = 0;
+    for (const value of searchableValues) {
+      if (value === normalizedMessage) score = Math.max(score, 100);
+      if (normalizedMessage.length >= 3 && value.includes(normalizedMessage)) score = Math.max(score, 80);
+    }
+
+    const joinedValues = searchableValues.join(" ");
+    if (messageWords.length > 0 && messageWords.every((word) => joinedValues.includes(word))) {
+      score = Math.max(score, 50 + messageWords.length);
+    }
+
+    if (score > 0 && (!bestMatch || score > bestMatch.score)) {
+      bestMatch = { item, score };
+    }
+  }
+
+  return bestMatch?.item || null;
 }
 
 function buildConfirmationSummary(convo: any, lang: CustomerLanguage, branchConfig: BranchFulfillmentConfig = DEFAULT_BRANCH_CONFIG): string {
@@ -609,7 +782,14 @@ function applyRestart(convo: any, lang: CustomerLanguage, branchConfig: BranchFu
   };
 }
 
-function applyBack(convo: any, lang: CustomerLanguage, currentStep: string, branchConfig: BranchFulfillmentConfig = DEFAULT_BRANCH_CONFIG) {
+function applyBack(
+  convo: any,
+  lang: CustomerLanguage,
+  currentStep: string,
+  branchConfig: BranchFulfillmentConfig,
+  menuItems: any[],
+  categories: any[]
+) {
   if (currentStep === "address" || currentStep === "pickup_time") {
     convo.unsubmittedOrder = {
       ...convo.unsubmittedOrder,
@@ -633,7 +813,7 @@ function applyBack(convo: any, lang: CustomerLanguage, currentStep: string, bran
 
   if (currentStep === "customizing" || currentStep === "confirming") {
     resetOrderItems(convo, branchConfig);
-    return { botReplyText: getMenuPrompt(lang), nextStep: "menu" };
+    return { botReplyText: getMenuPrompt(lang, menuItems, categories, branchConfig, orderTypeForMenu(convo)), nextStep: "menu" };
   }
 
   if (currentStep === "completed") {
@@ -1089,8 +1269,11 @@ app.post("/api/bot-reply", async (req, res) => {
         { whatsAppLid: { $in: lookupValues } },
       ],
     });
-    const dbMenuItems = await MenuItem.find({ isActive: true }).lean();
-    const dbOrders = await Order.find().sort({ createdAt: -1 }).lean();
+    const [dbMenuItems, dbCategories, dbOrders] = await Promise.all([
+      MenuItem.find({ isActive: true }).sort({ sortOrder: 1 }).lean(),
+      Category.find().sort({ sortOrder: 1 }).lean(),
+      Order.find().sort({ createdAt: -1 }).lean(),
+    ]);
 
     if (!convo) {
       const [defaultRestaurant, defaultBranch] = await Promise.all([
@@ -1208,7 +1391,7 @@ app.post("/api/bot-reply", async (req, res) => {
       botReplyText = getCancelReply(lang);
       nextStep = "welcome";
     } else if (flowCommand === "back") {
-      const result = applyBack(convo, lang, nextStep, branchConfig);
+      const result = applyBack(convo, lang, nextStep, branchConfig, dbMenuItems, dbCategories);
       botReplyText = result.botReplyText;
       nextStep = result.nextStep;
     } else if (flowCommand === "change_language") {
@@ -1255,14 +1438,21 @@ app.post("/api/bot-reply", async (req, res) => {
       nextStep = "type";
     } else if (flowCommand === "change_order") {
       resetOrderItems(convo, branchConfig);
-      botReplyText = getMenuPrompt(lang);
+      botReplyText = getMenuPrompt(lang, dbMenuItems, dbCategories, branchConfig, orderTypeForMenu(convo));
       nextStep = "menu";
     }
 
     if (aiClient && !botReplyText) {
       try {
-        const parsedMenu = dbMenuItems.map((item: any) => ({
-          id: item._id?.toString() || item.id,
+        const parsedMenu = buildVisibleMenuEntries(
+          dbMenuItems,
+          dbCategories,
+          branchConfig,
+          orderTypeForMenu(convo)
+        ).map(({ item, category }, index) => ({
+          code: menuItemCode(index),
+          id: documentId(item),
+          category: category?.name,
           name: item.name,
           basePrice: item.basePrice,
           description: item.description,
@@ -1303,8 +1493,8 @@ Your task is to:
    - "language_selection" state: If the customer has not selected a language, ask them to choose 1 Deutsch, 2 العربية, or 3 English.
    - "welcome" state: Say hello, state the configured delivery fee/radius/minimum and available fulfillment methods. Ask them to choose Type (Delivery or Pickup), only offering enabled methods.
    - "type" state: Read choice. If they say pickup, set currentStep to "pickup_time" and ask what time they will pick it up (e.g. "19:30"). If delivery, set currentStep to "address" and ask for their delivery address in Wuppertal.
-   - "address"/"pickup_time" state: Save address or pickup time. Transition to "menu" and list our delicious categories (Shawarma, Broasted, Grilled Chicken, Drinks) and recommend things, ask them what they'd like to eat.
-   - "menu" state: If they specify what dish they want, parse it, add it to the unsubmittedOrder items list. If the item has Modifiers, list those options and ask them to choose. Or present their upsell suggestion as an irresistible offer. If they want nothing else, advance to "confirming".
+   - "address"/"pickup_time" state: Save address or pickup time. Transition to "menu" and list the available menu items above using their dynamic item codes, then ask them what they'd like to eat.
+   - "menu" state: If they specify an item code like 01 or a dish name, add that item to the unsubmittedOrder items list. If the item has Modifiers, list those options and ask them to choose. Or present their upsell suggestion as an irresistible offer. If they want nothing else, advance to "confirming".
    - "customizing" state: Apply modifiers based on their choices. Ask if they want to add anything else from drinks or desserts, or confirm.
    - "confirming" state: Display a gorgeous, formatted receipt / order summary in their language:
      * Order Type: Delivery (+configured fee) or Pickup
@@ -1392,33 +1582,30 @@ You MUST reply with a JSON object in this exact schema structure:
         }
       } else if (step === "address") {
         convo.unsubmittedOrder = { ...convo.unsubmittedOrder, deliveryAddress: message };
+        const menuPrompt = getMenuPrompt(lang, dbMenuItems, dbCategories, branchConfig, orderTypeForMenu(convo));
         botReplyText = isAr
-          ? `حفظنا العنوان بنجاح! 📍\n${getMenuPrompt(lang)}`
+          ? `حفظنا العنوان بنجاح! 📍\n${menuPrompt}`
           : isEn
-          ? `Delivery Address saved! 📍\n${getMenuPrompt(lang)}`
-          : `Lieferadresse gespeichert! 📍\n${getMenuPrompt(lang)}`;
+          ? `Delivery Address saved! 📍\n${menuPrompt}`
+          : `Lieferadresse gespeichert! 📍\n${menuPrompt}`;
         nextStep = "menu";
       } else if (step === "pickup_time") {
         convo.unsubmittedOrder = { ...convo.unsubmittedOrder, pickupTime: message };
+        const menuPrompt = getMenuPrompt(lang, dbMenuItems, dbCategories, branchConfig, orderTypeForMenu(convo));
         botReplyText = isAr
-          ? `تم تأكيد وقت الاستلام! ⏰\n${getMenuPrompt(lang)}`
+          ? `تم تأكيد وقت الاستلام! ⏰\n${menuPrompt}`
           : isEn
-          ? `Pickup time confirmed! ⏰\n${getMenuPrompt(lang)}`
-          : `Abholzeit vermerkt! ⏰\n${getMenuPrompt(lang)}`;
+          ? `Pickup time confirmed! ⏰\n${menuPrompt}`
+          : `Abholzeit vermerkt! ⏰\n${menuPrompt}`;
         nextStep = "menu";
       } else if (step === "menu") {
-        let selectedItem: any;
-        if (text.includes("1") || text.includes("teller") || text.includes("عربي") || text.includes("arabic")) {
-          selectedItem = dbMenuItems.find((i: any) => i.skucode === "SHW-ARAB-02");
-        } else if (text.includes("3") || text.includes("broasted") || text.includes("بروستد")) {
-          selectedItem = dbMenuItems.find((i: any) => i.skucode === "BRST-4PC-01");
-        } else if (text.includes("4") || text.includes("grilled") || text.includes("مشوي")) {
-          selectedItem = dbMenuItems.find((i: any) => i.skucode === "GRILL-WHL-01");
-        } else if (text.includes("5") || text.includes("ayran") || text.includes("عيران")) {
-          selectedItem = dbMenuItems.find((i: any) => i.skucode === "DRK-AYRN-01");
-        } else {
-          selectedItem = dbMenuItems.find((i: any) => i.skucode === "SHW-CHIK-01");
-        }
+        const selectedItem = findMenuItemFromMessage(
+          message,
+          dbMenuItems,
+          dbCategories,
+          branchConfig,
+          orderTypeForMenu(convo)
+        );
 
         if (selectedItem) {
           const orderItem = {
@@ -1441,11 +1628,12 @@ You MUST reply with a JSON object in this exact schema structure:
             total: selectedItem.basePrice + (convo.unsubmittedOrder?.deliveryFee || 0),
           };
 
+          const selectedName = translatedText(selectedItem.name, lang);
           const addedText = isAr
-            ? `📝 تمت إضافة *${selectedItem.name.ar}* لقائمتك برصيد ${formatMoney(selectedItem.basePrice)}€.`
+            ? `📝 تمت إضافة *${selectedName}* لطلبك بسعر ${formatMoney(selectedItem.basePrice)}€.`
             : isEn
-            ? `📝 Added *${selectedItem.name.en}* to your order for €${formatMoney(selectedItem.basePrice)}.`
-            : `📝 *${selectedItem.name.de}* wurde für ${formatMoney(selectedItem.basePrice)} € hinzugefügt.`;
+            ? `📝 Added *${selectedName}* to your order for €${formatMoney(selectedItem.basePrice)}.`
+            : `📝 *${selectedName}* wurde für ${formatMoney(selectedItem.basePrice)} € hinzugefügt.`;
 
           if (pendingUpsell) {
             botReplyText = `${addedText}\n\n${getUpsellPrompt(lang, pendingUpsell)}`;
@@ -1455,9 +1643,12 @@ You MUST reply with a JSON object in this exact schema structure:
             nextStep = "confirming";
           }
         } else {
+          const menuPrompt = getMenuPrompt(lang, dbMenuItems, dbCategories, branchConfig, orderTypeForMenu(convo));
           botReplyText = isAr
-            ? "نعتذر منك، لم نفهم اختيارك بشكل دقيق. يرجى كتابة اسم الوجبة أو رقمها (مثال: شاورما أو 1):"
-            : "Entschuldigung, wir haben die Auswahl nicht verstanden. Bitte nennen Sie den Artikel als Zahl (z.B. 1) oder Name:";
+            ? `نعتذر منك، لم نفهم اختيارك بشكل دقيق. يرجى اختيار رمز من القائمة مثل *01* أو كتابة اسم الوجبة:\n\n${menuPrompt}`
+            : isEn
+            ? `Sorry, I could not match that to a menu item. Please choose an item code like *01* or type the dish name:\n\n${menuPrompt}`
+            : `Entschuldigung, wir haben die Auswahl nicht verstanden. Bitte wählen Sie einen Artikelcode wie *01* oder nennen Sie den Namen:\n\n${menuPrompt}`;
         }
       } else if (step === "customizing") {
         let addedCombo = text.includes("ja") || text.includes("yes") || text.includes("نعم") || text.includes("com");
@@ -1491,7 +1682,7 @@ You MUST reply with a JSON object in this exact schema structure:
       } else if (step === "confirming") {
         if (text.includes("1") || text.includes("yes") || text.includes("best") || text.includes("ta") || text.includes("نعم") || text.includes("تأكيد")) {
           if (isBelowDeliveryMinimum(convo, branchConfig)) {
-            botReplyText = `${getMinimumOrderReply(lang, toFiniteNumber(convo.unsubmittedOrder?.subtotal, 0), branchConfig)}\n\n${getMenuPrompt(lang)}`;
+            botReplyText = `${getMinimumOrderReply(lang, toFiniteNumber(convo.unsubmittedOrder?.subtotal, 0), branchConfig)}\n\n${getMenuPrompt(lang, dbMenuItems, dbCategories, branchConfig, orderTypeForMenu(convo))}`;
             nextStep = "menu";
           } else {
             const count = await Order.countDocuments();
