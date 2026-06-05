@@ -115,6 +115,45 @@ function translatedText(value: any, lang: "ar" | "de" | "en"): string {
   return value[lang] || value.de || value.en || value.ar || "";
 }
 
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Radius of the Earth in km
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) *
+      Math.cos(lat2 * (Math.PI / 180)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c; // Distance in km
+}
+
+async function geocodeAddress(addressText: string): Promise<{ latitude: number; longitude: number } | null> {
+  try {
+    const encoded = encodeURIComponent(addressText);
+    const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encoded}`;
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent": "MR-Tabboush-Whatsapp-Ordering-System/1.0",
+      },
+    });
+    if (response.ok) {
+      const data = await response.json();
+      if (Array.isArray(data) && data.length > 0) {
+        const lat = parseFloat(data[0].lat);
+        const lon = parseFloat(data[0].lon);
+        if (Number.isFinite(lat) && Number.isFinite(lon)) {
+          return { latitude: lat, longitude: lon };
+        }
+      }
+    }
+  } catch (err) {
+    console.error("[Geocode] Failed to geocode address:", addressText, err);
+  }
+  return null;
+}
+
 type CustomerLanguage = "ar" | "de" | "en";
 
 type BranchFulfillmentConfig = {
@@ -129,6 +168,8 @@ type BranchFulfillmentConfig = {
   deliveryRadiusKm: number;
   deliveryFee: number;
   minOrderAmount: number;
+  branchLatitude?: number;
+  branchLongitude?: number;
 };
 
 const DEFAULT_BRANCH_CONFIG: BranchFulfillmentConfig = {
@@ -142,6 +183,8 @@ const DEFAULT_BRANCH_CONFIG: BranchFulfillmentConfig = {
   deliveryRadiusKm: 4,
   deliveryFee: 1.5,
   minOrderAmount: 10,
+  branchLatitude: 51.2667,
+  branchLongitude: 7.1833,
 };
 
 function isCustomerLanguage(value: unknown): value is CustomerLanguage {
@@ -716,6 +759,8 @@ function branchConfigFromBranch(branch: any, restaurant: any): BranchFulfillment
     deliveryRadiusKm: toFiniteNumber(branch?.deliveryRadiusKm, DEFAULT_BRANCH_CONFIG.deliveryRadiusKm),
     deliveryFee: toFiniteNumber(branch?.deliveryFee, DEFAULT_BRANCH_CONFIG.deliveryFee),
     minOrderAmount: toFiniteNumber(branch?.minOrderAmount, DEFAULT_BRANCH_CONFIG.minOrderAmount),
+    branchLatitude: toFiniteNumber(branch?.latitude, DEFAULT_BRANCH_CONFIG.branchLatitude),
+    branchLongitude: toFiniteNumber(branch?.longitude, DEFAULT_BRANCH_CONFIG.branchLongitude),
   };
 }
 
@@ -1819,14 +1864,74 @@ You MUST reply with a JSON object in this exact schema structure:
           }
         }
       } else if (step === "address") {
-        convo.unsubmittedOrder = { ...convo.unsubmittedOrder, deliveryAddress: message };
-        const menuPrompt = getMenuPrompt(lang, dbMenuItems, dbCategories, branchConfig, orderTypeForMenu(convo));
-        botReplyText = isAr
-          ? `حفظنا العنوان بنجاح! 📍\n${menuPrompt}`
-          : isEn
-          ? `Delivery Address saved! 📍\n${menuPrompt}`
-          : `Lieferadresse gespeichert! 📍\n${menuPrompt}`;
-        nextStep = "menu";
+        const latitude = req.body.latitude;
+        const longitude = req.body.longitude;
+        
+        let targetLat: number | undefined = undefined;
+        let targetLon: number | undefined = undefined;
+        let isGps = false;
+        
+        if (latitude !== undefined && longitude !== undefined) {
+          targetLat = Number(latitude);
+          targetLon = Number(longitude);
+          isGps = true;
+        } else {
+          // Geocode typed address text
+          const branchCity = branchConfig.branchCity || "Wuppertal";
+          const searchQuery = message.toLowerCase().includes(branchCity.toLowerCase())
+            ? message
+            : `${message}, ${branchCity}`;
+            
+          const coords = await geocodeAddress(searchQuery);
+          if (coords) {
+            targetLat = coords.latitude;
+            targetLon = coords.longitude;
+          }
+        }
+        
+        if (targetLat !== undefined && targetLon !== undefined && Number.isFinite(targetLat) && Number.isFinite(targetLon)) {
+          const branchLat = branchConfig.branchLatitude || 51.2667;
+          const branchLon = branchConfig.branchLongitude || 7.1833;
+          
+          const distance = calculateDistance(targetLat, targetLon, branchLat, branchLon);
+          const maxRadius = branchConfig.deliveryRadiusKm || 4;
+          
+          if (distance > maxRadius) {
+            botReplyText = isAr
+              ? `عذراً، العنوان المدخل (على بعد ${distance.toFixed(2)} كم) خارج نطاق التوصيل الخاص بنا (${maxRadius} كم).\nيرجى إرسال موقع آخر أو كتابة عنوانك يدوياً داخل فوبيرتال، أو اكتب "استلام" لتغيير الطلب إلى استلام من الفرع.`
+              : isEn
+              ? `Sorry, the address provided (distance: ${distance.toFixed(2)} km) is outside our delivery radius of ${maxRadius} km.\nPlease send another address, or type "pickup" to collect it yourself.`
+              : `Es tut uns leid, die angegebene Adresse (Entfernung: ${distance.toFixed(2)} km) liegt außerhalb unseres Lieferradius von ${maxRadius} km.\nBitte geben Sie eine andere Adresse ein oder schreiben Sie "abholung", um die Bestellung selbst abzuholen.`;
+            nextStep = "address";
+          } else {
+            const addressString = isGps
+              ? `WhatsApp Shared Location (Lat: ${targetLat.toFixed(5)}, Lon: ${targetLon.toFixed(5)}, Distance: ${distance.toFixed(2)} km)`
+              : `${message} (Verified Distance: ${distance.toFixed(2)} km)`;
+              
+            convo.unsubmittedOrder = {
+              ...convo.unsubmittedOrder,
+              deliveryAddress: addressString
+            };
+            
+            const menuPrompt = getMenuPrompt(lang, dbMenuItems, dbCategories, branchConfig, orderTypeForMenu(convo));
+            botReplyText = isAr
+              ? `تم التحقق من العنوان بنجاح! موقعك على بعد ${distance.toFixed(2)} كم وهو ضمن نطاق التوصيل. 📍\n\n${menuPrompt}`
+              : isEn
+              ? `Address verified successfully! You are ${distance.toFixed(2)} km away, which is within our delivery zone. 📍\n\n${menuPrompt}`
+              : `Adresse erfolgreich verifiziert! Sie sind ${distance.toFixed(2)} km entfernt, was innerhalb unseres Liefergebiets liegt. 📍\n\n${menuPrompt}`;
+            nextStep = "menu";
+          }
+        } else {
+          // Geocoding failed and no GPS coordinate was passed
+          convo.unsubmittedOrder = { ...convo.unsubmittedOrder, deliveryAddress: message };
+          const menuPrompt = getMenuPrompt(lang, dbMenuItems, dbCategories, branchConfig, orderTypeForMenu(convo));
+          botReplyText = isAr
+            ? `حفظنا العنوان: *${message}*. (ملاحظة: لم نتمكن من تحديد موقعك بدقة على الخارطة، يرجى التأكد من كتابة الشارع والرقم بشكل صحيح). 📍\n\n${menuPrompt}`
+            : isEn
+            ? `Address saved: *${message}*. (Note: We couldn't verify this address on the map, please make sure the street and number are correct). 📍\n\n${menuPrompt}`
+            : `Lieferadresse gespeichert: *${message}*. (Hinweis: Adresse konnte nicht kartiert werden, bitte prüfen Sie Straße und Hausnummer). 📍\n\n${menuPrompt}`;
+          nextStep = "menu";
+        }
       } else if (step === "pickup_time") {
         convo.unsubmittedOrder = { ...convo.unsubmittedOrder, pickupTime: message };
         const menuPrompt = getMenuPrompt(lang, dbMenuItems, dbCategories, branchConfig, orderTypeForMenu(convo));
@@ -1994,7 +2099,7 @@ You MUST reply with a JSON object in this exact schema structure:
     emitGlobal("conversation:updated", serializeDoc(convo));
 
     const allOrders = await Order.find().sort({ createdAt: -1 }).lean();
-    res.json({ conversation: serializeDoc(convo), dbOrders: serializeDocs(allOrders), botReplyText });
+    res.json({ conversation: serializeDoc(convo), dbOrders: serializeDocs(allOrders), botReplyText, orderPlaced: !!finalPlacedOrder });
   } catch (err) {
     console.error("[API] POST /api/bot-reply error:", err);
     res.status(500).json({ error: "Bot processing failed" });

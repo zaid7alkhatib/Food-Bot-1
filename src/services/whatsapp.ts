@@ -62,13 +62,36 @@ function getCustomerIdentity(msg: any) {
   };
 }
 
-async function processIncomingBotMessage(sock: WASocket, remoteJid: string, text: string, identity: ReturnType<typeof getCustomerIdentity>) {
+async function processIncomingBotMessage(
+  sock: WASocket,
+  remoteJid: string,
+  text: string,
+  identity: ReturnType<typeof getCustomerIdentity>,
+  msgKey: any,
+  coords?: { latitude: number; longitude: number }
+) {
+  // Mark message as read instantly (Double Blue Ticks)
+  try {
+    await sock.readMessages([msgKey]);
+  } catch (e) {
+    console.error(`[WhatsApp] Failed to mark message as read:`, e);
+  }
+
+  // Trigger typing Composer indicator
+  try {
+    await sock.sendPresenceUpdate("composing", remoteJid);
+  } catch (e) {
+    console.error(`[WhatsApp] Failed to set composing status:`, e);
+  }
+
   const response = await fetch(`${getInternalBotUrl()}/api/bot-reply`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       ...identity,
       message: text,
+      latitude: coords?.latitude,
+      longitude: coords?.longitude,
     }),
   });
 
@@ -79,6 +102,15 @@ async function processIncomingBotMessage(sock: WASocket, remoteJid: string, text
   const data = await response.json();
   if (data?.botReplyText) {
     await sock.sendMessage(remoteJid, { text: data.botReplyText });
+  }
+
+  // React to original message on successful order placement
+  if (data?.orderPlaced) {
+    try {
+      await sock.sendMessage(remoteJid, { react: { text: "👍", key: msgKey } });
+    } catch (e) {
+      console.error(`[WhatsApp] Failed to send reaction:`, e);
+    }
   }
 }
 
@@ -148,14 +180,26 @@ export async function startWhatsAppSession(sessionName: string, onQR?: (qr: stri
       for (const msg of m.messages) {
         const remoteJid = msg.key.remoteJid;
         if (!msg.key.fromMe && remoteJid && !remoteJid.endsWith("@g.us") && remoteJid !== "status@broadcast" && msg.message) {
-          const text = getMessageText(msg.message);
+          // Check for location message
+          const locMsg = msg.message.locationMessage || msg.message.liveLocationMessage;
+          let coords: { latitude: number; longitude: number } | undefined = undefined;
+          let text = getMessageText(msg.message);
+
+          if (locMsg && locMsg.degreesLatitude !== undefined && locMsg.degreesLongitude !== undefined) {
+            coords = {
+              latitude: locMsg.degreesLatitude,
+              longitude: locMsg.degreesLongitude,
+            };
+            text = `location:${coords.latitude},${coords.longitude}`;
+          }
+
           if (!text.trim()) continue;
 
           const identity = getCustomerIdentity(msg);
           console.log(`[WhatsApp] Message from ${identity.customerName || identity.phone}: ${text}`);
 
           try {
-            await processIncomingBotMessage(sock, remoteJid, text, identity);
+            await processIncomingBotMessage(sock, remoteJid, text, identity, msg.key, coords);
           } catch (err) {
             console.error(`[WhatsApp] Bot reply failed for ${identity.phone}:`, err);
           }
