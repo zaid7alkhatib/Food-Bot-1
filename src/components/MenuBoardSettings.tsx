@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Loader2, Plus, Save, Trash2 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import type { MenuBoardSettings as MenuBoardSettingsType, Category, Translation } from "../types";
+import { useI18n } from "../i18n";
 
 type BranchRecord = {
   _id: string;
@@ -68,6 +69,7 @@ function normalizeSettings(value?: Partial<MenuBoardSettingsType>): MenuBoardSet
 
 export default function MenuBoardSettings() {
   const { token } = useAuth();
+  const { t } = useI18n();
   const [branches, setBranches] = useState<BranchRecord[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedBranchId, setSelectedBranchId] = useState("");
@@ -166,7 +168,7 @@ export default function MenuBoardSettings() {
       setTimeout(() => setCopiedKey(""), 1800);
     } catch (err) {
       console.error("Failed to copy URL:", err);
-      window.alert("Could not copy URL. Please copy it manually from the opened page URL bar.");
+      window.alert(t("menuBoard.copyFailed"));
     }
   };
 
@@ -187,23 +189,23 @@ export default function MenuBoardSettings() {
     const normalizedRotation = Number(settings.rotationSeconds);
 
     if (!Number.isFinite(normalizedRotation) || normalizedRotation < minRotation || normalizedRotation > maxRotation) {
-      return `Rotation seconds must be between ${minRotation} and ${maxRotation}.`;
+      return t("menuBoard.validation.rotationRange", { min: minRotation, max: maxRotation });
     }
 
     const ids = settings.layouts.map((layout) => layout.screenId.trim()).filter(Boolean);
     if (ids.length !== settings.layouts.length) {
-      return "Each layout must have a non-empty screen ID.";
+      return t("menuBoard.validation.screenRequired");
     }
 
     const uniqueIds = new Set(ids);
     if (uniqueIds.size !== ids.length) {
-      return "Screen IDs must be unique per branch.";
+      return t("menuBoard.validation.screenUnique");
     }
 
     for (let i = 0; i < settings.promoSlides.length; i += 1) {
       const imageUrl = settings.promoSlides[i].imageUrl || "";
       if (!isLikelyImageUrl(imageUrl)) {
-        return `Promo slide #${i + 1} has an invalid image URL. Use an http/https image link.`;
+        return t("menuBoard.validation.promoImage", { index: i + 1 });
       }
     }
 
@@ -244,7 +246,7 @@ export default function MenuBoardSettings() {
     return (
       <div className="bg-white rounded-xl border border-gray-100 p-12 text-center">
         <Loader2 size={24} className="animate-spin text-orange-500 mx-auto mb-2" />
-        <span className="text-xs text-gray-500">Loading menu board settings...</span>
+        <span className="text-xs text-gray-500">{t("menuBoard.loading")}</span>
       </div>
     );
   }
@@ -252,7 +254,7 @@ export default function MenuBoardSettings() {
   if (!selectedBranch) {
     return (
       <div className="bg-white rounded-xl border border-gray-100 p-8 text-center text-sm text-gray-500">
-        No branch found.
+        {t("menuBoard.noBranch")}
       </div>
     );
   }
@@ -261,14 +263,14 @@ export default function MenuBoardSettings() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">Menu Board Configurations</h3>
-          <p className="text-xs text-gray-500 mt-0.5">Configure screens, ticker, slides, and language rotation per branch.</p>
+          <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">{t("menuBoard.title")}</h3>
+          <p className="text-xs text-gray-500 mt-0.5">{t("menuBoard.subtitle")}</p>
         </div>
         <div className="flex items-center gap-2">
           {saved && (
             <span className="flex items-center gap-1 text-xs text-emerald-600 font-bold">
               <CheckCircle2 size={14} />
-              Saved
+              {t("common.saved")}
             </span>
           )}
           <button
@@ -277,14 +279,14 @@ export default function MenuBoardSettings() {
             className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 transition disabled:opacity-50"
           >
             {saving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
-            Save Changes
+            {t("common.saveChanges")}
           </button>
         </div>
       </div>
 
       {branches.length > 1 && (
         <div className="bg-white rounded-xl border border-gray-100 p-4">
-          <label className="text-xs font-bold text-gray-700 uppercase tracking-wider block mb-2">Branch</label>
+          <label className="text-xs font-bold text-gray-700 uppercase tracking-wider block mb-2">{t("branch.select")}</label>
           <select
             value={selectedBranchId}
             onChange={(e) => {
@@ -313,7 +315,7 @@ export default function MenuBoardSettings() {
               onChange={(e) => updateSettings({ enabled: e.target.checked })}
               className="w-4 h-4 rounded border-gray-300"
             />
-            Enable Menu Board
+            {t("menuBoard.enable")}
           </label>
 
           <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
@@ -323,39 +325,39 @@ export default function MenuBoardSettings() {
               onChange={(e) => updateSettings({ tickerEnabled: e.target.checked })}
               className="w-4 h-4 rounded border-gray-300"
             />
-            Enable Ticker
+            {t("menuBoard.enableTicker")}
           </label>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
-            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">Language Mode</label>
+            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">{t("menuBoard.languageMode")}</label>
             <select
               value={settings.languageMode}
               onChange={(e) => updateSettings({ languageMode: e.target.value as MenuBoardSettingsType["languageMode"] })}
               className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-sm"
             >
-              <option value="rotate">Rotate</option>
-              <option value="bilingual">Bilingual</option>
-              <option value="fixed">Fixed</option>
+              <option value="rotate">{t("menuBoard.language.rotate")}</option>
+              <option value="bilingual">{t("menuBoard.language.bilingual")}</option>
+              <option value="fixed">{t("menuBoard.language.fixed")}</option>
             </select>
           </div>
 
           <div>
-            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">Fixed Language</label>
+            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">{t("menuBoard.fixedLanguage")}</label>
             <select
               value={settings.fixedLanguage}
               onChange={(e) => updateSettings({ fixedLanguage: e.target.value as MenuBoardSettingsType["fixedLanguage"] })}
               className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-sm"
             >
-              <option value="de">Deutsch</option>
-              <option value="ar">Arabic</option>
-              <option value="en">English</option>
+              <option value="de">{t("common.language.de")}</option>
+              <option value="ar">{t("common.language.ar")}</option>
+              <option value="en">{t("common.language.en")}</option>
             </select>
           </div>
 
           <div>
-            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">Rotation Seconds</label>
+            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">{t("menuBoard.rotationSeconds")}</label>
             <input
               type="number"
               min={5}
@@ -368,7 +370,7 @@ export default function MenuBoardSettings() {
       </div>
 
       <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-3">
-        <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Ticker Text</h4>
+        <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">{t("menuBoard.tickerText")}</h4>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {(["de", "ar", "en"] as const).map((lang) => (
             <input
@@ -385,7 +387,7 @@ export default function MenuBoardSettings() {
 
       <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
         <div className="flex items-center justify-between">
-          <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Screen Layouts</h4>
+          <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">{t("menuBoard.screenLayouts")}</h4>
           <button
             type="button"
             onClick={() => updateSettings({
@@ -403,7 +405,7 @@ export default function MenuBoardSettings() {
             })}
             className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 font-semibold flex items-center gap-1"
           >
-            <Plus size={12} /> Add Screen
+            <Plus size={12} /> {t("menuBoard.addScreen")}
           </button>
         </div>
 
@@ -414,14 +416,14 @@ export default function MenuBoardSettings() {
                 type="text"
                 value={layout.screenId}
                 onChange={(e) => updateLayout(index, { screenId: e.target.value })}
-                placeholder="Screen ID"
+                placeholder={t("menuBoard.placeholder.screenId")}
                 className="bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-sm"
               />
               <input
                 type="text"
                 value={layout.name || ""}
                 onChange={(e) => updateLayout(index, { name: e.target.value })}
-                placeholder="Name"
+                placeholder={t("common.name")}
                 className="bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-sm"
               />
               <select
@@ -429,9 +431,9 @@ export default function MenuBoardSettings() {
                 onChange={(e) => updateLayout(index, { template: e.target.value as any })}
                 className="bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-sm"
               >
-                <option value="grid">Grid</option>
-                <option value="split">Split</option>
-                <option value="highlights">Highlights</option>
+                <option value="grid">{t("menuBoard.template.grid")}</option>
+                <option value="split">{t("menuBoard.template.split")}</option>
+                <option value="highlights">{t("menuBoard.template.highlights")}</option>
               </select>
               <div className="flex items-center gap-3">
                 <label className="flex items-center gap-1 text-xs font-medium">
@@ -440,14 +442,14 @@ export default function MenuBoardSettings() {
                     checked={layout.isActive !== false}
                     onChange={(e) => updateLayout(index, { isActive: e.target.checked })}
                   />
-                  Active
+                  {t("common.active")}
                 </label>
                 <button
                   type="button"
                   onClick={() => updateSettings({ layouts: settings.layouts.filter((_, i) => i !== index) })}
                   className="text-xs text-red-600 hover:text-red-700 flex items-center gap-1"
                 >
-                  <Trash2 size={12} /> Remove
+                  <Trash2 size={12} /> {t("common.remove")}
                 </button>
               </div>
             </div>
@@ -459,7 +461,7 @@ export default function MenuBoardSettings() {
                 disabled={!layout.screenId.trim()}
                 className="text-xs px-3 py-1.5 rounded-lg border border-emerald-300 text-emerald-700 hover:bg-emerald-50 font-semibold disabled:opacity-40"
               >
-                Open Screen URL
+                {t("menuBoard.openScreenUrl")}
               </button>
               <button
                 type="button"
@@ -467,7 +469,7 @@ export default function MenuBoardSettings() {
                 disabled={!layout.screenId.trim()}
                 className="text-xs px-3 py-1.5 rounded-lg border border-emerald-300 text-emerald-700 hover:bg-emerald-50 font-semibold disabled:opacity-40"
               >
-                {copiedKey === `${layout.screenId}-auto` ? "Copied" : "Copy Screen URL"}
+                {copiedKey === `${layout.screenId}-auto` ? t("menuBoard.copied") : t("menuBoard.copyScreenUrl")}
               </button>
               <button
                 type="button"
@@ -475,7 +477,7 @@ export default function MenuBoardSettings() {
                 disabled={!layout.screenId.trim()}
                 className="text-xs px-3 py-1.5 rounded-lg border border-blue-300 text-blue-700 hover:bg-blue-50 font-semibold disabled:opacity-40"
               >
-                Open Fixed Language URL
+                {t("menuBoard.openFixedUrl")}
               </button>
               <button
                 type="button"
@@ -483,12 +485,12 @@ export default function MenuBoardSettings() {
                 disabled={!layout.screenId.trim()}
                 className="text-xs px-3 py-1.5 rounded-lg border border-blue-300 text-blue-700 hover:bg-blue-50 font-semibold disabled:opacity-40"
               >
-                {copiedKey === `${layout.screenId}-${settings.fixedLanguage}` ? "Copied" : "Copy Fixed Language URL"}
+                {copiedKey === `${layout.screenId}-${settings.fixedLanguage}` ? t("menuBoard.copied") : t("menuBoard.copyFixedUrl")}
               </button>
             </div>
 
             <div>
-              <p className="text-[11px] font-bold text-gray-500 uppercase mb-2">Visible Categories</p>
+              <p className="text-[11px] font-bold text-gray-500 uppercase mb-2">{t("menuBoard.visibleCategories")}</p>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-2 max-h-40 overflow-auto pr-1">
                 {categories.map((category) => {
                   const checked = layout.categoryIds.includes(category.id);
@@ -516,7 +518,7 @@ export default function MenuBoardSettings() {
 
       <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
         <div className="flex items-center justify-between">
-          <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Promo Slides</h4>
+          <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">{t("menuBoard.promoSlides")}</h4>
           <button
             type="button"
             onClick={() => updateSettings({
@@ -535,30 +537,30 @@ export default function MenuBoardSettings() {
             })}
             className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 font-semibold flex items-center gap-1"
           >
-            <Plus size={12} /> Add Slide
+            <Plus size={12} /> {t("menuBoard.addSlide")}
           </button>
         </div>
 
         {settings.promoSlides.length === 0 && (
-          <p className="text-xs text-gray-500">No promo slides configured yet.</p>
+          <p className="text-xs text-gray-500">{t("menuBoard.noSlides")}</p>
         )}
 
         {settings.promoSlides.map((slide, index) => (
           <div key={slide.id} className="border border-gray-100 rounded-lg p-4 space-y-3">
             <div className="flex items-center justify-between">
-              <p className="text-xs font-bold text-gray-600 uppercase">Slide #{index + 1}</p>
+              <p className="text-xs font-bold text-gray-600 uppercase">{t("menuBoard.slide", { index: index + 1 })}</p>
               <button
                 type="button"
                 onClick={() => updateSettings({ promoSlides: settings.promoSlides.filter((_, i) => i !== index) })}
                 className="text-xs text-red-600 hover:text-red-700 flex items-center gap-1"
               >
-                <Trash2 size={12} /> Remove
+                <Trash2 size={12} /> {t("common.remove")}
               </button>
             </div>
 
             <input
               type="text"
-              placeholder="Image URL"
+              placeholder={t("menu.imageUrl")}
               value={slide.imageUrl}
               onChange={(e) => updateSlide(index, { imageUrl: e.target.value })}
               className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-sm"
@@ -569,7 +571,7 @@ export default function MenuBoardSettings() {
                 <input
                   key={`title-${lang}`}
                   type="text"
-                  placeholder={`Title (${lang.toUpperCase()})`}
+                  placeholder={`${t("campaign.title")} (${lang.toUpperCase()})`}
                   value={slide.title[lang] || ""}
                   onChange={(e) => updateSlide(index, { title: { ...slide.title, [lang]: e.target.value } })}
                   className="bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-sm"
@@ -582,7 +584,7 @@ export default function MenuBoardSettings() {
                 <input
                   key={`price-${lang}`}
                   type="text"
-                  placeholder={`Price Callout (${lang.toUpperCase()})`}
+                  placeholder={`${t("common.price")} (${lang.toUpperCase()})`}
                   value={slide.priceText[lang] || ""}
                   onChange={(e) => updateSlide(index, { priceText: { ...slide.priceText, [lang]: e.target.value } })}
                   className="bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-sm"
@@ -595,7 +597,7 @@ export default function MenuBoardSettings() {
                 type="text"
                 value={slide.screenIds.join(",")}
                 onChange={(e) => updateSlide(index, { screenIds: e.target.value.split(",").map((v) => v.trim()).filter(Boolean) })}
-                placeholder="Screen IDs (comma separated, blank = all)"
+                placeholder={t("menuBoard.placeholder.screenIds")}
                 className="bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-sm"
               />
               <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
@@ -604,7 +606,7 @@ export default function MenuBoardSettings() {
                   checked={slide.isActive !== false}
                   onChange={(e) => updateSlide(index, { isActive: e.target.checked })}
                 />
-                Active
+                {t("common.active")}
               </label>
             </div>
           </div>

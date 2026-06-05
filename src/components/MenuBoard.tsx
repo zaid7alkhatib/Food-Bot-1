@@ -47,6 +47,30 @@ function normalizeItem(raw: any): MenuItem {
   };
 }
 
+const boardLabels: Record<BoardLanguage, Record<string, string>> = {
+  de: {
+    screen: "Bildschirm",
+    title: "Digitales Menü-Board",
+    disabled: "Das Menü-Board ist für diese Filiale derzeit deaktiviert. Aktivieren Sie es in den Menü-Board Einstellungen.",
+    soldOut: "Ausverkauft",
+    noPromoImage: "Kein Promo-Bild",
+  },
+  ar: {
+    screen: "الشاشة",
+    title: "لوحة قائمة رقمية",
+    disabled: "شاشة القائمة معطلة حاليا لهذا الفرع. يرجى تفعيلها من إعدادات شاشة القائمة.",
+    soldOut: "غير متوفر",
+    noPromoImage: "لا توجد صورة عرض",
+  },
+  en: {
+    screen: "Screen",
+    title: "Digital Menu Board",
+    disabled: "Menu board is currently disabled for this branch. Enable it from Menu Board settings.",
+    soldOut: "Sold Out",
+    noPromoImage: "No promo image",
+  },
+};
+
 export default function MenuBoard() {
   const params = new URLSearchParams(window.location.search);
   const branchId = params.get("branchId") || params.get("branch") || "";
@@ -137,6 +161,7 @@ export default function MenuBoard() {
   const currentSlide = (board?.promoSlides || [])[activeSlide] || null;
 
   const showBilingual = board?.languageMode === "bilingual";
+  const labels = boardLabels[activeLang] || boardLabels.en;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-orange-950 text-white p-6 md:p-10">
@@ -145,18 +170,18 @@ export default function MenuBoard() {
           <div>
             <h1 className="text-4xl md:text-5xl font-black tracking-tight uppercase">{restaurantName}</h1>
             <p className="text-lg md:text-2xl text-orange-300 font-semibold">
-              {branchName ? `${branchName} • ` : ""}Screen {screen}
+              {branchName ? `${branchName} • ` : ""}{labels.screen} {screen}
             </p>
           </div>
           <div className="text-right">
             <p className="text-3xl md:text-4xl font-bold tabular-nums">{clock.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}</p>
-            <p className="text-sm text-white/70 uppercase tracking-wider">Digital Menu Board</p>
+            <p className="text-sm text-white/70 uppercase tracking-wider">{labels.title}</p>
           </div>
         </header>
 
         {!board?.enabled && (
           <div className="rounded-2xl border border-yellow-400/30 bg-yellow-500/10 px-5 py-4 text-yellow-100 text-lg">
-            Menu board is currently disabled for this branch. Enable it from Menu Board settings.
+            {labels.disabled}
           </div>
         )}
 
@@ -186,7 +211,7 @@ export default function MenuBoard() {
                               </div>
                               <div className="text-right">
                                 <p className="text-xl md:text-2xl font-black text-orange-200 whitespace-nowrap">{Number(item.basePrice || 0).toFixed(2)} {currencySymbol}</p>
-                                {soldOut && <span className="text-xs md:text-sm uppercase font-bold text-red-200">Sold Out</span>}
+                                {soldOut && <span className="text-xs md:text-sm uppercase font-bold text-red-200">{labels.soldOut}</span>}
                               </div>
                             </div>
                           </div>
@@ -205,7 +230,7 @@ export default function MenuBoard() {
                 {currentSlide.imageUrl ? (
                   <img src={currentSlide.imageUrl} alt={text(currentSlide.title, activeLang)} className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-white/50 text-lg">No promo image</div>
+                  <div className="w-full h-full flex items-center justify-center text-white/50 text-lg">{labels.noPromoImage}</div>
                 )}
                 <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/85 to-transparent">
                   <p className="text-2xl font-black">{text(currentSlide.title, activeLang)}</p>
