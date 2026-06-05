@@ -1744,6 +1744,9 @@ app.post("/api/bot-reply", async (req, res) => {
 
     if (nextStep === "awaiting_feedback") {
       const ratingMatch = message.trim().match(/^[1-5]/);
+      const feedbackFlowCmd = detectFlowCommand(message);
+      const isOrderStart = /^(هلو|أهلاً|مرحبا|أهلا|طلب|order|hallo|menu|menü|start|bestellen|hi|hello)/i.test(message.trim());
+
       if (ratingMatch) {
         const rating = parseInt(ratingMatch[0]);
         const comment = message.replace(/^[1-5]\s*[-:]*\s*/, "").trim();
@@ -1780,14 +1783,24 @@ app.post("/api/bot-reply", async (req, res) => {
             : `Vielen Dank für Ihr Feedback! Wir arbeiten stets daran, unseren Service zu verbessern. 🌹`;
         }
         nextStep = "welcome";
+      } else if (feedbackFlowCmd === "restart" || feedbackFlowCmd === "cancel" || isOrderStart) {
+        // Customer wants to skip rating and start a new order — allow it
+        convo.unsubmittedOrder = buildEmptyUnsubmittedOrder(convo);
+        nextStep = "type";
+        const skipNote = lang === "ar"
+          ? "يمكنك دائماً تقييمنا لاحقاً! 🌟 لنبدأ طلبك الجديد:\n\n"
+          : lang === "en"
+          ? "You can always rate us later! 🌟 Let's start your new order:\n\n"
+          : "Sie können uns jederzeit später bewerten! 🌟 Starten wir Ihre neue Bestellung:\n\n";
+        botReplyText = skipNote + getWelcomeReply(lang, branchConfig);
       } else {
         const restaurant = await Restaurant.findOne({ isActive: true }).lean();
         const googleMapsReviewLink = restaurant?.googleMapsReviewLink || "";
         botReplyText = lang === "ar"
-          ? `يرجى الرد برقم من 1 إلى 5 لتقييم تجربتك معنا. أو تفضل بزيارة رابط تقييم Google: ${googleMapsReviewLink}`
+          ? `يرجى الرد برقم من 1 إلى 5 لتقييم تجربتك معنا 🌟\nأو اكتب *طلب* أو *99* لبدء طلب جديد.${googleMapsReviewLink ? "\nأو تفضل بزيارة رابط تقييم Google: " + googleMapsReviewLink : ""}`
           : lang === "en"
-          ? `Please reply with a number from 1 to 5 to rate your experience. Or visit our Google review page: ${googleMapsReviewLink}`
-          : `Bitte antworten Sie mit einer Zahl von 1 bis 5, um Ihre Erfahrung zu bewerten. Oder besuchen Sie Google: ${googleMapsReviewLink}`;
+          ? `Please reply with a number from 1 to 5 to rate your experience 🌟\nOr type *order* or *99* to start a new order.${googleMapsReviewLink ? "\nOr visit our Google review page: " + googleMapsReviewLink : ""}`
+          : `Bitte antworten Sie mit einer Zahl von 1 bis 5 🌟\nOder schreiben Sie *bestellen* oder *99* für eine neue Bestellung.${googleMapsReviewLink ? "\nOder besuchen Sie Google: " + googleMapsReviewLink : ""}`;
       }
     } else if (nextStep === "language_selection") {
       const selectedLanguage = parseLanguageSelection(message);
