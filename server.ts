@@ -1215,6 +1215,13 @@ app.put("/api/orders/:id/status", authMiddleware as any, requireRole(...ORDER_RO
         });
         convo.updatedAt = new Date();
         await convo.save();
+
+        // Send actual WhatsApp message if session is active
+        try {
+          await sendConversationWhatsAppMessage(convo, msgText);
+        } catch (wsErr: any) {
+          console.warn(`[API] Failed to deliver real WhatsApp status notification:`, wsErr.message);
+        }
       }
     }
 
