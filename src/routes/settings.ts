@@ -54,9 +54,9 @@ router.get("/order-status-messages", requireRole(...MANAGER_ROLES) as any, async
   // In the future, these should come from the Restaurant document
   const messages = {
     received: {
-      ar: "✅ تم استلام طلبك رقم *{orderNumber}* بنجاح! وهو قيد المراجعة والتدقيق الآن من قبل فريق طابوش. سنخطرك فور قبوله والبدء في التحضير.",
+      ar: "✅ تم استلام طلبك رقم *{orderNumber}* بنجاح! وهو قيد المراجعة والتدقيق الآن من قبل فريق {restaurantName}. سنخطرك فور قبوله والبدء في التحضير.",
       de: "✅ Ihre Bestellung *{orderNumber}* wurde erfolgreich empfangen! Unser Team prüft sie jetzt. Wir informieren Sie, sobald mit der Zubereitung begonnen wird.",
-      en: "✅ Your order *{orderNumber}* has been successfully received and is currently under review by the MR. Tabboush team. We will notify you once accepted and preparing.",
+      en: "✅ Your order *{orderNumber}* has been successfully received and is currently under review by the {restaurantName} team. We will notify you once accepted and preparing.",
     },
     accepted: {
       ar: "👍 تم قبول طلبك رقم *{orderNumber}* من قبل الكاشير. إجمالي الطلب: {total}. طريقة الدفع: {paymentMethod}.",
@@ -79,9 +79,9 @@ router.get("/order-status-messages", requireRole(...MANAGER_ROLES) as any, async
       en: "🛵 Delivery hero dispatched! Your order *{orderNumber}* is on its way. Please keep your phone active for the delivery feedback.",
     },
     delivered: {
-      ar: "🍽️ بالهناء والشفاء! تم تسليم الطلب رقم *{orderNumber}*. نأمل أن تنال الوجبة إعجابكم. شكرًا لاختياركم مستر طابوش!",
+      ar: "🍽️ بالهناء والشفاء! تم تسليم الطلب رقم *{orderNumber}*. نأمل أن تنال الوجبة إعجابكم. شكرًا لاختياركم {restaurantName}!",
       de: "🍽️ Guten Appetit! Ihre Bestellung *{orderNumber}* wurde erfolgreich geliefert. Wir hoffen, es schmeckt Ihnen. Vielen Dank für Ihre Wahl!",
-      en: "🍽️ Enjoy your meal! Your order *{orderNumber}* has been delivered successfully. We hope you love the taste of Syria. Thank you for choosing MR. Tabboush!",
+      en: "🍽️ Enjoy your meal! Your order *{orderNumber}* has been delivered successfully. We hope you love the taste of Syria. Thank you for choosing {restaurantName}!",
     },
     cancelled: {
       ar: "❌ نعتذر منك بشدة، تم إلغاء طلبك رقم *{orderNumber}*. للتعرف على السبب أو للاستفسار، يمكنك الرد بكلمة 'وكيل' للتحدث مع الدعم الفني.",

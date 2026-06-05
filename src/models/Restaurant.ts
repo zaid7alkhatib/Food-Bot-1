@@ -4,6 +4,8 @@ export interface IRestaurant extends Document {
   name: string;
   legalName?: string;
   logo?: string;
+  primaryColor?: string;
+  secondaryColor?: string;
   phone: string;
   whatsappNumber: string;
   email?: string;
@@ -24,6 +26,8 @@ const RestaurantSchema = new Schema<IRestaurant>(
     name: { type: String, required: true },
     legalName: String,
     logo: String,
+    primaryColor: { type: String, default: "#ea580c" },
+    secondaryColor: { type: String, default: "#1f2937" },
     phone: { type: String, required: true },
     whatsappNumber: { type: String, required: true },
     email: String,

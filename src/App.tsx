@@ -124,6 +124,7 @@ function Dashboard() {
 
   // State populated from the server
   const [branchInfo, setBranchInfo] = useState<any>(null);
+  const [restaurantInfo, setRestaurantInfo] = useState<any>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -158,6 +159,7 @@ function Dashboard() {
       if (response.ok) {
         const data = await response.json();
         setBranchInfo(data.branch);
+        setRestaurantInfo(data.restaurant);
         setCategories(data.categories);
         setMenuItems(data.menuItems);
         setOrders(data.orders);
@@ -450,12 +452,16 @@ function Dashboard() {
         <div className="max-w-7xl mx-auto px-4 py-3 sm:py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
           {/* Brand */}
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-orange-500 text-white flex items-center justify-center font-bold text-xl shadow-lg ring-2 ring-white/20 transform rotate-[-2deg] select-none hover:rotate-[6deg] transition duration-200">
-              🌯
-            </div>
+            {restaurantInfo?.logo ? (
+              <img src={restaurantInfo.logo} alt={restaurantInfo.name} className="w-12 h-12 rounded-xl object-cover shadow-lg ring-2 ring-white/20 transform rotate-[-2deg] hover:rotate-[6deg] transition duration-200" />
+            ) : (
+              <div className="w-12 h-12 rounded-xl bg-orange-500 text-white flex items-center justify-center font-bold text-xl shadow-lg ring-2 ring-white/20 transform rotate-[-2deg] select-none hover:rotate-[6deg] transition duration-200">
+                🌯
+              </div>
+            )}
             <div className="leading-snug text-center sm:text-left">
               <h1 className="text-lg sm:text-xl font-serif font-bold tracking-tight flex items-center justify-center sm:justify-start gap-2">
-                MR. Tabboush
+                {restaurantInfo?.name || "MR. Tabboush"}
                 <span className="text-xs bg-orange-500 text-white px-2.5 py-0.5 rounded-full font-sans tracking-wide">{t("app.system")}</span>
               </h1>
               <p className="text-xs text-slate-400 flex items-center gap-1.5 justify-center sm:justify-start">
@@ -521,8 +527,8 @@ function Dashboard() {
             )}
 
             <div className="hidden md:flex flex-col text-right text-xs leading-tight text-slate-400">
-              <span className="font-bold text-white">Berliner Str. 179</span>
-              <span>{t("app.addressLine")}</span>
+              <span className="font-bold text-white">{branchInfo?.address || "Berliner Str. 179"}</span>
+              <span>{branchInfo?.city || t("app.addressLine")}</span>
             </div>
           </div>
         </div>
@@ -552,6 +558,7 @@ function Dashboard() {
               activeConvoId={null}
               setActiveConvoId={() => {}}
               currencySymbol={currencySymbol}
+              restaurantName={restaurantInfo?.name || "MR. Tabboush"}
             />
 
             <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 text-xs text-orange-950 leading-relaxed shadow-sm">

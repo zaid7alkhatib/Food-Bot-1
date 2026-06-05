@@ -10,6 +10,7 @@ interface PhoneSimulatorProps {
   activeConvoId: string | null;
   setActiveConvoId: (id: string | null) => void;
   currencySymbol: string;
+  restaurantName?: string;
 }
 
 export default function PhoneSimulator({
@@ -19,6 +20,7 @@ export default function PhoneSimulator({
   activeConvoId,
   setActiveConvoId,
   currencySymbol,
+  restaurantName = "MR. Tabboush",
 }: PhoneSimulatorProps) {
   const { t } = useI18n();
   const [phoneNumber, setPhoneNumber] = useState("+491571234567");
@@ -194,7 +196,7 @@ export default function PhoneSimulator({
                   </div>
                   <div className="leading-tight">
                     <h3 className="font-semibold text-xs flex items-center gap-1">
-                      MR. Tabboush Bot 
+                      {restaurantName} Bot 
                       <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
                     </h3>
                     <p className="text-[9px] text-[#b3e5fc]">{t("phone.onlineSystem")}</p>

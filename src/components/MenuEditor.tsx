@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Plus, Trash, Edit3, Languages, Save, ShoppingBag, FolderOpen, Image as ImageIcon } from "lucide-react";
-import { MenuItem, Category, UpsellSuggestion } from "../types";
+import { MenuItem, Category, UpsellSuggestion, ModifierGroup, ModifierOption } from "../types";
 import { useI18n } from "../i18n";
 
 interface MenuEditorProps {
@@ -43,6 +43,30 @@ function normalizeUpsellSuggestions(upsells: UpsellSuggestion[] = []): UpsellSug
   }));
 }
 
+function normalizeModifierGroups(groups: ModifierGroup[] = []): ModifierGroup[] {
+  return groups.map((g) => ({
+    id: g.id || `mod-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+    name: {
+      ar: g.name?.ar || "",
+      de: g.name?.de || "",
+      en: g.name?.en || "",
+    },
+    type: g.type === "multiple" ? "multiple" : "single",
+    isRequired: g.isRequired === true,
+    minSelections: Number(g.minSelections) || 0,
+    maxSelections: Number(g.maxSelections) || 1,
+    options: (g.options || []).map((opt) => ({
+      id: opt.id || `opt-${Math.random().toString(36).slice(2, 8)}`,
+      name: {
+        ar: opt.name?.ar || "",
+        de: opt.name?.de || "",
+        en: opt.name?.en || "",
+      },
+      priceAdjustment: Number(opt.priceAdjustment) || 0,
+    })),
+  }));
+}
+
 export default function MenuEditor({
   categories,
   menuItems,
@@ -54,7 +78,7 @@ export default function MenuEditor({
   onDeleteCategory,
   currencySymbol,
 }: MenuEditorProps) {
-  const { t, text } = useI18n();
+  const { language, t, text } = useI18n();
   const [activeCategoryId, setActiveCategoryId] = useState<string>("");
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
 
@@ -71,6 +95,7 @@ export default function MenuEditor({
   const [imageUrl, setImageUrl] = useState("");
   const [prepMinutes, setPrepMinutes] = useState(10);
   const [upsellDrafts, setUpsellDrafts] = useState<UpsellSuggestion[]>([]);
+  const [modGroupsDraft, setModGroupsDraft] = useState<ModifierGroup[]>([]);
   const [editingCategoryId, setEditingCategoryId] = useState<string | "new" | null>(null);
   const [categoryNameAr, setCategoryNameAr] = useState("");
   const [categoryNameDe, setCategoryNameDe] = useState("");
@@ -108,6 +133,7 @@ export default function MenuEditor({
     setImageUrl(item.image || "");
     setPrepMinutes(item.preparationTimeMinutes || 10);
     setUpsellDrafts(normalizeUpsellSuggestions(item.upsellSuggestions));
+    setModGroupsDraft(normalizeModifierGroups(item.modifierGroups));
   };
 
   const handleStartAddCategory = () => {
@@ -170,6 +196,7 @@ export default function MenuEditor({
       preparationTimeMinutes: Number(prepMinutes) || 0,
       isBestSeller,
       upsellSuggestions: normalizeUpsellSuggestions(upsellDrafts).filter((upsell) => upsell.suggestedItemName.ar || upsell.suggestedItemName.de || upsell.suggestedItemName.en),
+      modifierGroups: normalizeModifierGroups(modGroupsDraft),
     });
     setEditingItemId(null);
   };
@@ -197,6 +224,119 @@ export default function MenuEditor({
         price: linkedItem.basePrice,
       };
     }));
+  };
+
+  // Helper to add a new modifier group
+  const handleAddNewModGroup = () => {
+    setModGroupsDraft((prev) => [
+      ...prev,
+      {
+        id: `mod-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+        name: { ar: "", de: "", en: "" },
+        type: "single",
+        isRequired: false,
+        minSelections: 0,
+        maxSelections: 1,
+        options: [],
+      },
+    ]);
+  };
+
+  // Helper to update a modifier group's fields
+  const handleUpdateModGroup = (index: number, patch: Partial<ModifierGroup>) => {
+    setModGroupsDraft((prev) =>
+      prev.map((g, i) => (i === index ? { ...g, ...patch } : g))
+    );
+  };
+
+  // Helper to update a modifier group's name translation
+  const handleUpdateModGroupName = (index: number, lang: "ar" | "de" | "en", value: string) => {
+    setModGroupsDraft((prev) =>
+      prev.map((g, i) =>
+        i === index
+          ? { ...g, name: { ...g.name, [lang]: value } }
+          : g
+      )
+    );
+  };
+
+  // Helper to remove a modifier group
+  const handleRemoveModGroup = (index: number) => {
+    setModGroupsDraft((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Helper to add a new option to a modifier group
+  const handleAddNewModOption = (groupIndex: number) => {
+    setModGroupsDraft((prev) =>
+      prev.map((g, i) => {
+        if (i !== groupIndex) return g;
+        return {
+          ...g,
+          options: [
+            ...g.options,
+            {
+              id: `opt-${Math.random().toString(36).slice(2, 8)}`,
+              name: { ar: "", de: "", en: "" },
+              priceAdjustment: 0,
+            },
+          ],
+        };
+      })
+    );
+  };
+
+  // Helper to update an option inside a modifier group
+  const handleUpdateModOption = (
+    groupIndex: number,
+    optionIndex: number,
+    patch: Partial<ModifierOption>
+  ) => {
+    setModGroupsDraft((prev) =>
+      prev.map((g, i) => {
+        if (i !== groupIndex) return g;
+        return {
+          ...g,
+          options: g.options.map((opt, oIdx) =>
+            oIdx === optionIndex ? { ...opt, ...patch } : opt
+          ),
+        };
+      })
+    );
+  };
+
+  // Helper to update an option's name translation inside a modifier group
+  const handleUpdateModOptionName = (
+    groupIndex: number,
+    optionIndex: number,
+    lang: "ar" | "de" | "en",
+    value: string
+  ) => {
+    setModGroupsDraft((prev) =>
+      prev.map((g, i) => {
+        if (i !== groupIndex) return g;
+        return {
+          ...g,
+          options: g.options.map((opt, oIdx) =>
+            oIdx === optionIndex
+              ? { ...opt, name: { ...opt.name, [lang]: value } }
+              : opt
+          ),
+        };
+      })
+    );
+  };
+
+  // Helper to remove an option from a modifier group
+  const handleRemoveModOption = (groupIndex: number, optionIndex: number) => {
+    setModGroupsDraft((prev) =>
+      prev.map((g, i) => {
+        if (i !== groupIndex) return g;
+        return {
+          ...g,
+          options: g.options.filter((_, oIdx) => oIdx !== optionIndex),
+        };
+      })
+    );
   };
 
   const handleAddNewItem = () => {
@@ -638,6 +778,192 @@ export default function MenuEditor({
                                       className="w-full bg-white p-2 border border-neutral-300 rounded outline-none"
                                     />
                                   </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Modifier Groups Section */}
+                      <div className="pt-3 border-t border-neutral-200 space-y-2">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <h4 className="text-[11px] font-bold text-neutral-800 uppercase">{language === "ar" ? "خيارات التعديل والتخصيص" : "Anpassungsoptionen & Modifikatoren"}</h4>
+                            <p className="text-[10px] text-gray-400">
+                              {language === "ar" ? "إضافة مجموعات خيارات مثل (الصلصات، درجة الحرارة، الإضافات) مع تحديد الأسعار والخيارات" : "Fügen Sie Gruppen wie Soßen oder Beilagen hinzu, um Kunden Auswahlmöglichkeiten zu geben."}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleAddNewModGroup}
+                            className="px-2 py-1 bg-white border border-neutral-200 hover:border-orange-400 text-neutral-700 rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer select-none"
+                          >
+                            <Plus size={11} />
+                            {language === "ar" ? "إضافة مجموعة جديدة" : "Gruppe hinzufügen"}
+                          </button>
+                        </div>
+
+                        {modGroupsDraft.length === 0 ? (
+                          <div className="text-[11px] text-gray-400 bg-white border border-dashed border-neutral-200 rounded-lg p-3">
+                            {language === "ar" ? "لا توجد خيارات تعديل مضافة لهذا الصنف." : "Keine Anpassungsgruppen für dieses Gericht."}
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            {modGroupsDraft.map((group, gIdx) => (
+                              <div key={group.id} className="bg-white border border-neutral-200 rounded-xl p-3.5 space-y-3 shadow-xs">
+                                {/* Group Title / Remove button */}
+                                <div className="flex items-center justify-between gap-3 pb-2 border-b border-neutral-100">
+                                  <div className="flex items-center gap-2">
+                                    <span className="w-5 h-5 rounded-full bg-neutral-100 text-neutral-500 font-mono text-[10px] font-bold flex items-center justify-center">
+                                      {gIdx + 1}
+                                    </span>
+                                    <span className="text-[11px] font-bold text-neutral-800 font-sans">
+                                      {group.name[activeTranslationTab] || `Group #${gIdx + 1}`}
+                                    </span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveModGroup(gIdx)}
+                                    className="p-1 text-red-500 hover:bg-red-50 rounded transition cursor-pointer select-none"
+                                    title="Löschen"
+                                  >
+                                    <Trash size={13} />
+                                  </button>
+                                </div>
+
+                                {/* Group Parameters */}
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
+                                  <div className="col-span-1 md:col-span-2">
+                                    <label className="block text-[10px] text-gray-400 font-bold mb-1">
+                                      {language === "ar" ? "اسم المجموعة" : "Gruppenname"} ({activeTranslationTab.toUpperCase()})
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={group.name[activeTranslationTab] || ""}
+                                      onChange={(e) => handleUpdateModGroupName(gIdx, activeTranslationTab, e.target.value)}
+                                      className="w-full bg-white p-2 border border-neutral-300 rounded outline-none font-sans"
+                                      placeholder="z.B. Extra Soßen"
+                                    />
+                                  </div>
+
+                                  <div>
+                                    <label className="block text-[10px] text-gray-400 font-bold mb-1">{language === "ar" ? "نوع الاختيار" : "Auswahltyp"}</label>
+                                    <select
+                                      value={group.type}
+                                      onChange={(e) => handleUpdateModGroup(gIdx, { type: e.target.value as "single" | "multiple" })}
+                                      className="w-full bg-white p-2 border border-neutral-300 rounded outline-none"
+                                    >
+                                      <option value="single">{language === "ar" ? "اختيار واحد فقط (Radio)" : "Einzelne Auswahl (Radio)"}</option>
+                                      <option value="multiple">{language === "ar" ? "اختيارات متعددة (Checkbox)" : "Mehrfachauswahl (Checkbox)"}</option>
+                                    </select>
+                                  </div>
+
+                                  <div className="flex items-center gap-2 pt-3">
+                                    <input
+                                      type="checkbox"
+                                      id={`req-${group.id}`}
+                                      checked={group.isRequired}
+                                      onChange={(e) => {
+                                        const checked = e.target.checked;
+                                        handleUpdateModGroup(gIdx, { 
+                                          isRequired: checked,
+                                          minSelections: checked ? 1 : 0
+                                        });
+                                      }}
+                                      className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded cursor-pointer"
+                                    />
+                                    <label htmlFor={`req-${group.id}`} className="font-bold text-neutral-700 select-none cursor-pointer">
+                                      {language === "ar" ? "إجباري للطلب" : "Erforderlich"}
+                                    </label>
+                                  </div>
+                                </div>
+
+                                {/* Rules details (min/max selection) */}
+                                {group.type === "multiple" && (
+                                  <div className="grid grid-cols-2 gap-3 p-2 bg-stone-50 rounded-lg border border-stone-100 text-xs">
+                                    <div>
+                                      <label className="block text-[9px] text-gray-400 font-bold mb-1">Min. Selections</label>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        value={group.minSelections}
+                                        onChange={(e) => handleUpdateModGroup(gIdx, { minSelections: Number(e.target.value) })}
+                                        className="w-full bg-white p-1.5 border border-stone-200 rounded text-[11px] outline-none font-mono"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="block text-[9px] text-gray-400 font-bold mb-1">Max. Selections</label>
+                                      <input
+                                        type="number"
+                                        min="1"
+                                        value={group.maxSelections}
+                                        onChange={(e) => handleUpdateModGroup(gIdx, { maxSelections: Number(e.target.value) })}
+                                        className="w-full bg-white p-1.5 border border-stone-200 rounded text-[11px] outline-none font-mono"
+                                      />
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Options list inside the group */}
+                                <div className="pl-4 border-l-2 border-stone-100 space-y-2 mt-2">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-bold text-neutral-600 uppercase tracking-wide">
+                                      {language === "ar" ? "الخيارات المتاحة" : "Optionen"}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleAddNewModOption(gIdx)}
+                                      className="text-orange-500 hover:text-orange-600 text-[10px] font-bold flex items-center gap-1 select-none cursor-pointer"
+                                    >
+                                      <Plus size={10} />
+                                      {language === "ar" ? "إضافة خيار" : "Option hinzufügen"}
+                                    </button>
+                                  </div>
+
+                                  {group.options.length === 0 ? (
+                                    <div className="text-[10px] text-gray-400 bg-stone-50/50 border border-stone-100 rounded-lg p-2 text-center">
+                                      {language === "ar" ? "لا توجد خيارات مضافة بعد." : "Keine Optionen hinzugefügt."}
+                                    </div>
+                                  ) : (
+                                    <div className="space-y-2">
+                                      {group.options.map((opt, oIdx) => (
+                                        <div key={opt.id} className="bg-stone-50/50 border border-neutral-150 rounded-lg p-2 flex items-center gap-2 text-xs">
+                                          <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2">
+                                            <div>
+                                              <input
+                                                type="text"
+                                                value={opt.name[activeTranslationTab] || ""}
+                                                onChange={(e) => handleUpdateModOptionName(gIdx, oIdx, activeTranslationTab, e.target.value)}
+                                                className="w-full bg-white p-1.5 border border-stone-200 rounded text-[11px] outline-none font-medium font-sans"
+                                                placeholder={language === "ar" ? "مثال: بدون بصل" : "z.B. Extra Käse"}
+                                              />
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                              <span className="text-[10px] text-stone-400 font-mono">+</span>
+                                              <input
+                                                type="number"
+                                                step="0.05"
+                                                value={opt.priceAdjustment}
+                                                onChange={(e) => handleUpdateModOption(gIdx, oIdx, { priceAdjustment: Number(e.target.value) })}
+                                                className="w-full bg-white p-1.5 border border-stone-200 rounded text-[11px] outline-none font-mono"
+                                                placeholder="0.00"
+                                              />
+                                              <span className="text-[10px] text-stone-400 font-mono">{currencySymbol}</span>
+                                            </div>
+                                          </div>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleRemoveModOption(gIdx, oIdx)}
+                                            className="p-1.5 text-red-500 hover:bg-red-50 rounded transition cursor-pointer select-none"
+                                            title="Löschen"
+                                          >
+                                            <Trash size={12} />
+                                          </button>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             ))}

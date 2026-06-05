@@ -45,6 +45,9 @@ async function seed() {
   const restaurant = await Restaurant.create({
     name: "MR. Tabboush",
     legalName: "Farman GmbH",
+    logo: "https://images.unsplash.com/photo-1626074353765-517a681e40be?w=128&h=128&fit=crop&q=80",
+    primaryColor: "#ea580c",
+    secondaryColor: "#1f2937",
     phone: "+49 202 1234567",
     whatsappNumber: "+49 176 88889999",
     email: "info@mrtabboush.de",

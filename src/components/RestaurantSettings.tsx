@@ -7,6 +7,8 @@ interface Restaurant {
   name: string;
   legalName?: string;
   logo?: string;
+  primaryColor?: string;
+  secondaryColor?: string;
   phone: string;
   whatsappNumber: string;
   email?: string;
@@ -158,6 +160,56 @@ export default function RestaurantSettings() {
               onChange={(e) => updateField("legalName", e.target.value)}
               className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-orange-500"
             />
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">{t("restaurant.logoUrl")}</label>
+            <input
+              type="text"
+              value={restaurant.logo || ""}
+              onChange={(e) => updateField("logo", e.target.value)}
+              placeholder="https://..."
+              className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-orange-500"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">{t("restaurant.primaryColor")}</label>
+              <div className="flex gap-2">
+                <input
+                  type="color"
+                  value={restaurant.primaryColor || "#ea580c"}
+                  onChange={(e) => updateField("primaryColor", e.target.value)}
+                  className="w-10 h-9 p-0 bg-transparent border-0 cursor-pointer rounded-lg overflow-hidden shrink-0"
+                />
+                <input
+                  type="text"
+                  value={restaurant.primaryColor || "#ea580c"}
+                  onChange={(e) => updateField("primaryColor", e.target.value)}
+                  maxLength={7}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-orange-500 font-mono uppercase"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">{t("restaurant.secondaryColor")}</label>
+              <div className="flex gap-2">
+                <input
+                  type="color"
+                  value={restaurant.secondaryColor || "#1f2937"}
+                  onChange={(e) => updateField("secondaryColor", e.target.value)}
+                  className="w-10 h-9 p-0 bg-transparent border-0 cursor-pointer rounded-lg overflow-hidden shrink-0"
+                />
+                <input
+                  type="text"
+                  value={restaurant.secondaryColor || "#1f2937"}
+                  onChange={(e) => updateField("secondaryColor", e.target.value)}
+                  maxLength={7}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-orange-500 font-mono uppercase"
+                />
+              </div>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

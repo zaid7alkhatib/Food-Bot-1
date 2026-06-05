@@ -15,7 +15,12 @@ import {
   ArrowLeft,
   ThumbsUp,
   Sparkles,
-  DollarSign
+  DollarSign,
+  Flame,
+  Bell,
+  Droplet,
+  FileText,
+  MessageSquare
 } from "lucide-react";
 
 interface SmartMenuProps {
@@ -32,6 +37,9 @@ export default function SmartMenu({ tableNumber, branchId }: SmartMenuProps) {
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [currency, setCurrency] = useState({ code: "EUR", symbol: "€" });
   const [branchName, setBranchName] = useState("");
+  const [restaurantName, setRestaurantName] = useState("MR. Tabboush");
+  const [logoUrl, setLogoUrl] = useState("");
+  const [brandStyles, setBrandStyles] = useState<React.CSSProperties>({});
   const [isLoading, setIsLoading] = useState(true);
 
   // Cart State
@@ -58,6 +66,12 @@ export default function SmartMenu({ tableNumber, branchId }: SmartMenuProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const socketRef = useRef<Socket | null>(null);
 
+  // Service Request State (Call Waiter / Request Bill)
+  const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
+  const [isServiceSubmitting, setIsServiceSubmitting] = useState(false);
+  const [serviceSuccessMsg, setServiceSuccessMsg] = useState<string | null>(null);
+  const [activeServiceRequests, setActiveServiceRequests] = useState<string[]>([]);
+
   // Load public menu
   useEffect(() => {
     const fetchMenu = async () => {
@@ -69,7 +83,15 @@ export default function SmartMenu({ tableNumber, branchId }: SmartMenuProps) {
           setCategories(data.categories || []);
           setMenuItems(data.menuItems || []);
           setCurrency(data.currency || { code: "EUR", symbol: "€" });
-          setBranchName(data.branch?.name || "MR. Tabboush");
+          setBranchName(data.branch?.name || data.restaurant?.name || "MR. Tabboush");
+          if (data.restaurant) {
+            setRestaurantName(data.restaurant.name || "MR. Tabboush");
+            setLogoUrl(data.restaurant.logo || "");
+            setBrandStyles({
+              "--brand-primary": data.restaurant.primaryColor || "#ea580c",
+              "--brand-secondary": data.restaurant.secondaryColor || "#1f2937",
+            } as React.CSSProperties);
+          }
         }
       } catch (err) {
         console.error("Failed to fetch menu:", err);
@@ -360,6 +382,61 @@ export default function SmartMenu({ tableNumber, branchId }: SmartMenuProps) {
     }
   };
 
+  // Handle Service Request
+  const handleServiceRequest = async (type: string) => {
+    if (isServiceSubmitting) return;
+    setIsServiceSubmitting(true);
+
+    try {
+      // Emit real-time Socket.io event for dashboard listener
+      if (socketRef.current) {
+        socketRef.current.emit("service:request", {
+          orderId: placedOrder?.id || placedOrder?._id,
+          tableNumber,
+          branchId,
+          type,
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      // Simulate a server roundtrip of 800ms
+      await new Promise((resolve) => setTimeout(resolve, 800));
+
+      // Show beautiful toast feedback
+      let msg = "";
+      if (language === "ar") {
+        if (type === "waiter") msg = "تم إرسال نداء للنادل، سيصلك في أقرب وقت!";
+        else if (type === "bill") msg = "تم طلب الفاتورة، سيحضرها النادل لطاولتك!";
+        else if (type === "water") msg = "تم طلب الماء، سيصلك قريباً!";
+        else msg = "تم إرسال طلب الخدمة بنجاح!";
+      } else if (language === "de") {
+        if (type === "waiter") msg = "Der Service wurde gerufen! Ein Kellner kommt gleich.";
+        else if (type === "bill") msg = "Die Rechnung wurde angefordert! Der Kellner bringt sie an Ihren Tisch.";
+        else if (type === "water") msg = "Wasser wurde angefordert! Wird gleich serviert.";
+        else msg = "Service-Anfrage erfolgreich übermittelt!";
+      } else {
+        if (type === "waiter") msg = "Service summoned! A waiter will be with you shortly.";
+        else if (type === "bill") msg = "Bill requested! A waiter will bring it to your table.";
+        else if (type === "water") msg = "Water requested! Serving shortly.";
+        else msg = "Service request sent successfully!";
+      }
+
+      setServiceSuccessMsg(msg);
+      setActiveServiceRequests((prev) => [...prev, type]);
+
+      // Close the modal after a short delay and clear message
+      setTimeout(() => {
+        setIsServiceModalOpen(false);
+        setServiceSuccessMsg(null);
+      }, 3000);
+    } catch (err) {
+      console.error("Failed to summon service:", err);
+      alert("Failed to send service request.");
+    } finally {
+      setIsServiceSubmitting(false);
+    }
+  };
+
   const getOrderStatusProgress = (status: string) => {
     const steps = ["received", "preparing", "ready_for_pickup", "delivered"];
     const statusMap: Record<string, string> = {
@@ -394,113 +471,130 @@ export default function SmartMenu({ tableNumber, branchId }: SmartMenuProps) {
     const orderNum = placedOrder.orderNumber;
     
     return (
-      <div dir={dir} className="min-h-screen bg-stone-50 text-neutral-800 font-sans flex flex-col">
+      <div dir={dir} style={brandStyles} className="min-h-screen bg-stone-50 text-neutral-800 font-sans flex flex-col animate-fade-in relative select-none">
         {/* Success Header */}
-        <header className="bg-slate-900 border-b-4 border-orange-500 text-white text-center py-5 shadow-md">
-          <h1 className="text-xl font-bold font-serif tracking-tight">MR. TABBOUSH</h1>
-          <p className="text-[10px] text-orange-400 font-mono font-bold tracking-wide uppercase mt-1">
+        <header className="bg-slate-900/95 backdrop-blur-md border-b border-orange-500/20 text-white text-center py-5 shadow-lg sticky top-0 z-40">
+          <h1 className="text-lg font-bold font-serif tracking-tight flex items-center justify-center gap-1.5">
+            {logoUrl ? (
+              <img src={logoUrl} alt={restaurantName} className="w-8 h-8 rounded-lg object-cover shadow-sm" />
+            ) : (
+              <span className="text-orange-500">🌯</span>
+            )}
+            <span>{branchName.toUpperCase()}</span>
+          </h1>
+          <p className="text-[9px] text-orange-400 font-mono font-bold tracking-widest uppercase mt-1 inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-slate-800/60 border border-slate-700/50">
             {t("orders.dineIn")} • {t("orders.table")} {tableNumber}
           </p>
         </header>
 
         {/* Tracking Card */}
-        <main className="flex-1 max-w-md w-full mx-auto p-4 flex flex-col justify-start gap-6 py-8">
-          <div className="bg-white rounded-2xl border border-stone-200/60 p-6 text-center shadow-sm">
-            <div className="w-14 h-14 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-100">
+        <main className="flex-1 max-w-md w-full mx-auto p-4 flex flex-col justify-start gap-5 py-6">
+          <div className="bg-white rounded-2xl border border-stone-200/50 p-6 text-center shadow-sm relative overflow-hidden animate-scale-in">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-400 via-teal-500 to-emerald-400"></div>
+            
+            <div className="w-14 h-14 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-100/60 shadow-sm animate-pulse-subtle">
               <Check size={28} />
             </div>
             
-            <h2 className="text-lg font-bold text-neutral-900 leading-tight">
+            <h2 className="text-base font-bold text-neutral-900 leading-tight">
               {language === "ar" ? "تم إرسال طلبك بنجاح!" : "Bestellung erfolgreich übermittelt!"}
             </h2>
-            <p className="text-xs text-neutral-400 mt-1.5">
+            <p className="text-[11px] text-neutral-400 mt-2 max-w-xs mx-auto leading-relaxed">
               {language === "ar" 
-                ? `طلبك رقم ${orderNum} تم إرساله مباشرة لمطبخ المطعم.`
-                : `Ihre Bestellnummer ist ${orderNum}. Sie wird jetzt frisch zubereitet.`}
+                ? `طلبك رقم ${orderNum} تم إرساله مباشرة لمطبخ المطعم للتحضير.`
+                : `Ihre Bestellnummer ist ${orderNum}. Sie wurde direkt in die Küche übertragen.`}
             </p>
 
             {/* Total Paid Stamp */}
-            <div className="mt-4 p-2 bg-stone-55/40 bg-neutral-50 border border-stone-200/50 rounded-xl inline-flex items-center gap-1.5 text-xs text-neutral-600 font-semibold">
+            <div className="mt-4 p-2 px-3.5 bg-stone-50 border border-stone-200/50 rounded-2xl inline-flex items-center gap-2 text-[11px] text-neutral-600 font-semibold shadow-xs">
               <span>{t("common.total")}:</span>
-              <span className="text-orange-600 font-bold font-mono">
+              <span className="text-orange-600 font-bold font-mono text-xs">
                 {placedOrder.total.toFixed(2)}{currency.symbol}
               </span>
-              <span className="text-[9px] uppercase bg-neutral-200 text-neutral-700 px-2 py-0.5 rounded font-bold">
+              <span className="text-[9px] uppercase bg-stone-200 text-neutral-700 px-2 py-0.5 rounded-md font-bold tracking-wider">
                 {language === "ar" ? "دفع عند الطاولة" : "Pay at Table"}
               </span>
             </div>
           </div>
 
           {/* Progress Timeline */}
-          <div className="bg-white rounded-2xl border border-stone-200/60 p-6 shadow-sm">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-400 mb-5 flex items-center gap-1.5">
+          <div className="bg-white rounded-2xl border border-stone-200/50 p-6 shadow-sm">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-400 mb-6 flex items-center gap-2">
               <Clock size={14} className="text-orange-500" />
               {language === "ar" ? "حالة تحضير الطلب" : "Zubereitungsstatus"}
             </h3>
 
             {placedOrder.status === "cancelled" ? (
-              <div className="p-4 bg-red-50 border border-red-200 text-red-800 rounded-xl text-xs flex items-center gap-2">
+              <div className="p-4 bg-red-50 border border-red-100 text-red-800 rounded-2xl text-xs flex items-center gap-2.5 animate-pulse-subtle">
                 <span className="w-2.5 h-2.5 bg-red-500 rounded-full animate-ping"></span>
                 <span className="font-semibold">{t("status.cancelled")}</span>
               </div>
             ) : (
-              <div className="space-y-6 relative pl-5 border-l border-neutral-100 ml-2">
-                {/* Step 1 */}
+              <div className="space-y-6 relative pl-6 ml-2.5 border-l-2 border-stone-100">
+                {/* Step 1: Received */}
                 <div className="relative">
-                  <div className={`absolute -left-[27px] w-4.5 h-4.5 rounded-full flex items-center justify-center border font-bold text-[9px] ${
-                    stepIdx >= 0 ? "bg-emerald-500 border-emerald-500 text-white" : "bg-white border-neutral-200 text-neutral-400"
+                  <div className={`absolute -left-[35px] w-6.5 h-6.5 rounded-full flex items-center justify-center border font-bold text-[10px] transition-all duration-300 ${
+                    stepIdx >= 0 
+                      ? "bg-emerald-500 border-emerald-500 text-white shadow-sm" 
+                      : "bg-white border-stone-200 text-neutral-400"
                   }`}>
-                    {stepIdx > 0 ? "✓" : "1"}
+                    {stepIdx > 0 ? <Check size={11} /> : <ShoppingBag size={11} />}
                   </div>
-                  <div className="pl-4 leading-tight">
-                    <h4 className="text-xs font-bold text-neutral-900">{t("status.received")}</h4>
-                    <p className="text-[10px] text-neutral-400 mt-0.5">
-                      {language === "ar" ? "تم استلام الطلب وتدقيقه" : "Bestellung empfangen"}
+                  <div className="leading-tight">
+                    <h4 className={`text-xs font-bold ${stepIdx === 0 ? "text-orange-600" : "text-neutral-900"}`}>{t("status.received")}</h4>
+                    <p className="text-[10px] text-neutral-400 mt-1">
+                      {language === "ar" ? "تم استلام الطلب وتأكيده بالكامل" : "Bestellung empfangen und bestätigt"}
                     </p>
                   </div>
                 </div>
 
-                {/* Step 2 */}
+                {/* Step 2: Preparing */}
                 <div className="relative">
-                  <div className={`absolute -left-[27px] w-4.5 h-4.5 rounded-full flex items-center justify-center border font-bold text-[9px] ${
-                    stepIdx >= 1 ? "bg-emerald-500 border-emerald-500 text-white" : "bg-white border-neutral-200 text-neutral-400"
-                  }`}>
-                    {stepIdx > 1 ? "✓" : "2"}
+                  <div className={`absolute -left-[35px] w-6.5 h-6.5 rounded-full flex items-center justify-center border font-bold text-[10px] transition-all duration-300 ${
+                    stepIdx >= 1 
+                      ? "bg-emerald-500 border-emerald-500 text-white shadow-sm" 
+                      : "bg-white border-stone-200 text-neutral-400"
+                  } ${stepIdx === 1 ? "animate-pulse-subtle border-emerald-400 ring-4 ring-emerald-100" : ""}`}>
+                    {stepIdx > 1 ? <Check size={11} /> : <Flame size={11} />}
                   </div>
-                  <div className="pl-4 leading-tight">
-                    <h4 className="text-xs font-bold text-neutral-900">{t("status.preparing")}</h4>
-                    <p className="text-[10px] text-neutral-400 mt-0.5">
-                      {language === "ar" ? "يجري تحضير وجبتك طازجة بالمطبخ" : "Wird frisch in der Küche zubereitet"}
+                  <div className="leading-tight">
+                    <h4 className={`text-xs font-bold ${stepIdx === 1 ? "text-orange-600" : "text-neutral-900"}`}>{t("status.preparing")}</h4>
+                    <p className="text-[10px] text-neutral-400 mt-1">
+                      {language === "ar" ? "وجبتك تحضّر الآن طازجة في المطبخ" : "Wird frisch in der Küche zubereitet"}
                     </p>
                   </div>
                 </div>
 
-                {/* Step 3 */}
+                {/* Step 3: Ready */}
                 <div className="relative">
-                  <div className={`absolute -left-[27px] w-4.5 h-4.5 rounded-full flex items-center justify-center border font-bold text-[9px] ${
-                    stepIdx >= 2 ? "bg-emerald-500 border-emerald-500 text-white" : "bg-white border-neutral-200 text-neutral-400"
-                  }`}>
-                    {stepIdx > 2 ? "✓" : "3"}
+                  <div className={`absolute -left-[35px] w-6.5 h-6.5 rounded-full flex items-center justify-center border font-bold text-[10px] transition-all duration-300 ${
+                    stepIdx >= 2 
+                      ? "bg-emerald-500 border-emerald-500 text-white shadow-sm" 
+                      : "bg-white border-stone-200 text-neutral-400"
+                  } ${stepIdx === 2 ? "animate-pulse-subtle border-emerald-400 ring-4 ring-emerald-100" : ""}`}>
+                    {stepIdx > 2 ? <Check size={11} /> : <Bell size={11} />}
                   </div>
-                  <div className="pl-4 leading-tight">
-                    <h4 className="text-xs font-bold text-neutral-900">{t("status.ready_for_pickup")}</h4>
-                    <p className="text-[10px] text-neutral-400 mt-0.5">
-                      {language === "ar" ? "وجبتك جاهزة وسيقوم النادل بتقديمها" : "Gerichte fertig zum Servieren"}
+                  <div className="leading-tight">
+                    <h4 className={`text-xs font-bold ${stepIdx === 2 ? "text-orange-600" : "text-neutral-900"}`}>{t("status.ready_for_pickup")}</h4>
+                    <p className="text-[10px] text-neutral-400 mt-1">
+                      {language === "ar" ? "وجبتك جاهزة وسيقوم النادل بتقديمها فوراً" : "Gerichte fertig zum Servieren"}
                     </p>
                   </div>
                 </div>
 
-                {/* Step 4 */}
+                {/* Step 4: Delivered */}
                 <div className="relative">
-                  <div className={`absolute -left-[27px] w-4.5 h-4.5 rounded-full flex items-center justify-center border font-bold text-[9px] ${
-                    stepIdx >= 3 ? "bg-emerald-500 border-emerald-500 text-white" : "bg-white border-neutral-200 text-neutral-400"
+                  <div className={`absolute -left-[35px] w-6.5 h-6.5 rounded-full flex items-center justify-center border font-bold text-[10px] transition-all duration-300 ${
+                    stepIdx >= 3 
+                      ? "bg-emerald-500 border-emerald-500 text-white shadow-sm" 
+                      : "bg-white border-stone-200 text-neutral-400"
                   }`}>
-                    4
+                    <Utensils size={11} />
                   </div>
-                  <div className="pl-4 leading-tight">
-                    <h4 className="text-xs font-bold text-neutral-900">{t("status.delivered")}</h4>
-                    <p className="text-[10px] text-neutral-400 mt-0.5">
-                      {language === "ar" ? "بالهناء والشفاء! نتمنى أن تعجبك الوجبة" : "Guten Appetit! Genießen Sie Ihr Essen"}
+                  <div className="leading-tight">
+                    <h4 className={`text-xs font-bold ${stepIdx === 3 ? "text-orange-600" : "text-neutral-900"}`}>{t("status.delivered")}</h4>
+                    <p className="text-[10px] text-neutral-400 mt-1">
+                      {language === "ar" ? "بالهناء والشفاء! نتمنى أن تنال وجبتنا إعجابك" : "Guten Appetit! Genießen Sie Ihr Essen"}
                     </p>
                   </div>
                 </div>
@@ -508,35 +602,182 @@ export default function SmartMenu({ tableNumber, branchId }: SmartMenuProps) {
             )}
           </div>
 
+          {/* Need help service section */}
+          <div className="bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 rounded-2xl p-5 text-white flex items-center justify-between shadow-md">
+            <div className="space-y-1">
+              <span className="text-[9px] font-bold text-orange-400 font-mono tracking-widest uppercase block">
+                {language === "ar" ? "خدمة الطاولة المباشرة" : "DINE-IN SERVICE"}
+              </span>
+              <h4 className="text-xs font-bold">
+                {language === "ar" ? "بحاجة لمساعدة أو طلب الخدمة؟" : "Unterstützung am Tisch?"}
+              </h4>
+              <p className="text-[9px] text-slate-400">
+                {language === "ar" ? "اطلب النادل، ماء، أو الفاتورة بضغطة واحدة" : "Kellner rufen, Wasser oder Rechnung bitten"}
+              </p>
+            </div>
+            <button
+              onClick={() => setIsServiceModalOpen(true)}
+              className="bg-orange-500 hover:bg-orange-600 text-white text-[10px] font-bold px-4 py-2 rounded-xl transition shadow active:scale-95 shrink-0 inline-flex items-center gap-1.5 cursor-pointer"
+            >
+              <Bell size={12} className="animate-pulse" />
+              {language === "ar" ? "طلب الخدمة" : "Service rufen"}
+            </button>
+          </div>
+
+          {/* Order Details list for verification */}
+          <div className="bg-white rounded-2xl border border-stone-200/50 p-4 shadow-sm text-xs space-y-2.5">
+            <h4 className="font-bold text-neutral-900 pb-1.5 border-b border-stone-100 flex justify-between items-center">
+              <span>{language === "ar" ? "تفاصيل الطلب" : "Bestelldetails"}</span>
+              <span className="font-mono text-[10px] text-neutral-400">#{orderNum}</span>
+            </h4>
+            {placedOrder.items && placedOrder.items.map((it: any, itIdx: number) => (
+              <div key={itIdx} className="flex justify-between items-start text-stone-600">
+                <div className="min-w-0 pr-2">
+                  <span className="font-mono font-bold text-neutral-900 mr-1.5">{it.quantity}x</span>
+                  <span>{text(it.name)}</span>
+                </div>
+                <span className="font-mono text-neutral-800 font-semibold shrink-0">{it.totalPrice.toFixed(2)}{currency.symbol}</span>
+              </div>
+            ))}
+          </div>
+
           {/* New Order Button */}
           <button
             onClick={() => setPlacedOrder(null)}
-            className="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-3.5 rounded-xl transition shadow-md active:scale-98"
+            className="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-3.5 rounded-xl transition shadow-md active:scale-98 cursor-pointer"
           >
             {language === "ar" ? "طلب أطباق أخرى" : "Weitere Gerichte bestellen"}
           </button>
         </main>
 
-        <footer className="py-4 text-center text-[10px] text-neutral-400 border-t border-stone-200/50 mt-auto bg-stone-100">
-          MR. Tabboush Smart Table Menu
+        <footer className="py-4 text-center text-[9px] text-neutral-400 border-t border-stone-200/40 mt-auto bg-stone-100 select-none">
+          {restaurantName.toUpperCase()} SMART TABLE MENU
         </footer>
+
+        {/* Service Request Drawer Modal */}
+        {isServiceModalOpen && (
+          <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-55 flex items-end justify-center p-4 animate-fade-in">
+            <div className="bg-white rounded-t-3xl rounded-b-xl w-full max-w-md flex flex-col shadow-2xl overflow-hidden animate-slide-up border border-stone-200/50">
+              {/* Header */}
+              <div className="p-4 border-b border-stone-100 flex items-center justify-between bg-stone-50 select-none">
+                <div className="flex items-center gap-2">
+                  <Bell className="text-orange-500 animate-bounce" size={18} />
+                  <h3 className="font-bold text-sm text-neutral-900">
+                    {language === "ar" ? "نداء الخدمة" : "Service anfordern"}
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setIsServiceModalOpen(false)}
+                  className="p-1 text-neutral-400 hover:text-neutral-700 bg-white border border-stone-200 rounded-lg text-xs font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-5 space-y-4">
+                {serviceSuccessMsg ? (
+                  <div className="py-8 text-center space-y-3 animate-scale-in">
+                    <div className="w-12 h-12 bg-emerald-50 text-emerald-500 border border-emerald-100 rounded-full flex items-center justify-center mx-auto shadow-sm">
+                      <Check size={24} />
+                    </div>
+                    <p className="text-xs font-bold text-neutral-800 px-4 leading-relaxed">
+                      {serviceSuccessMsg}
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-[11px] text-neutral-400 text-center leading-relaxed">
+                      {language === "ar"
+                        ? "اختر نوع الخدمة التي تحتاجها، وسيقوم أحد موظفينا بتلبيتك فوراً."
+                        : "Wählen Sie Ihren Wunsch. Unser Team wird Sie umgehend am Tisch bedienen."}
+                    </p>
+
+                    <div className="grid grid-cols-2 gap-3 pt-2">
+                      {[
+                        {
+                          id: "waiter",
+                          icon: <Bell size={20} />,
+                          labelDE: "Kellner rufen",
+                          labelAR: "نداء النادل",
+                          labelEN: "Call Waiter",
+                        },
+                        {
+                          id: "bill",
+                          icon: <FileText size={20} />,
+                          labelDE: "Rechnung bitten",
+                          labelAR: "طلب الفاتورة",
+                          labelEN: "Request Bill",
+                        },
+                        {
+                          id: "water",
+                          icon: <Droplet size={20} />,
+                          labelDE: "Wasser bitten",
+                          labelAR: "طلب ماء",
+                          labelEN: "Request Water",
+                        },
+                        {
+                          id: "custom",
+                          icon: <MessageSquare size={20} />,
+                          labelDE: "Anderer Wunsch",
+                          labelAR: "خدمة أخرى",
+                          labelEN: "Other Request",
+                        },
+                      ].map((srv) => {
+                        const alreadySent = activeServiceRequests.includes(srv.id);
+                        return (
+                          <button
+                            key={srv.id}
+                            disabled={isServiceSubmitting || alreadySent}
+                            onClick={() => handleServiceRequest(srv.id)}
+                            className={`p-4 rounded-2xl border flex flex-col items-center justify-center gap-2 text-center transition cursor-pointer select-none ${
+                              alreadySent
+                                ? "bg-emerald-50/50 border-emerald-200 text-emerald-600 cursor-not-allowed opacity-90"
+                                : "bg-white border-stone-200/80 hover:border-orange-300 hover:bg-orange-50/10 text-neutral-700 active:scale-95"
+                            }`}
+                          >
+                            <div className={`p-2.5 rounded-xl ${alreadySent ? "bg-emerald-100" : "bg-stone-50 border border-stone-100 text-neutral-500"} transition`}>
+                              {srv.icon}
+                            </div>
+                            <span className="text-[11px] font-bold leading-tight">
+                              {alreadySent 
+                                ? (language === "ar" ? "تم الإرسال" : "Gesendet")
+                                : (language === "ar" ? srv.labelAR : language === "de" ? srv.labelDE : srv.labelEN)
+                              }
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
 
+
   return (
-    <div dir={dir} className="min-h-screen bg-stone-50 text-neutral-800 font-sans flex flex-col pb-24 relative select-none">
+    <div dir={dir} style={brandStyles} className="min-h-screen bg-stone-50 text-neutral-800 font-sans flex flex-col pb-24 relative select-none">
       
       {/* Smart Menu Header */}
-      <header className="bg-slate-900 border-b-4 border-orange-500 text-white py-4 px-4 sticky top-0 z-40 shadow-lg">
+      <header className="bg-slate-900/90 backdrop-blur-md border-b border-orange-500/20 text-white py-3.5 px-4 sticky top-0 z-40 shadow-md transition-all duration-300">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-lg bg-orange-500 text-white flex items-center justify-center font-bold text-lg rotate-[-2deg]">
-              🌯
-            </div>
+            {logoUrl ? (
+              <img src={logoUrl} alt={restaurantName} className="w-9 h-9 rounded-xl object-cover shadow-md rotate-[-2deg] border border-stone-250/20" />
+            ) : (
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 text-white flex items-center justify-center font-bold text-lg rotate-[-2deg] shadow-md shadow-orange-500/20 border border-orange-400/30">
+                🌯
+              </div>
+            )}
             <div>
-              <h1 className="text-sm font-serif font-bold tracking-tight">{branchName}</h1>
-              <p className="text-[10px] text-orange-400 font-mono font-bold block leading-none">
+              <h1 className="text-xs font-serif font-bold tracking-tight uppercase">{branchName}</h1>
+              <p className="text-[9px] text-orange-400 font-mono font-bold inline-flex items-center gap-1 leading-none mt-0.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
                 {t("orders.dineIn")} • {t("orders.table")} {tableNumber}
               </p>
             </div>
@@ -544,14 +785,16 @@ export default function SmartMenu({ tableNumber, branchId }: SmartMenuProps) {
 
           <div className="flex items-center gap-2">
             {/* Language switcher */}
-            <div className="flex items-center gap-1 bg-slate-800 rounded-lg p-0.5 border border-slate-700">
+            <div className="flex items-center gap-0.5 bg-slate-800/80 rounded-xl p-0.5 border border-slate-700/60 shadow-inner">
               {(["de", "ar", "en"] as const).map((lang) => (
                 <button
                   key={lang}
                   type="button"
                   onClick={() => setLanguage(lang)}
-                  className={`h-6 w-8 rounded text-[9px] font-bold uppercase transition ${
-                    language === lang ? "bg-orange-500 text-white" : "text-slate-400 hover:text-white"
+                  className={`h-6 px-2.5 rounded-lg text-[9px] font-bold uppercase transition-all duration-200 select-none cursor-pointer ${
+                    language === lang 
+                      ? "bg-orange-500 text-white shadow-sm" 
+                      : "text-slate-400 hover:text-white"
                   }`}
                 >
                   {lang}
@@ -566,28 +809,38 @@ export default function SmartMenu({ tableNumber, branchId }: SmartMenuProps) {
       <main className="flex-1 max-w-md w-full mx-auto px-4 py-4 flex flex-col gap-5">
         
         {/* Welcome greeting card */}
-        <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-4 text-white shadow-md flex items-center gap-3">
-          <Utensils size={36} className="text-amber-100 opacity-90 rotate-[-12deg] shrink-0" />
-          <div className="leading-tight">
-            <h3 className="font-bold text-sm">
+        <div className="bg-gradient-to-br from-slate-900 via-slate-850 to-orange-950/40 border border-orange-500/10 rounded-2xl p-5 text-white shadow-lg relative overflow-hidden flex items-center gap-4 animate-scale-in">
+          {/* Subtle grid pattern background */}
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:14px_24px] pointer-events-none"></div>
+          <div className="absolute -right-10 -bottom-10 w-24 h-24 bg-orange-500/10 rounded-full blur-2xl pointer-events-none"></div>
+          
+          <div className="p-3 bg-orange-500/10 border border-orange-500/25 rounded-2xl text-orange-400 rotate-[-8deg] shrink-0 animate-pulse-subtle shadow-inner">
+            <Utensils size={28} />
+          </div>
+          
+          <div className="leading-tight space-y-1 relative z-10">
+            <span className="text-[9px] font-bold tracking-widest text-orange-400/90 uppercase block font-mono">
+              {restaurantName.toUpperCase()} • Authentic Grill
+            </span>
+            <h3 className="font-bold text-sm text-slate-100">
               {language === "ar" ? "اطلب طعامك طازجاً من طاولتك" : "Bestellen Sie direkt am Tisch"}
             </h3>
-            <p className="text-[10px] text-amber-100 mt-1 font-medium">
+            <p className="text-[10px] text-slate-400 font-medium leading-relaxed">
               {language === "ar" 
-                ? "تصفح قائمتنا الشامية المميزة وسيتم تحضير طلبك فوراً." 
-                : "Wählen Sie Ihre Lieblingsgerichte, wir bringen sie warm an Ihren Tisch."}
+                ? "تصفح قائمتنا الشامية المميزة وسيتم تحضير وجبتك وتقديمها فوراً." 
+                : "Wählen Sie Ihre Lieblingsgerichte, wir bringen sie frisch zubereitet an Ihren Tisch."}
             </p>
           </div>
         </div>
 
         {/* Categories Tab slider */}
-        <div className="sticky top-[73px] z-30 bg-stone-50 py-2 -mx-4 px-4 overflow-x-auto flex gap-1.5 scrollbar-none select-none">
+        <div className="sticky top-[69px] z-30 bg-stone-50/95 backdrop-blur-md py-3.5 -mx-4 px-4 overflow-x-auto flex gap-2 scrollbar-none select-none border-b border-stone-200/30">
           <button
             onClick={() => handleCategoryClick("all")}
-            className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 border ${
+            className={`px-4.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all duration-200 cursor-pointer shrink-0 border select-none active:scale-95 ${
               activeCategory === "all"
-                ? "bg-slate-900 border-slate-900 text-white shadow-sm"
-                : "bg-white border-stone-200 text-neutral-500 hover:bg-neutral-55"
+                ? "bg-slate-900 border-slate-900 text-white shadow-md shadow-slate-900/10"
+                : "bg-white border-stone-200/80 text-neutral-500 hover:bg-stone-100/50 hover:text-neutral-700"
             }`}
           >
             {language === "ar" ? "كل الأصناف" : "Alle Speisen"}
@@ -597,10 +850,10 @@ export default function SmartMenu({ tableNumber, branchId }: SmartMenuProps) {
             <button
               key={cat.id}
               onClick={() => handleCategoryClick(cat.id)}
-              className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 border ${
+              className={`px-4.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all duration-200 cursor-pointer shrink-0 border select-none active:scale-95 ${
                 activeCategory === cat.id
-                  ? "bg-slate-900 border-slate-900 text-white shadow-sm"
-                  : "bg-white border-stone-200 text-neutral-500 hover:bg-neutral-55"
+                  ? "bg-slate-900 border-slate-900 text-white shadow-md shadow-slate-900/10"
+                  : "bg-white border-stone-200/80 text-neutral-500 hover:bg-stone-100/50 hover:text-neutral-700"
               }`}
             >
               {text(cat.name)}
@@ -626,42 +879,63 @@ export default function SmartMenu({ tableNumber, branchId }: SmartMenuProps) {
                   </span>
                 </h3>
 
-                <div className="grid grid-cols-1 gap-3.5">
+                <div className="grid grid-cols-1 gap-4">
                   {itemsInCategory.map((item) => (
                     <div 
                       key={item.id} 
-                      className="bg-white rounded-2xl border border-stone-200/50 p-3 flex gap-3 shadow-sm hover:shadow-md transition active:scale-[0.99] cursor-pointer"
+                      className="bg-white rounded-2xl border border-stone-200/60 p-3.5 flex gap-4 shadow-xs hover:shadow-md hover:border-orange-500/10 hover:scale-[1.015] active:scale-[0.995] transition-all duration-300 cursor-pointer group"
                       onClick={() => handleOpenModifiers(item)}
                     >
                       {/* Product image */}
-                      {item.image && (
-                        <img 
-                          src={item.image} 
-                          alt={text(item.name)} 
-                          className="w-20 h-20 rounded-xl object-cover shrink-0 bg-stone-100 border border-stone-100"
-                        />
+                      {item.image ? (
+                        <div className="relative w-22 h-22 rounded-xl overflow-hidden shrink-0 bg-stone-50 border border-stone-100">
+                          <img 
+                            src={item.image} 
+                            alt={text(item.name)} 
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          />
+                          {item.isBestSeller && (
+                            <div className="absolute top-1 left-1 bg-red-500 text-white text-[8px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider shadow-sm flex items-center gap-0.5">
+                              <Flame size={8} /> HOT
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="relative w-22 h-22 rounded-xl overflow-hidden shrink-0 bg-gradient-to-br from-stone-50 to-stone-100/80 border border-stone-200/30 flex items-center justify-center text-stone-300">
+                          <Utensils size={24} />
+                          {item.isBestSeller && (
+                            <div className="absolute top-1 left-1 bg-red-500 text-white text-[8px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider shadow-sm flex items-center gap-0.5">
+                              <Flame size={8} /> HOT
+                            </div>
+                          )}
+                        </div>
                       )}
                       
                       {/* Content details */}
                       <div className="flex-1 flex flex-col justify-between min-w-0">
-                        <div className="space-y-0.5">
-                          <h4 className="font-bold text-xs text-neutral-900 flex items-center gap-1">
+                        <div className="space-y-1">
+                          <h4 className="font-bold text-xs text-neutral-900 group-hover:text-orange-600 transition-colors flex items-center gap-1.5">
                             {text(item.name)}
-                            {item.isBestSeller && (
-                              <span className="text-[9px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full font-bold uppercase shrink-0">
+                            {item.isBestSeller && !item.image && (
+                              <span className="text-[8px] bg-red-50 text-red-600 border border-red-100 px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wide shrink-0">
                                 🔥 Bestseller
                               </span>
                             )}
                           </h4>
-                          <p className="text-[10px] text-neutral-400 leading-snug line-clamp-2">
+                          <p className="text-[10px] text-neutral-400 leading-relaxed line-clamp-2 pr-1">
                             {text(item.description)}
                           </p>
                         </div>
 
-                        <div className="flex items-center justify-between mt-2 pt-2 border-t border-stone-100">
-                          <span className="font-bold text-xs text-orange-600 font-mono">
-                            {item.basePrice.toFixed(2)}{currency.symbol}
-                          </span>
+                        <div className="flex items-center justify-between mt-3.5 pt-2 border-t border-stone-100/80">
+                          <div className="flex items-baseline gap-0.5">
+                            <span className="font-bold text-xs text-orange-600 font-mono">
+                              {item.basePrice.toFixed(2)}
+                            </span>
+                            <span className="text-[9px] font-bold text-orange-500 font-mono">
+                              {currency.symbol}
+                            </span>
+                          </div>
                           
                           <button
                             type="button"
@@ -669,9 +943,9 @@ export default function SmartMenu({ tableNumber, branchId }: SmartMenuProps) {
                               e.stopPropagation();
                               handleQuickAdd(item);
                             }}
-                            className="bg-orange-500 hover:bg-orange-600 text-white rounded-lg p-1.5 px-3 text-[10px] font-bold flex items-center gap-1 transition shadow-sm active:scale-95 cursor-pointer"
+                            className="bg-orange-500 hover:bg-orange-600 text-white rounded-xl p-1.5 px-3.5 text-[10px] font-extrabold flex items-center gap-1 transition-all duration-200 shadow-xs hover:shadow-md active:scale-90 select-none cursor-pointer"
                           >
-                            <Plus size={11} />
+                            <Plus size={11} className="stroke-[3px]" />
                             {language === "ar" ? "أضف" : "Hinzufügen"}
                           </button>
                         </div>
@@ -717,20 +991,20 @@ export default function SmartMenu({ tableNumber, branchId }: SmartMenuProps) {
 
       {/* Modifiers Modal Dialog */}
       {selectedItemForMod && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end justify-center p-4">
-          <div className="bg-white rounded-t-3xl rounded-b-xl w-full max-w-md max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-slide-up">
+        <div className="fixed inset-0 bg-slate-950/45 backdrop-blur-sm z-50 flex items-end justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-t-3xl rounded-b-2xl w-full max-w-md max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-slide-up border border-stone-100">
             
             {/* Modal Header */}
             <div className="p-4 border-b border-stone-100 flex items-center justify-between bg-stone-50 select-none">
               <div>
                 <h3 className="font-bold text-sm text-neutral-900">{text(selectedItemForMod.name)}</h3>
-                <span className="text-[10px] font-mono text-orange-600 font-bold mt-0.5 block">
+                <span className="text-[10px] font-mono text-orange-600 font-extrabold mt-0.5 block">
                   {selectedItemForMod.basePrice.toFixed(2)}{currency.symbol}
                 </span>
               </div>
               <button
                 onClick={() => setSelectedItemForMod(null)}
-                className="p-1 text-neutral-400 hover:text-neutral-700 bg-white border border-stone-200 rounded-lg text-xs font-bold"
+                className="p-1.5 text-neutral-400 hover:text-neutral-700 bg-white border border-stone-200 rounded-lg text-xs font-bold transition select-none cursor-pointer"
               >
                 ✕
               </button>
@@ -741,10 +1015,10 @@ export default function SmartMenu({ tableNumber, branchId }: SmartMenuProps) {
               {selectedItemForMod.modifierGroups.map((group) => (
                 <div key={group.id} className="space-y-2 border-b border-stone-100 pb-4 last:border-0 last:pb-0">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-neutral-800 flex items-center gap-1">
+                    <span className="text-xs font-bold text-neutral-800 flex items-center gap-1.5">
                       {text(group.name)}
                       {group.isRequired && (
-                        <span className="text-[9px] bg-red-50 text-red-600 px-1.5 py-0.5 rounded font-bold">
+                        <span className="text-[8px] bg-red-50 text-red-600 border border-red-100 px-1.5 py-0.5 rounded font-extrabold tracking-wide">
                           {language === "ar" ? "إجباري" : "Erforderlich"}
                         </span>
                       )}
@@ -764,22 +1038,22 @@ export default function SmartMenu({ tableNumber, branchId }: SmartMenuProps) {
                         <button
                           key={opt.id}
                           onClick={() => handleSelectModifier(group, opt)}
-                          className={`p-2.5 rounded-xl border text-xs font-medium text-left flex justify-between items-center transition cursor-pointer ${
+                          className={`p-3 rounded-xl border text-xs font-semibold text-left flex justify-between items-center transition-all duration-200 cursor-pointer select-none ${
                             selected 
-                              ? "border-orange-500 bg-orange-50/40 text-neutral-900" 
-                              : "border-stone-200/80 bg-white text-neutral-600 hover:bg-neutral-55"
+                              ? "border-orange-500 bg-orange-50/50 text-neutral-900 shadow-xs" 
+                              : "border-stone-200/80 bg-white text-neutral-600 hover:bg-stone-50 hover:text-neutral-800"
                           }`}
                         >
-                          <span className="flex items-center gap-2">
-                            <span className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
-                              selected ? "border-orange-500 bg-orange-500 text-white" : "border-stone-300"
+                          <span className="flex items-center gap-2.5">
+                            <span className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition ${
+                              selected ? "border-orange-500 bg-orange-500 text-white animate-scale-in" : "border-stone-300"
                             }`}>
-                              {selected && <Check size={10} />}
+                              {selected && <Check size={10} className="stroke-[3px]" />}
                             </span>
                             {text(opt.name)}
                           </span>
                           {opt.priceAdjustment > 0 && (
-                            <span className="font-mono text-[11px] font-bold text-neutral-500">
+                            <span className="font-mono text-[11px] font-bold text-orange-600">
                               +{opt.priceAdjustment.toFixed(2)}{currency.symbol}
                             </span>
                           )}
@@ -793,19 +1067,19 @@ export default function SmartMenu({ tableNumber, branchId }: SmartMenuProps) {
               {/* Quantity Selector */}
               <div className="flex items-center justify-between border-t border-stone-100 pt-4 pb-2">
                 <span className="text-xs font-bold text-neutral-800">{language === "ar" ? "الكمية" : "Menge"}</span>
-                <div className="flex items-center bg-stone-100 border border-stone-200 rounded-lg p-1 gap-3">
+                <div className="flex items-center bg-stone-100 border border-stone-200/60 rounded-xl p-1 gap-3">
                   <button
                     onClick={() => setModQuantity(q => Math.max(1, q - 1))}
-                    className="p-1.5 bg-white border border-stone-200 rounded text-neutral-500 active:scale-90"
+                    className="p-1.5 bg-white border border-stone-200/80 rounded-lg text-neutral-500 hover:bg-stone-50 transition active:scale-90 select-none cursor-pointer"
                   >
-                    <Minus size={11} />
+                    <Minus size={11} className="stroke-[3px]" />
                   </button>
                   <span className="font-mono font-bold text-xs min-w-4 text-center">{modQuantity}</span>
                   <button
                     onClick={() => setModQuantity(q => q + 1)}
-                    className="p-1.5 bg-white border border-stone-200 rounded text-neutral-500 active:scale-90"
+                    className="p-1.5 bg-white border border-stone-200/80 rounded-lg text-neutral-500 hover:bg-stone-50 transition active:scale-90 select-none cursor-pointer"
                   >
-                    <Plus size={11} />
+                    <Plus size={11} className="stroke-[3px]" />
                   </button>
                 </div>
               </div>
@@ -815,7 +1089,7 @@ export default function SmartMenu({ tableNumber, branchId }: SmartMenuProps) {
             <div className="p-4 border-t border-stone-100 bg-stone-50">
               <button
                 onClick={handleAddToCart}
-                className="w-full bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold py-3.5 rounded-xl transition shadow-md active:scale-98 cursor-pointer"
+                className="w-full bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold py-3.5 rounded-xl transition shadow-md hover:shadow-lg hover:shadow-orange-500/10 active:scale-98 cursor-pointer select-none"
               >
                 {language === "ar" ? "إضافة إلى السلة" : "In den Warenkorb"}
               </button>

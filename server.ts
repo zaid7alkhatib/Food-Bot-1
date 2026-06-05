@@ -120,6 +120,10 @@ type CustomerLanguage = "ar" | "de" | "en";
 type BranchFulfillmentConfig = {
   branchId?: string;
   branchAddress: string;
+  branchCity: string;
+  branchName: string;
+  restaurantName: string;
+  legalName?: string;
   deliveryEnabled: boolean;
   pickupEnabled: boolean;
   deliveryRadiusKm: number;
@@ -129,6 +133,10 @@ type BranchFulfillmentConfig = {
 
 const DEFAULT_BRANCH_CONFIG: BranchFulfillmentConfig = {
   branchAddress: "Berliner Str. 179",
+  branchCity: "Wuppertal",
+  branchName: "Hauptfiliale",
+  restaurantName: "MR. Tabboush",
+  legalName: "Farman GmbH",
   deliveryEnabled: true,
   pickupEnabled: true,
   deliveryRadiusKm: 4,
@@ -165,11 +173,12 @@ function detectExplicitLanguageRequest(message: string): CustomerLanguage | null
   return null;
 }
 
-function getLanguageSelectionPrompt(): string {
+function getLanguageSelectionPrompt(branchConfig: BranchFulfillmentConfig = DEFAULT_BRANCH_CONFIG): string {
+  const name = branchConfig.restaurantName;
   return [
-    "Willkommen bei MR. Tabboush! 🌯",
-    "أهلاً بك في مستر طابوش! 🌯",
-    "Welcome to MR. Tabboush! 🌯",
+    `Willkommen bei ${name}! 🌯`,
+    `أهلاً بك في ${name}! 🌯`,
+    `Welcome to ${name}! 🌯`,
     "",
     "Bitte wählen Sie Ihre Sprache / الرجاء اختيار اللغة / Please choose your language:",
     "*1* Deutsch",
@@ -272,21 +281,25 @@ function getWelcomeReply(lang: CustomerLanguage, branchConfig: BranchFulfillment
     return "Entschuldigung, Lieferung und Abholung sind aktuell nicht verfügbar. Bitte versuchen Sie es später erneut.";
   }
 
+  const restaurantName = branchConfig.restaurantName;
+  const branchCity = branchConfig.branchCity;
+
   if (lang === "ar") {
-    return "أهلاً بك في مستر طابوش! 🌯 أشهى المأكولات الشامية في فوبيرتال.\n\nكيف ترغب في استلام طلبك؟\nالرجاء كتابة:\n" + choices + getShortHelpLine(lang);
+    return `أهلاً بك في ${restaurantName}! 🌯 أشهى المأكولات الشامية في ${branchCity}.\n\nكيف ترغب في استلام طلبك؟\nالرجاء كتابة:\n` + choices + getShortHelpLine(lang);
   }
   if (lang === "en") {
-    return "Welcome to MR. Tabboush! 🌯 Finest Damascus Shawarma in Wuppertal.\n\nHow would you like to receive your food?\nReply with:\n" + choices + getShortHelpLine(lang);
+    return `Welcome to ${restaurantName}! 🌯 Finest Damascus Shawarma in ${branchCity}.\n\nHow would you like to receive your food?\nReply with:\n` + choices + getShortHelpLine(lang);
   }
-  return "Willkommen bei MR. Tabboush! 🌯 Feinstes syrisches Shawarma in Wuppertal.\n\nWie möchten Sie Ihre Bestellung erhalten?\nAntworten Sie mit:\n" + choices + getShortHelpLine(lang);
+  return `Willkommen bei ${restaurantName}! 🌯 Feinstes syrisches Shawarma in ${branchCity}.\n\nWie möchten Sie Ihre Bestellung erhalten?\nAntworten Sie mit:\n` + choices + getShortHelpLine(lang);
 }
 
 function getAddressPrompt(lang: CustomerLanguage, branchConfig: BranchFulfillmentConfig = DEFAULT_BRANCH_CONFIG): string {
   const radius = formatMoney(branchConfig.deliveryRadiusKm);
   const min = formatMoney(branchConfig.minOrderAmount);
-  if (lang === "ar") return `رائع! خدمة التوصيل متوفرة ضمن ${radius} كم وبحد أدنى ${min}€. يرجى إرسال عنوان التوصيل بالتفصيل في فوبيرتال:` + getShortHelpLine(lang);
-  if (lang === "en") return `Great! Home delivery is available within ${radius} km with a minimum order of €${min}. Please type your detailed delivery address in Wuppertal:` + getShortHelpLine(lang);
-  return `Super! Der Lieferservice ist innerhalb von ${radius} km verfügbar. Mindestbestellwert: ${min} €. Bitte senden Sie uns Ihre Lieferadresse in Wuppertal:` + getShortHelpLine(lang);
+  const branchCity = branchConfig.branchCity;
+  if (lang === "ar") return `رائع! خدمة التوصيل متوفرة ضمن ${radius} كم وبحد أدنى ${min}€. يرجى إرسال عنوان التوصيل بالتفصيل في ${branchCity}:` + getShortHelpLine(lang);
+  if (lang === "en") return `Great! Home delivery is available within ${radius} km with a minimum order of €${min}. Please type your detailed delivery address in ${branchCity}:` + getShortHelpLine(lang);
+  return `Super! Der Lieferservice ist innerhalb von ${radius} km verfügbar. Mindestbestellwert: ${min} €. Bitte senden Sie uns Ihre Lieferadresse in ${branchCity}:` + getShortHelpLine(lang);
 }
 
 function getPickupTimePrompt(lang: CustomerLanguage, branchConfig: BranchFulfillmentConfig = DEFAULT_BRANCH_CONFIG): string {
@@ -558,7 +571,7 @@ function buildConfirmationSummary(convo: any, lang: CustomerLanguage, branchConf
   const belowMinimum = isBelowDeliveryMinimum(convo, branchConfig);
 
   if (lang === "ar") {
-    let billSummary = `📋 *ملخص طلبك النهائي من مستر طابوش*\n--------------\n`;
+    let billSummary = `📋 *ملخص طلبك النهائي من ${branchConfig.restaurantName}*\n--------------\n`;
     (convo.unsubmittedOrder?.items || []).forEach((i: any) => {
       billSummary += `▪️ ${i.quantity}x ${translatedText(i.name, "ar")} (${formatMoney(i.basePrice)}€)\n`;
       if (hasPricedUpsell(i.selectedUpsell)) billSummary += ` └ ➕ ${translatedText(i.selectedUpsell.name, "ar")} (+${formatMoney(i.selectedUpsell.price)}€)\n`;
@@ -578,7 +591,7 @@ function buildConfirmationSummary(convo: any, lang: CustomerLanguage, branchConf
   }
 
   if (lang === "en") {
-    let billSummary = `📋 *MR. Tabboush Order Receipt*\n--------------\n`;
+    let billSummary = `📋 *${branchConfig.restaurantName} Order Receipt*\n--------------\n`;
     (convo.unsubmittedOrder?.items || []).forEach((i: any) => {
       billSummary += `▪️ ${i.quantity}x ${translatedText(i.name, "en")} (€${formatMoney(i.basePrice)})\n`;
       if (hasPricedUpsell(i.selectedUpsell)) billSummary += ` └ ➕ ${translatedText(i.selectedUpsell.name, "en")} (+€${formatMoney(i.selectedUpsell.price)})\n`;
@@ -597,7 +610,7 @@ function buildConfirmationSummary(convo: any, lang: CustomerLanguage, branchConf
     return billSummary + getShortHelpLine(lang);
   }
 
-  let billSummary = `📋 *Rechnungsübersicht MR. Tabboush*\n--------------\n`;
+  let billSummary = `📋 *Rechnungsübersicht ${branchConfig.restaurantName}*\n--------------\n`;
   (convo.unsubmittedOrder?.items || []).forEach((i: any) => {
     billSummary += `▪️ ${i.quantity}x ${translatedText(i.name, "de")} (${formatMoney(i.basePrice)} €)\n`;
     if (hasPricedUpsell(i.selectedUpsell)) billSummary += ` └ ➕ ${translatedText(i.selectedUpsell.name, "de")} (+${formatMoney(i.selectedUpsell.price)} €)\n`;
@@ -690,10 +703,14 @@ function getConversationWhatsAppTarget(convo: any): string {
   return convo.whatsAppJid || convo.whatsAppPhoneJid || convo.whatsAppPhone;
 }
 
-function branchConfigFromBranch(branch: any): BranchFulfillmentConfig {
+function branchConfigFromBranch(branch: any, restaurant: any): BranchFulfillmentConfig {
   return {
     branchId: branch?._id?.toString?.() || branch?.id?.toString?.(),
     branchAddress: branch?.address || DEFAULT_BRANCH_CONFIG.branchAddress,
+    branchCity: branch?.city || DEFAULT_BRANCH_CONFIG.branchCity,
+    branchName: branch?.name || DEFAULT_BRANCH_CONFIG.branchName,
+    restaurantName: restaurant?.name || DEFAULT_BRANCH_CONFIG.restaurantName,
+    legalName: restaurant?.legalName || DEFAULT_BRANCH_CONFIG.legalName,
     deliveryEnabled: branch?.deliveryEnabled !== false,
     pickupEnabled: branch?.pickupEnabled !== false,
     deliveryRadiusKm: toFiniteNumber(branch?.deliveryRadiusKm, DEFAULT_BRANCH_CONFIG.deliveryRadiusKm),
@@ -707,7 +724,12 @@ async function loadBranchConfig(branchId?: unknown): Promise<BranchFulfillmentCo
   const branch = id && mongoose.isValidObjectId(id)
     ? await Branch.findById(id).lean()
     : await Branch.findOne({ isActive: true }).lean();
-  return branchConfigFromBranch(branch);
+
+  const restaurant = branch?.restaurantId
+    ? await Restaurant.findById(branch.restaurantId).lean()
+    : await Restaurant.findOne({ isActive: true }).lean();
+
+  return branchConfigFromBranch(branch, restaurant);
 }
 
 function isBelowDeliveryMinimum(convo: any, branchConfig: BranchFulfillmentConfig): boolean {
@@ -884,7 +906,7 @@ app.get("/api/state", authMiddleware as any, async (req: AuthenticatedRequest, r
     const canViewReports = userHasRole(user, MANAGER_ROLES);
     const canViewSettings = userHasRole(user, MANAGER_ROLES);
 
-    const [branches, categories, menuItems, orders, campaigns, feedbacks, conversations] =
+    const [branches, categories, menuItems, orders, campaigns, feedbacks, conversations, restaurant] =
       await Promise.all([
         Branch.find({ isActive: true }).lean(),
         Category.find({ isActive: true }).sort({ sortOrder: 1 }).lean(),
@@ -893,10 +915,12 @@ app.get("/api/state", authMiddleware as any, async (req: AuthenticatedRequest, r
         Campaign.find().sort({ createdAt: -1 }).lean(),
         Feedback.find().sort({ createdAt: -1 }).lean(),
         Conversation.find().sort({ updatedAt: -1 }).lean(),
+        Restaurant.findOne({ isActive: true }).lean(),
       ]);
 
     res.json({
       branch: branches[0] || null,
+      restaurant: restaurant ? serializeDoc(restaurant) : null,
       branches: canViewSettings ? serializeDocs(branches) : [],
       categories: canViewMenu ? serializeDocs(categories) : [],
       menuItems: canViewMenu ? serializeDocs(menuItems) : [],
@@ -1126,13 +1150,17 @@ app.put("/api/orders/:id/status", authMiddleware as any, requireRole(...ORDER_RO
           ? convo.customerLanguage
           : detectCustomerLanguage(text) || "de";
 
+        const restaurant = await Restaurant.findOne({ isActive: true }).lean();
+        const restaurantName = restaurant?.name || "MR. Tabboush";
+
         let msgText = template[lang] || template.de;
         msgText = msgText
-          .replace("{orderNumber}", order.orderNumber)
-          .replace("{total}", `${(order.total || 0).toFixed(2)}${defaultCurrency.symbol}`)
-          .replace("{paymentMethod}", order.paymentMethod)
-          .replace("{prepTime}", String(order.items?.[0]?.basePrice ? 12 : 15))
-          .replace("{address}", order.deliveryAddress || "");
+          .replace(/{orderNumber}/g, order.orderNumber)
+          .replace(/{restaurantName}/g, restaurantName)
+          .replace(/{total}/g, `${(order.total || 0).toFixed(2)}${defaultCurrency.symbol}`)
+          .replace(/{paymentMethod}/g, order.paymentMethod)
+          .replace(/{prepTime}/g, String(order.items?.[0]?.basePrice ? 12 : 15))
+          .replace(/{address}/g, order.deliveryAddress || "");
 
         convo.messages.push({
           id: "msg-" + Math.random().toString(36).substr(2, 9),
@@ -1512,13 +1540,13 @@ app.post("/api/bot-reply", async (req, res) => {
         botReplyText = getCancelReply(lang);
         nextStep = "welcome";
       } else if (selectionCommand === "help") {
-        botReplyText = `${getHelpReply(lang)}\n\n${getLanguageSelectionPrompt()}`;
+        botReplyText = `${getHelpReply(lang)}\n\n${getLanguageSelectionPrompt(branchConfig)}`;
         nextStep = "language_selection";
       } else if (selectionCommand === "restart" || selectionCommand === "back") {
-        botReplyText = getLanguageSelectionPrompt();
+        botReplyText = getLanguageSelectionPrompt(branchConfig);
         nextStep = "language_selection";
       } else {
-        botReplyText = getLanguageSelectionPrompt();
+        botReplyText = getLanguageSelectionPrompt(branchConfig);
         nextStep = "language_selection";
       }
     } else if (!storedLanguage && nextStep === "welcome") {
@@ -1526,7 +1554,7 @@ app.post("/api/bot-reply", async (req, res) => {
         lang = detectedLanguage;
         convo.customerLanguage = detectedLanguage;
       } else {
-        botReplyText = getLanguageSelectionPrompt();
+        botReplyText = getLanguageSelectionPrompt(branchConfig);
         nextStep = "language_selection";
       }
     } else if (explicitLanguage) {
@@ -1558,7 +1586,7 @@ app.post("/api/bot-reply", async (req, res) => {
       botReplyText = result.botReplyText;
       nextStep = result.nextStep;
     } else if (flowCommand === "change_language") {
-      botReplyText = getLanguageSelectionPrompt();
+      botReplyText = getLanguageSelectionPrompt(branchConfig);
       nextStep = "language_selection";
     } else if (flowCommand === "change_address") {
       if (!branchConfig.deliveryEnabled) {
@@ -1624,7 +1652,7 @@ app.post("/api/bot-reply", async (req, res) => {
         }));
 
         const contextPrompt = `
-You are the AI WhatsApp Ordering Agent of "MR. Tabboush" Syrian restaurant in Berliner Str. 179, Wuppertal, Germany.
+You are the AI WhatsApp Ordering Agent of "${branchConfig.restaurantName}" restaurant at ${branchConfig.branchAddress}, ${branchConfig.branchCity}.
 The current step of the customer order is: "${nextStep}"
 Current state of their incomplete order schema: ${JSON.stringify(convo.unsubmittedOrder)}
 
@@ -1655,7 +1683,7 @@ Your task is to:
    - For welcome, address, pickup time, menu, and confirmation replies, include a short localized note with the numeric shortcuts: 00 help, 0 back, 8 language, 9 cancel, 99 new order.
    - "language_selection" state: If the customer has not selected a language, ask them to choose 1 Deutsch, 2 العربية, or 3 English.
    - "welcome" state: Say hello, state the configured delivery fee/radius/minimum and available fulfillment methods. Ask them to choose Type (Delivery or Pickup), only offering enabled methods.
-   - "type" state: Read choice. If they say pickup, set currentStep to "pickup_time" and ask what time they will pick it up (e.g. "19:30"). If delivery, set currentStep to "address" and ask for their delivery address in Wuppertal.
+   - "type" state: Read choice. If they say pickup, set currentStep to "pickup_time" and ask what time they will pick it up (e.g. "19:30"). If delivery, set currentStep to "address" and ask for their delivery address in ${branchConfig.branchCity}.
    - "address"/"pickup_time" state: Save address or pickup time. Transition to "menu" and list the available menu items above using their dynamic item codes, then ask them what they'd like to eat.
    - "menu" state: If they specify an item code like 01 or a dish name, add that item to the unsubmittedOrder items list. If the item has Modifiers, list those options and ask them to choose. Or present their upsell suggestion as an irresistible offer. If they want nothing else, advance to "confirming".
    - "customizing" state: Apply modifiers based on their choices. Ask if they want to add anything else from drinks or desserts, or confirm.
@@ -1873,7 +1901,7 @@ You MUST reply with a JSON object in this exact schema structure:
             };
 
             botReplyText = isAr
-              ? `🎉 رائع! تم إرسال طلبك رقم *${ordNum}* بنجاح للمطبخ وسينتهي تحضيره قريباً.\nسوف نرسل لك تحديثاً فور البدء بالتحضير. شكراً لطلبك من مستر طابوش! ❤️`
+              ? `🎉 رائع! تم إرسال طلبك رقم *${ordNum}* بنجاح للمطبخ وسينتهي تحضيره قريباً.\nسوف نرسل لك تحديثاً فور البدء بالتحضير. شكراً لطلبك من ${branchConfig.restaurantName}! ❤️`
               : isEn
               ? `🎉 Wonderful! Your order *${ordNum}* has been submitted to our kitchen. We will start preparing it shortly.\nYou will receive automatic status alerts here. Thank you! ❤️`
               : `🎉 Super! Ihre Bestellung *${ordNum}* wurde an das Küchenteam übermittelt und wird zubereitet.\nWir benachrichtigen Sie gleich über den Status. Vielen Dank! ❤️`;
@@ -1886,7 +1914,7 @@ You MUST reply with a JSON object in this exact schema structure:
         }
       } else {
         botReplyText = isAr
-          ? "أهلاً بك مجدداً في مستر طابوش! اطلب أي وقت بكتابة 'أهلاً' أو 'طلب' لمشاهدة القائمة."
+          ? `أهلاً بك مجدداً في ${branchConfig.restaurantName}! اطلب أي وقت بكتابة 'أهلاً' أو 'طلب' لمشاهدة القائمة.`
           : "Hallo! Schreiben Sie 'Hallo' oder 'Menü', um eine neue Bestellung zu starten.";
         nextStep = "welcome";
       }
