@@ -248,18 +248,29 @@ export default function ThermalPrinter({
                 <div className="flex justify-between font-bold">
                   <span>{t("printer.order").toUpperCase()}#: {activeOrderToPrint.orderNumber}</span>
                   <span className="uppercase text-[9px] bg-neutral-200 px-1 rounded">
-                    {activeOrderToPrint.orderType}
+                    {activeOrderToPrint.orderType === "dine_in" ? t("orders.dineIn") : activeOrderToPrint.orderType}
                   </span>
                 </div>
+                {activeOrderToPrint.orderType === "dine_in" && (
+                  <div className="text-center bg-black text-white py-1 font-bold text-xs uppercase my-1.5 select-none">
+                    *** {t("orders.dineIn").toUpperCase()} - {t("orders.table").toUpperCase()} {activeOrderToPrint.tableNumber} ***
+                  </div>
+                )}
                 <div>{t("printer.date").toUpperCase()}: {new Date(activeOrderToPrint.createdAt).toLocaleDateString()} {new Date(activeOrderToPrint.createdAt).toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"})}</div>
                 <div>{t("printer.customer").toUpperCase()}: {activeOrderToPrint.customerName}</div>
-                <div>{isWhatsAppPhone(activeOrderToPrint.whatsAppPhone) ? t("printer.tel").toUpperCase() : "WHATSAPP ID"}: {activeOrderToPrint.whatsAppPhone}</div>
+                {activeOrderToPrint.whatsAppPhone && activeOrderToPrint.whatsAppPhone.trim() && (
+                  <div>{isWhatsAppPhone(activeOrderToPrint.whatsAppPhone) ? t("printer.tel").toUpperCase() : "WHATSAPP ID"}: {activeOrderToPrint.whatsAppPhone}</div>
+                )}
                 
                 {/* Specific coordinates */}
                 {activeOrderToPrint.orderType === "delivery" ? (
                   <div className="border-t border-neutral-200 pt-1 text-[9px] leading-snug">
                     <span className="font-bold">{t("printer.deliveryAddr").toUpperCase()}:</span>
                     <p className="whitespace-normal">{activeOrderToPrint.deliveryAddress}</p>
+                  </div>
+                ) : activeOrderToPrint.orderType === "dine_in" ? (
+                  <div className="border-t border-neutral-200 pt-1 text-[9px]">
+                    <span className="font-bold">{t("orders.tableNumber").toUpperCase()}:</span> {activeOrderToPrint.tableNumber}
                   </div>
                 ) : (
                   <div className="border-t border-neutral-200 pt-1 text-[9px]">
@@ -316,7 +327,7 @@ export default function ThermalPrinter({
               {/* Cash stamp validation info */}
               <div className="pt-4 text-center space-y-2">
                 <div className="p-1 px-4 border border-black inline-block font-bold text-xs uppercase rotate-[-2deg] tracking-widest text-[#000] border-dashed">
-                  💰 {t("printer.cash").toUpperCase()}
+                  💰 {activeOrderToPrint.orderType === "dine_in" ? "PAY AT TABLE" : t("printer.cash").toUpperCase()}
                 </div>
                 <div className="text-[9px] leading-snug">
                   {t("printer.thanks")}<br />

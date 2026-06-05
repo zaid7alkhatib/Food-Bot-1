@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Check, Clock, Truck, Play, ShieldAlert, X, Printer, MapPin, User, CheckCircle2, ChevronRight, Volume2 } from "lucide-react";
+import { Check, Clock, Truck, Play, ShieldAlert, X, Printer, MapPin, User, CheckCircle2, ChevronRight, Volume2, Utensils } from "lucide-react";
 import { Order, OrderStatus } from "../types";
 import { useI18n } from "../i18n";
 import { isWhatsAppPhone } from "../utils/whatsappContact";
@@ -70,12 +70,12 @@ export default function LiveOrdersList({
       : { bg: "bg-gray-50", text: "text-gray-500 border-gray-200", label: status || t("common.status") }
   );
 
-  const getOrderStatusFlow = (status: OrderStatus, type: "delivery" | "pickup"): OrderStatus[] => {
+  const getOrderStatusFlow = (status: OrderStatus, type: "delivery" | "pickup" | "dine_in"): OrderStatus[] => {
     if (status === "cancelled" || status === "delivered") return [];
     if (status === "received") return ["accepted", "cancelled"];
     if (status === "accepted") return ["preparing", "cancelled"];
     if (status === "preparing") {
-      return type === "delivery" ? ["out_for_delivery"] : ["ready_for_pickup"];
+      return type === "delivery" ? ["out_for_delivery"] : (type === "dine_in" ? ["delivered"] : ["ready_for_pickup"]);
     }
     if (status === "ready_for_pickup" || status === "out_for_delivery") return ["delivered"];
     return [];
@@ -165,9 +165,17 @@ export default function LiveOrdersList({
 
                   <div className="flex items-center justify-between gap-2 mt-0.5">
                     <span className={`text-[9px] uppercase tracking-wider font-semibold border px-2 py-0.5 rounded-full ${
-                      order.orderType === "delivery" ? "bg-orange-100 text-orange-800 border-orange-200" : "bg-emerald-100 text-emerald-850 border-emerald-200"
+                      order.orderType === "delivery"
+                        ? "bg-orange-100 text-orange-800 border-orange-200"
+                        : order.orderType === "dine_in"
+                        ? "bg-blue-100 text-blue-800 border-blue-200"
+                        : "bg-emerald-100 text-emerald-850 border-emerald-200"
                     }`}>
-                      {order.orderType === "delivery" ? `🛵 ${t("orders.delivery")}` : `📦 ${t("orders.pickup")}`}
+                      {order.orderType === "delivery"
+                        ? `🛵 ${t("orders.delivery")}`
+                        : order.orderType === "dine_in"
+                        ? `🍽️ ${t("orders.dineIn")} (${t("orders.table")} ${order.tableNumber})`
+                        : `📦 ${t("orders.pickup")}`}
                     </span>
                     
                     <span className={`text-[9px] font-bold border px-1.5 py-0.5 rounded ${info.bg} ${info.text}`}>
@@ -251,6 +259,14 @@ export default function LiveOrdersList({
                       <div>
                         <span className="text-gray-400 block">{t("orders.deliveryAddress")}:</span>
                         <span className="font-medium text-gray-800">{selectedOrder.deliveryAddress}</span>
+                      </div>
+                    </div>
+                  ) : selectedOrder.orderType === "dine_in" ? (
+                    <div className="col-span-2 border-t border-gray-100 pt-2.5 flex items-start gap-1">
+                      <Utensils size={14} className="text-blue-500 mt-0.5 shrink-0" />
+                      <div>
+                        <span className="text-gray-400 block">{t("orders.tableNumber")}:</span>
+                        <span className="font-semibold text-gray-800">{selectedOrder.tableNumber}</span>
                       </div>
                     </div>
                   ) : (

@@ -28,6 +28,7 @@ import BranchSettings from "./components/BranchSettings";
 import RestaurantSettings from "./components/RestaurantSettings";
 import UserManagement from "./components/UserManagement";
 import LoginPage from "./components/LoginPage";
+import SmartMenu from "./components/SmartMenu";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { I18nProvider, useI18n, AppLanguage } from "./i18n";
 import { Order, OrderStatus, Conversation, MenuItem, Category, Campaign, Feedback, UserRole } from "./types";
@@ -684,6 +685,14 @@ export default function App() {
 
 function AppWithAuth() {
   const { user, isLoading } = useAuth();
+
+  const searchParams = new URLSearchParams(window.location.search);
+  const tableNumber = searchParams.get("table");
+  const branchId = searchParams.get("branch") || "";
+
+  if (tableNumber) {
+    return <SmartMenu tableNumber={tableNumber} branchId={branchId} />;
+  }
 
   if (isLoading) {
     return (

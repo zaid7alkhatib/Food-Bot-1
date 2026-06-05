@@ -54,11 +54,11 @@ export interface IOrder extends Document {
   restaurantId: mongoose.Types.ObjectId;
   branchId: mongoose.Types.ObjectId;
   customerName: string;
-  whatsAppPhone: string;
+  whatsAppPhone?: string;
   whatsAppJid?: string;
   whatsAppPhoneJid?: string;
   whatsAppLid?: string;
-  orderType: "delivery" | "pickup";
+  orderType: "delivery" | "pickup" | "dine_in";
   items: any[];
   subtotal: number;
   deliveryFee: number;
@@ -70,6 +70,7 @@ export interface IOrder extends Document {
   status: "received" | "under_review" | "accepted" | "preparing" | "ready_for_pickup" | "out_for_delivery" | "delivered" | "cancelled";
   deliveryAddress?: string;
   pickupTime?: string;
+  tableNumber?: string;
   scheduledTime?: string;
   notes?: string;
   source: string;
@@ -83,11 +84,11 @@ const OrderSchema = new Schema<IOrder>(
     restaurantId: { type: Schema.Types.ObjectId, ref: "Restaurant", required: true },
     branchId: { type: Schema.Types.ObjectId, ref: "Branch", required: true },
     customerName: { type: String, required: true },
-    whatsAppPhone: { type: String, required: true },
+    whatsAppPhone: { type: String, default: "" },
     whatsAppJid: String,
     whatsAppPhoneJid: String,
     whatsAppLid: String,
-    orderType: { type: String, enum: ["delivery", "pickup"], required: true },
+    orderType: { type: String, enum: ["delivery", "pickup", "dine_in"], required: true },
     items: [OrderItemSchema],
     subtotal: { type: Number, default: 0 },
     deliveryFee: { type: Number, default: 0 },
@@ -103,6 +104,7 @@ const OrderSchema = new Schema<IOrder>(
     },
     deliveryAddress: String,
     pickupTime: String,
+    tableNumber: String,
     scheduledTime: String,
     notes: String,
     source: { type: String, default: "whatsapp" },

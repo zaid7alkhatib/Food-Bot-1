@@ -935,6 +935,167 @@ app.post("/api/orders", authMiddleware as any, requireRole(...ORDER_ROLES) as an
   }
 });
 
+// GET /api/public/menu (smart table menu data)
+app.get("/api/public/menu", async (req, res) => {
+  try {
+    const branchId = req.query.branchId as string;
+    const branch = (branchId && mongoose.isValidObjectId(branchId))
+      ? await Branch.findById(branchId).lean()
+      : await Branch.findOne({ isActive: true }).lean();
+
+    if (!branch) {
+      res.status(404).json({ error: "Branch not found" });
+      return;
+    }
+
+    const [restaurant, categories, menuItems] = await Promise.all([
+      Restaurant.findById(branch.restaurantId).lean(),
+      Category.find({ isActive: true }).sort({ sortOrder: 1 }).lean(),
+      MenuItem.find({ isActive: true }).sort({ sortOrder: 1 }).lean(),
+    ]);
+
+    const visibleItems = menuItems.map((item) => serializeDoc(item));
+    const visibleCategories = categories.map((cat) => serializeDoc(cat));
+
+    res.json({
+      restaurant: restaurant ? serializeDoc(restaurant) : null,
+      branch: serializeDoc(branch),
+      categories: visibleCategories,
+      menuItems: visibleItems,
+      currency: defaultCurrency,
+    });
+  } catch (err) {
+    console.error("[API] GET /api/public/menu error:", err);
+    res.status(500).json({ error: "Failed to load public menu data" });
+  }
+});
+
+// POST /api/public/orders (smart table menu ordering)
+app.post("/api/public/orders", async (req, res) => {
+  try {
+    const { branchId, customerName, whatsAppPhone, tableNumber, items, notes } = req.body;
+
+    if (!tableNumber) {
+      res.status(400).json({ error: "Table number is required for smart menu orders" });
+      return;
+    }
+
+    const branch = (branchId && mongoose.isValidObjectId(branchId))
+      ? await Branch.findById(branchId)
+      : await Branch.findOne({ isActive: true });
+
+    if (!branch) {
+      res.status(400).json({ error: "Restaurant branch not found" });
+      return;
+    }
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      res.status(400).json({ error: "Order must contain at least one item" });
+      return;
+    }
+
+    const menuItemIds = items.map((i: any) => i.itemId).filter(Boolean);
+    const dbItems = await MenuItem.find({ _id: { $in: menuItemIds }, isActive: true });
+    const dbItemsMap = new Map(dbItems.map((i) => [i._id.toString(), i]));
+
+    let subtotal = 0;
+    const validatedItems = [];
+
+    for (const clientItem of items) {
+      const dbItem = dbItemsMap.get(clientItem.itemId);
+      if (!dbItem) {
+        res.status(400).json({ error: `Menu item not found or inactive: ${clientItem.itemId}` });
+        return;
+      }
+
+      const qty = Math.max(1, parseInt(clientItem.quantity) || 1);
+      let itemTotalPrice = dbItem.basePrice * qty;
+
+      // Validate Modifiers
+      const validatedModifiers = [];
+      if (clientItem.selectedModifiers && Array.isArray(clientItem.selectedModifiers)) {
+        for (const clientMod of clientItem.selectedModifiers) {
+          const modGroup = dbItem.modifierGroups.find((g) => g.id === clientMod.groupId);
+          if (modGroup) {
+            const modOption = modGroup.options.find((o) => o.id === clientMod.optionId || o.id === clientMod.option?.id);
+            if (modOption) {
+              const adj = modOption.priceAdjustment || 0;
+              itemTotalPrice += adj * qty;
+              validatedModifiers.push({
+                groupId: modGroup.id,
+                groupName: modGroup.name,
+                option: {
+                  id: modOption.id,
+                  name: modOption.name,
+                  priceAdjustment: adj,
+                },
+              });
+            }
+          }
+        }
+      }
+
+      // Validate Upsells
+      let validatedUpsell = undefined;
+      if (clientItem.selectedUpsell && clientItem.selectedUpsell.added) {
+        const clientUpsellId = clientItem.selectedUpsell.id;
+        const dbUpsell = dbItem.upsellSuggestions.find((u) => u.id === clientUpsellId && u.isActive !== false);
+        if (dbUpsell) {
+          const upsellPrice = dbUpsell.price || 0;
+          itemTotalPrice += upsellPrice;
+          validatedUpsell = {
+            id: dbUpsell.id,
+            name: dbUpsell.suggestedItemName,
+            price: upsellPrice,
+          };
+        }
+      }
+
+      validatedItems.push({
+        itemId: dbItem._id.toString(),
+        name: dbItem.name,
+        basePrice: dbItem.basePrice,
+        quantity: qty,
+        selectedModifiers: validatedModifiers,
+        selectedUpsell: validatedUpsell,
+        totalPrice: itemTotalPrice,
+      });
+
+      subtotal += itemTotalPrice;
+    }
+
+    const count = await Order.countDocuments();
+    const orderNumber = `TAB-${1004 + count}`;
+
+    const newOrder = new Order({
+      orderNumber,
+      restaurantId: branch.restaurantId,
+      branchId: branch._id,
+      customerName: customerName ? customerName.trim() : `Gast Tisch ${tableNumber}`,
+      whatsAppPhone: whatsAppPhone ? whatsAppPhone.trim() : "",
+      orderType: "dine_in",
+      items: validatedItems,
+      subtotal,
+      deliveryFee: 0,
+      total: subtotal,
+      paymentMethod: "Pay at Table",
+      paymentStatus: "pending",
+      status: "received",
+      tableNumber: String(tableNumber),
+      notes: notes || "Created via Table Smart Menu",
+      source: "table",
+    });
+
+    await newOrder.save();
+    emitGlobal("order:new", newOrder);
+
+    res.status(201).json(newOrder);
+  } catch (err) {
+    console.error("[API] POST /api/public/orders error:", err);
+    res.status(500).json({ error: "Failed to submit table order" });
+  }
+});
+
 // PUT /api/orders/:id/status
 app.put("/api/orders/:id/status", authMiddleware as any, requireRole(...ORDER_ROLES) as any, async (req, res) => {
   try {
@@ -953,7 +1114,9 @@ app.put("/api/orders/:id/status", authMiddleware as any, requireRole(...ORDER_RO
     }
 
     // Push status update message to customer's conversation
-    const convo = await Conversation.findOne({ whatsAppPhone: order.whatsAppPhone });
+    const convo = (order.whatsAppPhone && order.whatsAppPhone.trim())
+      ? await Conversation.findOne({ whatsAppPhone: order.whatsAppPhone })
+      : null;
     if (convo) {
       const template = (orderStatusMessages as any)[status];
       if (template) {

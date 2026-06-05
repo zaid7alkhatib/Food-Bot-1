@@ -98,7 +98,7 @@ export interface MenuItem {
   upsellSuggestions: UpsellSuggestion[];
 }
 
-export type OrderType = "delivery" | "pickup";
+export type OrderType = "delivery" | "pickup" | "dine_in";
 
 export type OrderStatus =
   | "received"
@@ -133,7 +133,7 @@ export interface Order {
   orderNumber: string;
   branchId: string;
   customerName: string;
-  whatsAppPhone: string;
+  whatsAppPhone?: string;
   whatsAppJid?: string;
   whatsAppPhoneJid?: string;
   whatsAppLid?: string;
@@ -146,6 +146,7 @@ export interface Order {
   paymentMethod: string;
   deliveryAddress?: string;
   pickupTime?: string;
+  tableNumber?: string;
   notes?: string;
   createdAt: string;
   updatedAt: string;
