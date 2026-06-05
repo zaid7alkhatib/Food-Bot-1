@@ -1,6 +1,7 @@
 import cron from "node-cron";
-import { Order, Feedback, Campaign, Conversation } from "../models/index.js";
+import { Order, Feedback, Campaign, Conversation, WhatsAppSession, Restaurant } from "../models/index.js";
 import { sendWhatsAppMessage } from "./whatsapp.js";
+import { emitGlobal } from "./socket.js";
 
 const orderStatusMessages: Record<string, { ar: string; de: string; en: string }> = {
   received: {
@@ -40,24 +41,86 @@ const orderStatusMessages: Record<string, { ar: string; de: string; en: string }
   },
 };
 
+function serializeDoc(doc: any) {
+  const raw = typeof doc?.toObject === "function" ? doc.toObject() : doc;
+  return {
+    ...raw,
+    id: raw?._id?.toString?.() || raw?.id,
+  };
+}
+
 export function startCronJobs() {
-  // Feedback reminder: Check for delivered orders older than 30 minutes without feedback
   cron.schedule("*/5 * * * *", async () => {
     console.log("[Cron] Running feedback reminder job");
     try {
       const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
       const orders = await Order.find({
         status: "delivered",
+        feedbackRequested: { $ne: true },
         updatedAt: { $lte: thirtyMinutesAgo },
       });
 
       for (const order of orders) {
+        // Mark feedbackRequested as true immediately to prevent duplicate runs
+        order.feedbackRequested = true;
+        await order.save();
+
         const existing = await Feedback.findOne({ orderId: order.orderNumber });
-        if (!existing) {
-          // Send feedback request via WhatsApp
+        if (!existing && order.whatsAppPhone) {
           try {
-            // TODO: Implement actual WhatsApp send when session is active
-            console.log(`[Cron] Would send feedback request for order ${order.orderNumber}`);
+            // Find active session for this branch
+            const session = await WhatsAppSession.findOne({
+              branchId: order.branchId,
+              isActive: true,
+              connected: true,
+            }).sort({ updatedAt: -1 });
+
+            if (session) {
+              // Get customer conversation for language preference
+              let convo = await Conversation.findOne({ whatsAppPhone: order.whatsAppPhone });
+              if (!convo) {
+                convo = new Conversation({
+                  customerName: order.customerName,
+                  whatsAppPhone: order.whatsAppPhone,
+                  branchId: order.branchId,
+                  botEnabled: true,
+                  messages: [],
+                });
+              }
+
+              const lang = convo.customerLanguage || "de";
+              const restaurant = await Restaurant.findOne({ isActive: true }).lean();
+              const restaurantName = restaurant?.name || "MR. Tabboush";
+              const googleMapsReviewLink = restaurant?.googleMapsReviewLink || "";
+
+              let messageText = "";
+              if (lang === "ar") {
+                messageText = `نأمل أنك استمتعت بوجبتك من ${restaurantName}! 🍽️\n\nيرجى تقييم تجربتك معنا بالرد برقم من 1 إلى 5 نجوم (حيث 5 هي الأفضل).\nأو يمكنك تقييمنا مباشرة على Google ودعمنا: ${googleMapsReviewLink} ❤️`;
+              } else if (lang === "en") {
+                messageText = `We hope you enjoyed your meal from ${restaurantName}! 🍽️\n\nPlease rate your experience by replying with a number from 1 to 5 stars (with 5 being the best).\nYou can also review us directly on Google to support us: ${googleMapsReviewLink} ❤️`;
+              } else {
+                messageText = `Wir hoffen, Ihre Bestellung von ${restaurantName} hat Ihnen geschmeckt! 🍽️\n\nBitte bewerten Sie Ihre Erfahrung, indem Sie mit einer Zahl von 1 bis 5 antworten (wobei 5 am besten ist).\nGerne können Sie uns auch direkt auf Google bewerten: ${googleMapsReviewLink} ❤️`;
+              }
+
+              // Send the message on real WhatsApp
+              await sendWhatsAppMessage(session.sessionName, order.whatsAppPhone, messageText);
+
+              // Push the bot message to conversation history
+              convo.messages.push({
+                id: "msg-" + Math.random().toString(36).substr(2, 9),
+                sender: "bot",
+                text: messageText,
+                timestamp: new Date().toISOString(),
+              });
+              convo.currentStep = "awaiting_feedback";
+              convo.updatedAt = new Date();
+              await convo.save();
+
+              emitGlobal("conversation:updated", serializeDoc(convo));
+              console.log(`[Cron] Sent feedback request message to ${order.whatsAppPhone} for order ${order.orderNumber}`);
+            } else {
+              console.warn(`[Cron] Skip feedback request for ${order.orderNumber}: No active/connected WhatsApp session`);
+            }
           } catch (e) {
             console.error(`[Cron] Failed to send feedback for ${order.orderNumber}:`, e);
           }

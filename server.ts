@@ -1527,7 +1527,54 @@ app.post("/api/bot-reply", async (req, res) => {
     const explicitLanguage = detectExplicitLanguageRequest(message);
     let lang: CustomerLanguage = storedLanguage || detectedLanguage || "de";
 
-    if (nextStep === "language_selection") {
+    if (nextStep === "awaiting_feedback") {
+      const ratingMatch = message.trim().match(/^[1-5]/);
+      if (ratingMatch) {
+        const rating = parseInt(ratingMatch[0]);
+        const comment = message.replace(/^[1-5]\s*[-:]*\s*/, "").trim();
+
+        // Find their last completed order to link to the feedback
+        const lastOrder = await Order.findOne({ whatsAppPhone: phone }).sort({ createdAt: -1 });
+        const orderNumber = lastOrder?.orderNumber || "whatsapp-review";
+
+        const feedback = new Feedback({
+          orderId: orderNumber,
+          customerName: convo.customerName || `Guest ${phone.substring(phone.length - 4)}`,
+          whatsAppPhone: phone,
+          rating,
+          comment,
+          status: "pending"
+        });
+        await feedback.save();
+        emitGlobal("feedback:new", feedback);
+
+        const restaurant = await Restaurant.findOne({ isActive: true }).lean();
+        const googleMapsReviewLink = restaurant?.googleMapsReviewLink || "";
+
+        if (rating === 5 && googleMapsReviewLink) {
+          botReplyText = lang === "ar"
+            ? `شكراً جزيلاً لتقييمك الرائع بـ 5 نجوم! ⭐⭐⭐⭐⭐\nإذا كان لديك دقيقة، يسعدنا دعمك لنا بتقييم مباشر على Google: ${googleMapsReviewLink} ❤️`
+            : lang === "en"
+            ? `Thank you so much for your wonderful 5-star review! ⭐⭐⭐⭐⭐\nIf you have a minute, please support us on Google: ${googleMapsReviewLink} ❤️`
+            : `Vielen Dank für Ihre tolle 5-Sterne-Bewertung! ⭐⭐⭐⭐⭐\nWenn Sie eine Minute Zeit haben, unterstützen Sie uns bitte mit einer Bewertung auf Google: ${googleMapsReviewLink} ❤️`;
+        } else {
+          botReplyText = lang === "ar"
+            ? `شكراً جزيلاً لمشاركتنا تقييمك! سنعمل دائماً على تقديم الأفضل لك. 🌹`
+            : lang === "en"
+            ? `Thank you for sharing your feedback! We will continue working hard to serve you. 🌹`
+            : `Vielen Dank für Ihr Feedback! Wir arbeiten stets daran, unseren Service zu verbessern. 🌹`;
+        }
+        nextStep = "welcome";
+      } else {
+        const restaurant = await Restaurant.findOne({ isActive: true }).lean();
+        const googleMapsReviewLink = restaurant?.googleMapsReviewLink || "";
+        botReplyText = lang === "ar"
+          ? `يرجى الرد برقم من 1 إلى 5 لتقييم تجربتك معنا. أو تفضل بزيارة رابط تقييم Google: ${googleMapsReviewLink}`
+          : lang === "en"
+          ? `Please reply with a number from 1 to 5 to rate your experience. Or visit our Google review page: ${googleMapsReviewLink}`
+          : `Bitte antworten Sie mit einer Zahl von 1 bis 5, um Ihre Erfahrung zu bewerten. Oder besuchen Sie Google: ${googleMapsReviewLink}`;
+      }
+    } else if (nextStep === "language_selection") {
       const selectedLanguage = parseLanguageSelection(message);
       const selectionCommand = detectFlowCommand(message);
       if (selectedLanguage) {
