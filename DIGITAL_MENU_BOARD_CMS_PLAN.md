@@ -1,5 +1,34 @@
 # Proposal: Digital Menu Board CMS Extension
 
+## Implementation Update (2026-06-05)
+
+The proposal below has now been implemented in the codebase as a first production-ready version.
+
+### Completed
+
+- Branch-level menu board schema fields were added in `Branch` (layouts, promo slides, ticker, language mode, rotation).
+- Public endpoint added: `/api/public/menu-board?branchId=...&screen=1&lang=de`.
+- Menu board route added in frontend: `/menu-board` with query-param support for branch, screen, and language.
+- Real-time updates wired through Socket.io (`menu:updated` and `branch:updated`) so TV boards refresh without reload.
+- Out-of-stock behavior implemented using current item availability flags:
+    - item treated as sold out when both delivery and pickup are disabled.
+- Admin tab added: **Menu Board Configurations** (`MenuBoardSettings.tsx`).
+- Per-layout quick actions added:
+    - open screen URL
+    - open fixed-language URL
+    - copy screen URL
+    - copy fixed-language URL
+- Save-time branch validation added:
+    - unique and non-empty screen IDs
+    - rotation seconds bounds (5 to 120)
+    - promo image URL sanity checks (http/https + image-like URL patterns)
+
+### Notes
+
+- This version is hardware-agnostic and ready for kiosk usage via TV browser, media stick, or mini PC.
+- Language mode currently supports fixed, rotate, and bilingual rendering.
+- A future enhancement can add explicit `stockCount` if quantity-based depletion is needed beyond availability flags.
+
 This document outlines a plan to extend the **MR. TABBOUSH** platform into a **Digital Menu Board CMS**. This will allow restaurant managers to display their menus, best dishes, and promotions on overhead monitors or TVs (Samsung, LG, Android TV, etc.) in real-time, managed directly from the existing admin panel.
 
 ---

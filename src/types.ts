@@ -35,6 +35,37 @@ export interface Branch {
   paymentMethods: string[];
   isOpen: boolean;
   openingHours: string;
+  menuBoardSettings?: MenuBoardSettings;
+}
+
+export interface MenuBoardLayout {
+  screenId: string;
+  name?: string;
+  categoryIds: string[];
+  orientation: "landscape" | "portrait";
+  template: "grid" | "split" | "highlights";
+  isActive?: boolean;
+}
+
+export interface MenuBoardPromoSlide {
+  id: string;
+  title: Translation;
+  imageUrl: string;
+  priceText: Translation;
+  screenIds: string[];
+  isActive: boolean;
+  sortOrder: number;
+}
+
+export interface MenuBoardSettings {
+  enabled: boolean;
+  languageMode: "fixed" | "rotate" | "bilingual";
+  fixedLanguage: "ar" | "de" | "en";
+  rotationSeconds: number;
+  tickerEnabled: boolean;
+  tickerText: Translation;
+  layouts: MenuBoardLayout[];
+  promoSlides: MenuBoardPromoSlide[];
 }
 
 export interface Currency {

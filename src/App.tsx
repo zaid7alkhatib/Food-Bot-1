@@ -6,6 +6,7 @@ import {
   Printer,
   Megaphone,
   Settings,
+  Monitor,
   Languages,
   Activity,
   HelpCircle,
@@ -29,6 +30,8 @@ import RestaurantSettings from "./components/RestaurantSettings";
 import UserManagement from "./components/UserManagement";
 import LoginPage from "./components/LoginPage";
 import SmartMenu from "./components/SmartMenu";
+import MenuBoard from "./components/MenuBoard";
+import MenuBoardSettings from "./components/MenuBoardSettings";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { I18nProvider, useI18n, AppLanguage } from "./i18n";
 import { Order, OrderStatus, Conversation, MenuItem, Category, Campaign, Feedback, UserRole } from "./types";
@@ -39,6 +42,7 @@ type DashboardTab =
   | "chat"
   | "campaigns"
   | "menu"
+  | "menuBoard"
   | "hardware"
   | "whatsapp"
   | "settings"
@@ -46,9 +50,9 @@ type DashboardTab =
   | "users";
 
 const ROLE_TABS: Record<UserRole, DashboardTab[]> = {
-  super_admin: ["overview", "orders", "chat", "campaigns", "menu", "hardware", "whatsapp", "settings", "restaurant", "users"],
-  restaurant_admin: ["overview", "orders", "chat", "campaigns", "menu", "hardware", "whatsapp", "settings", "restaurant", "users"],
-  branch_manager: ["overview", "orders", "chat", "menu", "hardware", "settings"],
+  super_admin: ["overview", "orders", "chat", "campaigns", "menu", "menuBoard", "hardware", "whatsapp", "settings", "restaurant", "users"],
+  restaurant_admin: ["overview", "orders", "chat", "campaigns", "menu", "menuBoard", "hardware", "whatsapp", "settings", "restaurant", "users"],
+  branch_manager: ["overview", "orders", "chat", "menu", "menuBoard", "hardware", "settings"],
   staff: ["orders", "hardware"],
   support_agent: ["chat"],
 };
@@ -63,6 +67,7 @@ const TAB_CONFIG: {
   { id: "chat", labelKey: "nav.chat", Icon: MessageSquare },
   { id: "campaigns", labelKey: "nav.campaigns", Icon: Megaphone },
   { id: "menu", labelKey: "nav.menu", Icon: Settings },
+  { id: "menuBoard", labelKey: "nav.menuBoard", Icon: Monitor },
   { id: "hardware", labelKey: "nav.printer", Icon: Printer },
   { id: "whatsapp", labelKey: "nav.whatsapp", Icon: Smartphone },
   { id: "settings", labelKey: "nav.branch", Icon: Settings },
@@ -646,6 +651,8 @@ function Dashboard() {
                   />
                 )}
 
+                {activeTab === "menuBoard" && <MenuBoardSettings />}
+
                 {activeTab === "hardware" && (
                   <ThermalPrinter
                     activeOrderToPrint={selectedOrderToPrint}
@@ -692,6 +699,10 @@ export default function App() {
 
 function AppWithAuth() {
   const { user, isLoading } = useAuth();
+
+  if (window.location.pathname === "/menu-board") {
+    return <MenuBoard />;
+  }
 
   const searchParams = new URLSearchParams(window.location.search);
   const tableNumber = searchParams.get("table");

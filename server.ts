@@ -1073,6 +1073,81 @@ app.get("/api/public/menu", async (req, res) => {
   }
 });
 
+// GET /api/public/menu-board (digital menu board data)
+app.get("/api/public/menu-board", async (req, res) => {
+  try {
+    const branchId = req.query.branchId as string;
+    const screen = (req.query.screen as string) || "1";
+    const requestedLang = (req.query.lang as string) || "de";
+    const lang: "ar" | "de" | "en" = requestedLang === "ar" || requestedLang === "en" ? requestedLang : "de";
+
+    const branch = (branchId && mongoose.isValidObjectId(branchId))
+      ? await Branch.findById(branchId).lean()
+      : await Branch.findOne({ isActive: true }).lean();
+
+    if (!branch) {
+      res.status(404).json({ error: "Branch not found" });
+      return;
+    }
+
+    const [restaurant, categories, menuItems] = await Promise.all([
+      Restaurant.findById(branch.restaurantId).lean(),
+      Category.find({ isActive: true }).sort({ sortOrder: 1 }).lean(),
+      MenuItem.find({ isActive: true }).sort({ sortOrder: 1 }).lean(),
+    ]);
+
+    const branchData: any = serializeDoc(branch);
+    const menuBoardSettings = branchData.menuBoardSettings || {};
+    const layouts = Array.isArray(menuBoardSettings.layouts) ? menuBoardSettings.layouts : [];
+    const activeLayout = layouts.find((layout: any) => String(layout.screenId) === String(screen) && layout.isActive !== false) || null;
+
+    const categorySet = activeLayout?.categoryIds?.length
+      ? new Set(activeLayout.categoryIds.map((id: any) => id?.toString?.() || String(id)))
+      : null;
+
+    const serializedCategories = categories.map((cat) => serializeDoc(cat));
+    const serializedItems = menuItems.map((item) => serializeDoc(item));
+
+    const visibleCategories = categorySet
+      ? serializedCategories.filter((cat: any) => categorySet.has(cat.id))
+      : serializedCategories;
+
+    const visibleCategoryIds = new Set(visibleCategories.map((cat: any) => cat.id));
+    const visibleItems = serializedItems.filter((item: any) => {
+      const itemCategoryId = item.categoryId?.toString?.() || item.categoryId;
+      return visibleCategoryIds.has(String(itemCategoryId));
+    });
+
+    const promoSlides = (menuBoardSettings.promoSlides || [])
+      .filter((slide: any) => slide?.isActive !== false)
+      .filter((slide: any) => !Array.isArray(slide.screenIds) || slide.screenIds.length === 0 || slide.screenIds.includes(screen))
+      .sort((a: any, b: any) => (a.sortOrder || 0) - (b.sortOrder || 0));
+
+    res.json({
+      branch: branchData,
+      restaurant: restaurant ? serializeDoc(restaurant) : null,
+      categories: visibleCategories,
+      menuItems: visibleItems,
+      currency: defaultCurrency,
+      menuBoard: {
+        screen,
+        language: lang,
+        enabled: menuBoardSettings.enabled === true,
+        languageMode: menuBoardSettings.languageMode || "rotate",
+        fixedLanguage: menuBoardSettings.fixedLanguage || "de",
+        rotationSeconds: Number(menuBoardSettings.rotationSeconds) > 0 ? Number(menuBoardSettings.rotationSeconds) : 15,
+        tickerEnabled: menuBoardSettings.tickerEnabled === true,
+        tickerText: menuBoardSettings.tickerText || { ar: "", de: "", en: "" },
+        layout: activeLayout,
+        promoSlides,
+      },
+    });
+  } catch (err) {
+    console.error("[API] GET /api/public/menu-board error:", err);
+    res.status(500).json({ error: "Failed to load menu board data" });
+  }
+});
+
 // POST /api/public/orders (smart table menu ordering)
 app.post("/api/public/orders", async (req, res) => {
   try {

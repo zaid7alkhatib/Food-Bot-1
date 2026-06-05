@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { Branch } from "../models/index.js";
+import { emitGlobal } from "../services/socket.js";
 
 const router = Router();
 
@@ -37,6 +38,8 @@ router.put("/:id", async (req, res) => {
       res.status(404).json({ error: "Branch not found" });
       return;
     }
+    emitGlobal("branch:updated", branch);
+    emitGlobal("menu:updated", { branchId: branch._id?.toString?.() || branch.id });
     res.json(branch);
   } catch (err) {
     console.error("[Branches] PUT /:id error:", err);
