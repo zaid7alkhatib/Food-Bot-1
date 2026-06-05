@@ -695,7 +695,12 @@ function AppWithAuth() {
 
   const searchParams = new URLSearchParams(window.location.search);
   const tableNumber = searchParams.get("table");
+  const convoId = searchParams.get("convo");
   const branchId = searchParams.get("branch") || "";
+
+  if (convoId) {
+    return <SmartMenu convoId={convoId} branchId={branchId} />;
+  }
 
   if (tableNumber) {
     return <SmartMenu tableNumber={tableNumber} branchId={branchId} />;

@@ -298,7 +298,11 @@ function getLanguageSwitchReply(lang: CustomerLanguage): string {
   return "Sprache auf Deutsch geändert. Bitte fahren Sie mit Ihrer Bestellung fort, ich antworte jetzt auf Deutsch. ✅";
 }
 
-function getWelcomeReply(lang: CustomerLanguage, branchConfig: BranchFulfillmentConfig = DEFAULT_BRANCH_CONFIG): string {
+function getWelcomeReply(
+  lang: CustomerLanguage,
+  branchConfig: BranchFulfillmentConfig = DEFAULT_BRANCH_CONFIG,
+  convoId?: string
+): string {
   const fee = formatMoney(branchConfig.deliveryFee);
   const min = formatMoney(branchConfig.minOrderAmount);
   const radius = formatMoney(branchConfig.deliveryRadiusKm);
@@ -327,13 +331,27 @@ function getWelcomeReply(lang: CustomerLanguage, branchConfig: BranchFulfillment
   const restaurantName = branchConfig.restaurantName;
   const branchCity = branchConfig.branchCity;
 
+  let linkPrompt = "";
+  if (convoId) {
+    const appUrl = process.env.APP_URL || `http://154.38.174.96:3000`;
+    const branchQuery = branchConfig.branchId ? `&branch=${branchConfig.branchId}` : "";
+    const url = `${appUrl}/?convo=${convoId}${branchQuery}`;
+    if (lang === "ar") {
+      linkPrompt = `\n\n🔗 أو يمكنك اختيار وجباتك بشكل مرئي وسهل من هنا أولاً:\n${url}`;
+    } else if (lang === "en") {
+      linkPrompt = `\n\n🔗 Or select your items visually using our Smart Menu here first:\n${url}`;
+    } else {
+      linkPrompt = `\n\n🔗 Oder wählen Sie Ihre Gerichte hier zuerst visuell über unser Smart Menu aus:\n${url}`;
+    }
+  }
+
   if (lang === "ar") {
-    return `أهلاً بك في ${restaurantName}! 🌯 أشهى المأكولات الشامية في ${branchCity}.\n\nكيف ترغب في استلام طلبك؟\nالرجاء كتابة:\n` + choices + getShortHelpLine(lang);
+    return `أهلاً بك في ${restaurantName}! 🌯 أشهى المأكولات الشامية في ${branchCity}.\n\nكيف ترغب في استلام طلبك؟\nالرجاء كتابة:\n` + choices + linkPrompt + getShortHelpLine(lang);
   }
   if (lang === "en") {
-    return `Welcome to ${restaurantName}! 🌯 Finest Damascus Shawarma in ${branchCity}.\n\nHow would you like to receive your food?\nReply with:\n` + choices + getShortHelpLine(lang);
+    return `Welcome to ${restaurantName}! 🌯 Finest Damascus Shawarma in ${branchCity}.\n\nHow would you like to receive your food?\nReply with:\n` + choices + linkPrompt + getShortHelpLine(lang);
   }
-  return `Willkommen bei ${restaurantName}! 🌯 Feinstes syrisches Shawarma in ${branchCity}.\n\nWie möchten Sie Ihre Bestellung erhalten?\nAntworten Sie mit:\n` + choices + getShortHelpLine(lang);
+  return `Willkommen bei ${restaurantName}! 🌯 Feinstes syrisches Shawarma in ${branchCity}.\n\nWie möchten Sie Ihre Bestellung erhalten?\nAntworten Sie mit:\n` + choices + linkPrompt + getShortHelpLine(lang);
 }
 
 function getAddressPrompt(lang: CustomerLanguage, branchConfig: BranchFulfillmentConfig = DEFAULT_BRANCH_CONFIG): string {
@@ -429,7 +447,8 @@ function getMenuPrompt(
   menuItems: any[],
   categories: any[],
   branchConfig: BranchFulfillmentConfig,
-  orderType?: "delivery" | "pickup"
+  orderType?: "delivery" | "pickup",
+  convoId?: string
 ): string {
   const entries = buildVisibleMenuEntries(menuItems, categories, branchConfig, orderType);
 
@@ -468,7 +487,22 @@ function getMenuPrompt(
     ? "Reply with the item code, e.g. *01*, or type the item name:"
     : "Antworten Sie mit dem Artikelcode, z.B. *01*, oder dem Namen:";
 
-  return [intro, "", ...body, "", instruction].join("\n") + getShortHelpLine(lang);
+  let linkPrompt = "";
+  if (convoId) {
+    const appUrl = process.env.APP_URL || `http://154.38.174.96:3000`;
+    const branchQuery = branchConfig.branchId ? `&branch=${branchConfig.branchId}` : "";
+    const url = `${appUrl}/?convo=${convoId}${branchQuery}`;
+    
+    if (lang === "ar") {
+      linkPrompt = `🔗 أو يمكنك تصفح القائمة واختيار الأصناف بشكل مرئي وبسيط من هنا:\n${url}\n`;
+    } else if (lang === "en") {
+      linkPrompt = `🔗 Or browse our menu and add items visually here:\n${url}\n`;
+    } else {
+      linkPrompt = `🔗 Oder stöbern Sie in unserer Speisekarte und wählen Sie die Artikel hier visuell aus:\n${url}\n`;
+    }
+  }
+
+  return [intro, "", ...body, "", linkPrompt, instruction].join("\n").replace(/\n\n+/g, "\n\n") + getShortHelpLine(lang);
 }
 
 function getCancelReply(lang: CustomerLanguage): string {
@@ -1162,6 +1196,135 @@ app.post("/api/public/orders", async (req, res) => {
   } catch (err) {
     console.error("[API] POST /api/public/orders error:", err);
     res.status(500).json({ error: "Failed to submit table order" });
+  }
+});
+
+// POST /api/public/whatsapp-cart (sync visual menu selection to WhatsApp convo)
+app.post("/api/public/whatsapp-cart", async (req, res) => {
+  try {
+    const { convoId, items } = req.body;
+
+    if (!convoId || !mongoose.isValidObjectId(convoId)) {
+      res.status(400).json({ error: "Invalid conversation ID" });
+      return;
+    }
+
+    const convo = await Conversation.findById(convoId);
+    if (!convo) {
+      res.status(404).json({ error: "Conversation not found" });
+      return;
+    }
+
+    if (!Array.isArray(items) || items.length === 0) {
+      res.status(400).json({ error: "Cart items are empty" });
+      return;
+    }
+
+    const branchConfig = await loadBranchConfig(convo.branchId);
+    const dbMenuItems = await MenuItem.find({ isActive: true }).lean();
+
+    let subtotal = 0;
+    const validatedItems = items.map((item: any) => {
+      const dbItem = dbMenuItems.find((mi) => mi._id.toString() === item.itemId || mi.id === item.itemId);
+      if (!dbItem) {
+        throw new Error(`Item ${item.itemId} not found in database`);
+      }
+
+      let modifiersPrice = 0;
+      const selectedModifiers = (item.selectedModifiers || []).map((mod: any) => {
+        const group = dbItem.modifierGroups?.find((g: any) => g.id === mod.groupId);
+        const option = group?.options?.find((o: any) => o.id === mod.option?.id);
+        if (!option) {
+          throw new Error(`Modifier option ${mod.option?.id} not found in group ${mod.groupId}`);
+        }
+        modifiersPrice += toFiniteNumber(option.priceAdjustment, 0);
+        return {
+          groupId: mod.groupId,
+          groupName: group.name,
+          option: {
+            id: option.id,
+            name: option.name,
+            priceAdjustment: option.priceAdjustment,
+          },
+        };
+      });
+
+      let upsellPrice = 0;
+      let selectedUpsell = undefined;
+      if (item.selectedUpsell) {
+        const upsell = dbItem.upsellSuggestions?.find((u: any) => u.id === item.selectedUpsell.id);
+        if (upsell) {
+          upsellPrice = toFiniteNumber(upsell.price, 0);
+          selectedUpsell = {
+            id: upsell.id,
+            name: upsell.suggestedItemName || upsell.name,
+            price: upsell.price,
+          };
+        }
+      }
+
+      const basePrice = toFiniteNumber(dbItem.basePrice, 0);
+      const quantity = Math.max(1, toFiniteNumber(item.quantity, 1));
+      const itemTotal = (basePrice + modifiersPrice) * quantity + upsellPrice;
+      subtotal += itemTotal;
+
+      return {
+        itemId: dbItem._id.toString(),
+        name: dbItem.name,
+        basePrice,
+        quantity,
+        selectedModifiers,
+        selectedUpsell,
+        totalPrice: itemTotal,
+      };
+    });
+
+    const deliveryFee = convo.unsubmittedOrder?.orderType === "delivery" ? branchConfig.deliveryFee : 0;
+    const total = subtotal + deliveryFee;
+
+    convo.unsubmittedOrder = {
+      ...convo.unsubmittedOrder,
+      items: validatedItems,
+      subtotal,
+      deliveryFee,
+      total,
+      status: "received",
+    };
+
+    const hasOrderType = !!convo.unsubmittedOrder?.orderType;
+    if (hasOrderType) {
+      convo.currentStep = "confirming";
+    } else {
+      convo.currentStep = "type";
+    }
+    convo.updatedAt = new Date();
+    await convo.save();
+
+    emitGlobal("conversation:updated", serializeDoc(convo));
+
+    const lang = convo.customerLanguage || "de";
+    let summaryText = "";
+    if (hasOrderType) {
+      summaryText = buildConfirmationSummary(convo, lang, branchConfig);
+    } else {
+      const cartLoadedText = lang === "ar"
+        ? "لقد قمت بتحميل سلة طلباتك! 🛒\n\n"
+        : lang === "en"
+        ? "I have loaded your cart! 🛒\n\n"
+        : "Ich habe Ihren Warenkorb geladen! 🛒\n\n";
+      summaryText = cartLoadedText + getWelcomeReply(lang, branchConfig, convo._id?.toString() || convo.id);
+    }
+    
+    try {
+      await sendConversationWhatsAppMessage(convo, summaryText);
+    } catch (wsErr: any) {
+      console.warn("[API] Failed to send whatsapp confirmation message for synced cart:", wsErr.message);
+    }
+
+    res.json({ success: true, conversation: serializeDoc(convo) });
+  } catch (err: any) {
+    console.error("[API] POST /api/public/whatsapp-cart error:", err);
+    res.status(500).json({ error: err.message || "Failed to sync cart to WhatsApp" });
   }
 });
 
@@ -1920,34 +2083,78 @@ You MUST reply with a JSON object in this exact schema structure:
               deliveryAddress: addressString
             };
             
-            const menuPrompt = getMenuPrompt(lang, dbMenuItems, dbCategories, branchConfig, orderTypeForMenu(convo));
-            botReplyText = isAr
-              ? `تم التحقق من العنوان بنجاح! موقعك على بعد ${distance.toFixed(2)} كم وهو ضمن نطاق التوصيل. 📍\n\n${menuPrompt}`
-              : isEn
-              ? `Address verified successfully! You are ${distance.toFixed(2)} km away, which is within our delivery zone. 📍\n\n${menuPrompt}`
-              : `Adresse erfolgreich verifiziert! Sie sind ${distance.toFixed(2)} km entfernt, was innerhalb unseres Liefergebiets liegt. 📍\n\n${menuPrompt}`;
-            nextStep = "menu";
+            const hasItems = (convo.unsubmittedOrder?.items || []).length > 0;
+            if (hasItems) {
+              convo.unsubmittedOrder.deliveryFee = branchConfig.deliveryFee;
+              convo.unsubmittedOrder.total = (convo.unsubmittedOrder.subtotal || 0) + branchConfig.deliveryFee;
+              
+              const addressVerified = isAr
+                ? `تم التحقق من العنوان بنجاح! موقعك على بعد ${distance.toFixed(2)} كم وهو ضمن نطاق التوصيل. 📍`
+                : isEn
+                ? `Address verified successfully! You are ${distance.toFixed(2)} km away, which is within our delivery zone. 📍`
+                : `Adresse erfolgreich verifiziert! Sie sind ${distance.toFixed(2)} km entfernt, was innerhalb unseres Liefergebiets liegt. 📍`;
+              
+              botReplyText = `${addressVerified}\n\n${buildConfirmationSummary(convo, lang, branchConfig)}`;
+              nextStep = "confirming";
+            } else {
+              const menuPrompt = getMenuPrompt(lang, dbMenuItems, dbCategories, branchConfig, orderTypeForMenu(convo), convo._id?.toString() || convo.id);
+              botReplyText = isAr
+                ? `تم التحقق من العنوان بنجاح! موقعك على بعد ${distance.toFixed(2)} كم وهو ضمن نطاق التوصيل. 📍\n\n${menuPrompt}`
+                : isEn
+                ? `Address verified successfully! You are ${distance.toFixed(2)} km away, which is within our delivery zone. 📍\n\n${menuPrompt}`
+                : `Adresse erfolgreich verifiziert! Sie sind ${distance.toFixed(2)} km entfernt, was innerhalb unseres Liefergebiets liegt. 📍\n\n${menuPrompt}`;
+              nextStep = "menu";
+            }
           }
         } else {
           // Geocoding failed and no GPS coordinate was passed
           convo.unsubmittedOrder = { ...convo.unsubmittedOrder, deliveryAddress: message };
-          const menuPrompt = getMenuPrompt(lang, dbMenuItems, dbCategories, branchConfig, orderTypeForMenu(convo));
-          botReplyText = isAr
-            ? `حفظنا العنوان: *${message}*. (ملاحظة: لم نتمكن من تحديد موقعك بدقة على الخارطة، يرجى التأكد من كتابة الشارع والرقم بشكل صحيح). 📍\n\n${menuPrompt}`
-            : isEn
-            ? `Address saved: *${message}*. (Note: We couldn't verify this address on the map, please make sure the street and number are correct). 📍\n\n${menuPrompt}`
-            : `Lieferadresse gespeichert: *${message}*. (Hinweis: Adresse konnte nicht kartiert werden, bitte prüfen Sie Straße und Hausnummer). 📍\n\n${menuPrompt}`;
-          nextStep = "menu";
+          
+          const hasItems = (convo.unsubmittedOrder?.items || []).length > 0;
+          if (hasItems) {
+            convo.unsubmittedOrder.deliveryFee = branchConfig.deliveryFee;
+            convo.unsubmittedOrder.total = (convo.unsubmittedOrder.subtotal || 0) + branchConfig.deliveryFee;
+            
+            const addressSaved = isAr
+              ? `حفظنا العنوان: *${message}*. (ملاحظة: لم نتمكن من تحديد موقعك بدقة على الخارطة، يرجى التأكد من كتابة الشارع والرقم بشكل صحيح). 📍`
+              : isEn
+              ? `Address saved: *${message}*. (Note: We couldn't verify this address on the map, please make sure the street and number are correct). 📍`
+              : `Lieferadresse gespeichert: *${message}*. (Hinweis: Adresse konnte nicht kartiert werden, bitte prüfen Sie Straße und Hausnummer). 📍`;
+              
+            botReplyText = `${addressSaved}\n\n${buildConfirmationSummary(convo, lang, branchConfig)}`;
+            nextStep = "confirming";
+          } else {
+            const menuPrompt = getMenuPrompt(lang, dbMenuItems, dbCategories, branchConfig, orderTypeForMenu(convo), convo._id?.toString() || convo.id);
+            botReplyText = isAr
+              ? `حفظنا العنوان: *${message}*. (ملاحظة: لم نتمكن من تحديد موقعك بدقة على الخارطة، يرجى التأكد من كتابة الشارع والرقم بشكل صحيح). 📍\n\n${menuPrompt}`
+              : isEn
+              ? `Address saved: *${message}*. (Note: We couldn't verify this address on the map, please make sure the street and number are correct). 📍\n\n${menuPrompt}`
+              : `Lieferadresse gespeichert: *${message}*. (Hinweis: Adresse konnte nicht kartiert werden, bitte prüfen Sie Straße und Hausnummer). 📍\n\n${menuPrompt}`;
+            nextStep = "menu";
+          }
         }
       } else if (step === "pickup_time") {
         convo.unsubmittedOrder = { ...convo.unsubmittedOrder, pickupTime: message };
-        const menuPrompt = getMenuPrompt(lang, dbMenuItems, dbCategories, branchConfig, orderTypeForMenu(convo));
-        botReplyText = isAr
-          ? `تم تأكيد وقت الاستلام! ⏰\n${menuPrompt}`
-          : isEn
-          ? `Pickup time confirmed! ⏰\n${menuPrompt}`
-          : `Abholzeit vermerkt! ⏰\n${menuPrompt}`;
-        nextStep = "menu";
+        
+        const hasItems = (convo.unsubmittedOrder?.items || []).length > 0;
+        if (hasItems) {
+          const pickupConfirmed = isAr
+            ? `تم تأكيد وقت الاستلام! ⏰`
+            : isEn
+            ? `Pickup time confirmed! ⏰`
+            : `Abholzeit vermerkt! ⏰`;
+            
+          botReplyText = `${pickupConfirmed}\n\n${buildConfirmationSummary(convo, lang, branchConfig)}`;
+          nextStep = "confirming";
+        } else {
+          const menuPrompt = getMenuPrompt(lang, dbMenuItems, dbCategories, branchConfig, orderTypeForMenu(convo), convo._id?.toString() || convo.id);
+          botReplyText = isAr
+            ? `تم تأكيد وقت الاستلام! ⏰\n${menuPrompt}`
+            : isEn
+            ? `Pickup time confirmed! ⏰\n${menuPrompt}`
+            : `Abholzeit vermerkt! ⏰\n${menuPrompt}`;
+          nextStep = "menu";
+        }
       } else if (step === "menu") {
         const selectedItem = findMenuItemFromMessage(
           message,

@@ -24,12 +24,14 @@ import {
 } from "lucide-react";
 
 interface SmartMenuProps {
-  tableNumber: string;
+  tableNumber?: string;
   branchId: string;
+  convoId?: string;
 }
 
-export default function SmartMenu({ tableNumber, branchId }: SmartMenuProps) {
+export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuProps) {
   const { language, setLanguage, t, text, dir } = useI18n();
+  const isWhatsAppMode = !!convoId;
 
   // State
   const [categories, setCategories] = useState<Category[]>([]);
@@ -41,6 +43,7 @@ export default function SmartMenu({ tableNumber, branchId }: SmartMenuProps) {
   const [logoUrl, setLogoUrl] = useState("");
   const [brandStyles, setBrandStyles] = useState<React.CSSProperties>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [isSyncedSuccess, setIsSyncedSuccess] = useState(false);
 
   // Cart State
   const [cart, setCart] = useState<OrderItem[]>([]);
@@ -334,45 +337,77 @@ export default function SmartMenu({ tableNumber, branchId }: SmartMenuProps) {
     return getCartSubtotal();
   };
 
-  // Submit dine-in order
+  // Submit dine-in or WhatsApp synced order
   const handlePlaceOrder = async () => {
     if (cart.length === 0) return;
     setIsSubmitting(true);
 
     try {
-      const orderData = {
-        branchId,
-        customerName: customerName.trim() || undefined,
-        whatsAppPhone: customerPhone.trim() || undefined,
-        tableNumber,
-        items: cart.map((item) => ({
-          itemId: item.itemId,
-          quantity: item.quantity,
-          selectedModifiers: item.selectedModifiers.map((m) => ({
-            groupId: m.groupId,
-            optionId: m.option.id,
+      if (isWhatsAppMode) {
+        const orderData = {
+          convoId,
+          items: cart.map((item) => ({
+            itemId: item.itemId,
+            quantity: item.quantity,
+            selectedModifiers: item.selectedModifiers.map((m) => ({
+              groupId: m.groupId,
+              option: { id: m.option.id },
+            })),
+            selectedUpsell: item.selectedUpsell 
+              ? { id: item.selectedUpsell.id } 
+              : undefined,
           })),
-          selectedUpsell: item.selectedUpsell 
-            ? { id: item.selectedUpsell.id, added: true } 
-            : undefined,
-        })),
-        notes: notes.trim() || undefined,
-      };
+        };
 
-      const response = await fetch("/api/public/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(orderData),
-      });
+        const response = await fetch("/api/public/whatsapp-cart", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(orderData),
+        });
 
-      if (response.ok) {
-        const order = await response.json();
-        setPlacedOrder(order);
-        setCart([]);
-        setIsCartOpen(false);
+        if (response.ok) {
+          setIsSyncedSuccess(true);
+          setCart([]);
+          setIsCartOpen(false);
+        } else {
+          const errorData = await response.json();
+          alert(errorData.error || "Failed to sync cart with WhatsApp.");
+        }
       } else {
-        const errorData = await response.json();
-        alert(errorData.error || "Failed to submit order.");
+        const orderData = {
+          branchId,
+          customerName: customerName.trim() || undefined,
+          whatsAppPhone: customerPhone.trim() || undefined,
+          tableNumber,
+          items: cart.map((item) => ({
+            itemId: item.itemId,
+            quantity: item.quantity,
+            selectedModifiers: item.selectedModifiers.map((m) => ({
+              groupId: m.groupId,
+              optionId: m.option.id,
+            })),
+            selectedUpsell: item.selectedUpsell 
+              ? { id: item.selectedUpsell.id, added: true } 
+              : undefined,
+          })),
+          notes: notes.trim() || undefined,
+        };
+
+        const response = await fetch("/api/public/orders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(orderData),
+        });
+
+        if (response.ok) {
+          const order = await response.json();
+          setPlacedOrder(order);
+          setCart([]);
+          setIsCartOpen(false);
+        } else {
+          const errorData = await response.json();
+          alert(errorData.error || "Failed to submit order.");
+        }
       }
     } catch (err) {
       console.error(err);
@@ -461,6 +496,54 @@ export default function SmartMenu({ tableNumber, branchId }: SmartMenuProps) {
       <div className="min-h-screen bg-amber-50/20 flex flex-col items-center justify-center p-6">
         <div className="w-12 h-12 rounded-full border-4 border-orange-500 border-t-transparent animate-spin mb-4"></div>
         <span className="text-sm text-neutral-500 font-medium">{t("common.loading")}</span>
+      </div>
+    );
+  }
+
+  // Render Sync Success Screen
+  if (isSyncedSuccess) {
+    return (
+      <div dir={dir} style={brandStyles} className="min-h-screen bg-stone-50 text-neutral-800 font-sans flex flex-col animate-fade-in relative select-none">
+        {/* Success Header */}
+        <header className="bg-slate-900/95 backdrop-blur-md border-b border-orange-500/20 text-white text-center py-5 shadow-lg sticky top-0 z-40">
+          <h1 className="text-lg font-bold font-serif tracking-tight flex items-center justify-center gap-1.5">
+            {logoUrl ? (
+              <img src={logoUrl} alt={restaurantName} className="w-8 h-8 rounded-lg object-cover shadow-sm" />
+            ) : (
+              <span className="text-orange-500">🌯</span>
+            )}
+            <span>{branchName.toUpperCase()}</span>
+          </h1>
+          <p className="text-[9px] text-orange-400 font-mono font-bold tracking-widest uppercase mt-1 inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-slate-800/60 border border-slate-700/50">
+            {t("orders.whatsappOrdering")}
+          </p>
+        </header>
+
+        {/* Tracking Card */}
+        <main className="flex-1 max-w-md w-full mx-auto p-4 flex flex-col justify-center gap-5 py-6">
+          <div className="bg-white rounded-2xl border border-stone-200/50 p-6 text-center shadow-sm relative overflow-hidden animate-scale-in">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-400 via-teal-500 to-emerald-400"></div>
+            
+            <div className="w-14 h-14 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-100/60 shadow-sm animate-pulse-subtle">
+              <MessageSquare size={28} className="text-emerald-500" />
+            </div>
+            
+            <h2 className="text-base font-bold text-neutral-900 leading-tight">
+              {t("orders.cartSyncedTitle")}
+            </h2>
+            <p className="text-[11px] text-neutral-500 mt-3 max-w-xs mx-auto leading-relaxed">
+              {t("orders.cartSyncedMessage")}
+            </p>
+
+            {/* Total Paid Stamp */}
+            <div className="mt-5 p-2 px-3.5 bg-stone-50 border border-stone-200/50 rounded-2xl inline-flex items-center gap-2 text-[11px] text-neutral-600 font-semibold shadow-xs">
+              <span>{t("common.total")}:</span>
+              <span className="text-orange-600 font-bold font-mono text-xs">
+                {getCheckoutTotal().toFixed(2)}{currency.symbol}
+              </span>
+            </div>
+          </div>
+        </main>
       </div>
     );
   }
@@ -778,7 +861,7 @@ export default function SmartMenu({ tableNumber, branchId }: SmartMenuProps) {
               <h1 className="text-xs font-serif font-bold tracking-tight uppercase">{branchName}</h1>
               <p className="text-[9px] text-orange-400 font-mono font-bold inline-flex items-center gap-1 leading-none mt-0.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
-                {t("orders.dineIn")} • {t("orders.table")} {tableNumber}
+                {isWhatsAppMode ? t("orders.whatsappOrdering") : `${t("orders.dineIn")} • ${t("orders.table")} ${tableNumber}`}
               </p>
             </div>
           </div>
@@ -815,7 +898,7 @@ export default function SmartMenu({ tableNumber, branchId }: SmartMenuProps) {
           <div className="absolute -right-10 -bottom-10 w-24 h-24 bg-orange-500/10 rounded-full blur-2xl pointer-events-none"></div>
           
           <div className="p-3 bg-orange-500/10 border border-orange-500/25 rounded-2xl text-orange-400 rotate-[-8deg] shrink-0 animate-pulse-subtle shadow-inner">
-            <Utensils size={28} />
+            {isWhatsAppMode ? <MessageSquare size={28} /> : <Utensils size={28} />}
           </div>
           
           <div className="leading-tight space-y-1 relative z-10">
@@ -823,12 +906,18 @@ export default function SmartMenu({ tableNumber, branchId }: SmartMenuProps) {
               {restaurantName.toUpperCase()} • Authentic Grill
             </span>
             <h3 className="font-bold text-sm text-slate-100">
-              {language === "ar" ? "اطلب طعامك طازجاً من طاولتك" : "Bestellen Sie direkt am Tisch"}
+              {isWhatsAppMode 
+                ? (language === "ar" ? "اختر وجباتك المفضلة وسنرسلها لواتساب" : "Stellen Sie Ihre Bestellung zusammen")
+                : (language === "ar" ? "اطلب طعامك طازجاً من طاولتك" : "Bestellen Sie direkt am Tisch")}
             </h3>
             <p className="text-[10px] text-slate-400 font-medium leading-relaxed">
-              {language === "ar" 
-                ? "تصفح قائمتنا الشامية المميزة وسيتم تحضير وجبتك وتقديمها فوراً." 
-                : "Wählen Sie Ihre Lieblingsgerichte, wir bringen sie frisch zubereitet an Ihren Tisch."}
+              {isWhatsAppMode
+                ? (language === "ar" 
+                  ? "تصفح قائمتنا الشامية المميزة، اختر وجباتك، وسنقوم بمزامنتها مع محادثة واتساب لإتمام الطلب." 
+                  : "Wählen Sie Ihre Lieblingsgerichte und wir synchronisieren sie direkt mit Ihrem WhatsApp-Chat.")
+                : (language === "ar" 
+                  ? "تصفح قائمتنا الشامية المميزة وسيتم تحضير وجبتك وتقديمها فوراً." 
+                  : "Wählen Sie Ihre Lieblingsgerichte, wir bringen sie frisch zubereitet an Ihren Tisch.")}
             </p>
           </div>
         </div>
@@ -1163,51 +1252,53 @@ export default function SmartMenu({ tableNumber, branchId }: SmartMenuProps) {
               ))}
 
               {/* Checkout details Form */}
-              <div className="border-t border-stone-100 pt-4 space-y-3">
-                <h4 className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider">
-                  {language === "ar" ? "بيانات الدفع والاستلام" : "Angaben zur Abrechnung"}
-                </h4>
-                
-                <div className="space-y-2.5 text-xs">
-                  <div>
-                    <label className="text-[11px] text-neutral-500 block mb-1 font-medium">
-                      {language === "ar" ? "اسم الضيف (اختياري)" : "Name des Gastes (Optional)"}
-                    </label>
-                    <input
-                      type="text"
-                      placeholder={language === "ar" ? "مثال: أحمد" : "z.B. Alex"}
-                      value={customerName}
-                      onChange={(e) => setCustomerName(e.target.value)}
-                      className="w-full p-2.5 border border-stone-200 rounded-xl focus:outline-none focus:border-orange-500 bg-stone-50"
-                    />
-                  </div>
+              {!isWhatsAppMode && (
+                <div className="border-t border-stone-100 pt-4 space-y-3">
+                  <h4 className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider">
+                    {language === "ar" ? "بيانات الدفع والاستلام" : "Angaben zur Abrechnung"}
+                  </h4>
+                  
+                  <div className="space-y-2.5 text-xs">
+                    <div>
+                      <label className="text-[11px] text-neutral-500 block mb-1 font-medium">
+                        {language === "ar" ? "اسم الضيف (اختياري)" : "Name des Gastes (Optional)"}
+                      </label>
+                      <input
+                        type="text"
+                        placeholder={language === "ar" ? "مثال: أحمد" : "z.B. Alex"}
+                        value={customerName}
+                        onChange={(e) => setCustomerName(e.target.value)}
+                        className="w-full p-2.5 border border-stone-200 rounded-xl focus:outline-none focus:border-orange-500 bg-stone-50"
+                      />
+                    </div>
 
-                  <div>
-                    <label className="text-[11px] text-neutral-500 block mb-1 font-medium">
-                      {language === "ar" ? "رقم الهاتف (اختياري)" : "Telefonnummer (Optional)"}
-                    </label>
-                    <input
-                      type="tel"
-                      placeholder="+49..."
-                      value={customerPhone}
-                      onChange={(e) => setCustomerPhone(e.target.value)}
-                      className="w-full p-2.5 border border-stone-200 rounded-xl focus:outline-none focus:border-orange-500 bg-stone-50"
-                    />
-                  </div>
+                    <div>
+                      <label className="text-[11px] text-neutral-500 block mb-1 font-medium">
+                        {language === "ar" ? "رقم الهاتف (اختياري)" : "Telefonnummer (Optional)"}
+                      </label>
+                      <input
+                        type="tel"
+                        placeholder="+49..."
+                        value={customerPhone}
+                        onChange={(e) => setCustomerPhone(e.target.value)}
+                        className="w-full p-2.5 border border-stone-200 rounded-xl focus:outline-none focus:border-orange-500 bg-stone-50"
+                      />
+                    </div>
 
-                  <div>
-                    <label className="text-[11px] text-neutral-500 block mb-1 font-medium">
-                      {language === "ar" ? "ملاحظات خاصة للمطبخ" : "Hinweise für das Küchenteam"}
-                    </label>
-                    <textarea
-                      placeholder={language === "ar" ? "مثال: بدون فلفل حار..." : "z.B. Keine Zwiebeln..."}
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      className="w-full p-2.5 border border-stone-200 rounded-xl focus:outline-none focus:border-orange-500 bg-stone-50 h-16 resize-none"
-                    />
+                    <div>
+                      <label className="text-[11px] text-neutral-500 block mb-1 font-medium">
+                        {language === "ar" ? "ملاحظات خاصة للمطبخ" : "Hinweise für das Küchenteam"}
+                      </label>
+                      <textarea
+                        placeholder={language === "ar" ? "مثال: بدون فلفل حار..." : "z.B. Keine Zwiebeln..."}
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        className="w-full p-2.5 border border-stone-200 rounded-xl focus:outline-none focus:border-orange-500 bg-stone-50 h-16 resize-none"
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Drawer Checkout Footer */}
@@ -1231,8 +1322,10 @@ export default function SmartMenu({ tableNumber, branchId }: SmartMenuProps) {
                   </>
                 ) : (
                   <>
-                    <Utensils size={14} />
-                    {language === "ar" ? "تأكيد وإرسال الطلب للمطبخ" : "Bestellung in die Küche schicken"}
+                    {isWhatsAppMode ? <MessageSquare size={14} /> : <Utensils size={14} />}
+                    {isWhatsAppMode 
+                      ? t("orders.sendCartToWhatsApp") 
+                      : (language === "ar" ? "تأكيد وإرسال الطلب للمطبخ" : "Bestellung in die Küche schicken")}
                   </>
                 )}
               </button>
