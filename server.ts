@@ -951,8 +951,8 @@ app.post("/api/orders", authMiddleware as any, requireRole(...ORDER_ROLES) as an
     });
     await newOrder.save();
 
-    emitGlobal("order:new", newOrder);
-    res.status(201).json(newOrder);
+    emitGlobal("order:new", serializeDoc(newOrder));
+    res.status(201).json(serializeDoc(newOrder));
   } catch (err) {
     console.error("[API] POST /api/orders error:", err);
     res.status(500).json({ error: "Failed to create order" });
@@ -1111,9 +1111,9 @@ app.post("/api/public/orders", async (req, res) => {
     });
 
     await newOrder.save();
-    emitGlobal("order:new", newOrder);
+    emitGlobal("order:new", serializeDoc(newOrder));
 
-    res.status(201).json(newOrder);
+    res.status(201).json(serializeDoc(newOrder));
   } catch (err) {
     console.error("[API] POST /api/public/orders error:", err);
     res.status(500).json({ error: "Failed to submit table order" });
@@ -1513,7 +1513,7 @@ app.post("/api/bot-reply", async (req, res) => {
 
     // If human mode, don't auto-reply
     if (!convo.botEnabled) {
-      res.json({ conversation: serializeDoc(convo), dbOrders, botReplyText: null });
+      res.json({ conversation: serializeDoc(convo), dbOrders: serializeDocs(dbOrders), botReplyText: null });
       return;
     }
 
@@ -1930,7 +1930,7 @@ You MUST reply with a JSON object in this exact schema structure:
 
       const newOrder = new Order(finalPlacedOrder);
       await newOrder.save();
-      emitGlobal("order:new", newOrder);
+      emitGlobal("order:new", serializeDoc(newOrder));
     }
 
     // Push bot reply
@@ -1947,7 +1947,7 @@ You MUST reply with a JSON object in this exact schema structure:
     emitGlobal("conversation:updated", serializeDoc(convo));
 
     const allOrders = await Order.find().sort({ createdAt: -1 }).lean();
-    res.json({ conversation: serializeDoc(convo), dbOrders: allOrders, botReplyText });
+    res.json({ conversation: serializeDoc(convo), dbOrders: serializeDocs(allOrders), botReplyText });
   } catch (err) {
     console.error("[API] POST /api/bot-reply error:", err);
     res.status(500).json({ error: "Bot processing failed" });
