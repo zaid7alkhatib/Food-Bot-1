@@ -19,6 +19,13 @@ interface Restaurant {
   timezone: string;
   googleMapsReviewLink?: string;
   taxVatRate?: number;
+  orderPrefix?: string;
+  heroTagline?: { ar: string; de: string; en: string };
+  heroBannerImage?: string;
+  aboutText?: { ar: string; de: string; en: string };
+  socialInstagram?: string;
+  socialFacebook?: string;
+  socialTikTok?: string;
 }
 
 export default function RestaurantSettings() {
@@ -79,6 +86,18 @@ export default function RestaurantSettings() {
   const updateField = (field: keyof Restaurant, value: any) => {
     if (!restaurant) return;
     setRestaurant({ ...restaurant, [field]: value });
+  };
+
+  const updateNestedField = (field: "heroTagline" | "aboutText", lang: "ar" | "de" | "en", value: string) => {
+    if (!restaurant) return;
+    const current = restaurant[field] || { ar: "", de: "", en: "" };
+    setRestaurant({
+      ...restaurant,
+      [field]: {
+        ...current,
+        [lang]: value,
+      },
+    });
   };
 
   const toggleLanguage = (lang: string) => {
@@ -159,6 +178,18 @@ export default function RestaurantSettings() {
               value={restaurant.legalName || ""}
               onChange={(e) => updateField("legalName", e.target.value)}
               className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-orange-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">Order Prefix (e.g., TAB, PIZ, BURG)</label>
+            <input
+              type="text"
+              value={restaurant.orderPrefix || ""}
+              onChange={(e) => updateField("orderPrefix", e.target.value.toUpperCase())}
+              placeholder="TAB"
+              maxLength={5}
+              className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-orange-500 font-mono uppercase"
             />
           </div>
 
@@ -362,6 +393,134 @@ export default function RestaurantSettings() {
               <p className="text-[10px] text-gray-400 mt-1">
                 {t("restaurant.taxHint")}
               </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Brand Website Settings */}
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-4 md:col-span-2">
+          <div className="flex items-center gap-2 mb-2">
+            <Globe size={16} className="text-orange-500" />
+            <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Public Brand Website Settings</h4>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Left Column: Media & Info */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">Hero Banner Image URL</label>
+                <input
+                  type="text"
+                  value={restaurant.heroBannerImage || ""}
+                  onChange={(e) => updateField("heroBannerImage", e.target.value)}
+                  placeholder="https://images.unsplash.com/photo-..."
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-orange-500"
+                />
+              </div>
+
+              <div className="space-y-3">
+                <label className="block text-[11px] font-bold text-gray-500 uppercase -mb-1">Hero Tagline</label>
+                <div>
+                  <span className="text-[10px] font-bold text-gray-400 uppercase">German (DE)</span>
+                  <input
+                    type="text"
+                    value={restaurant.heroTagline?.de || ""}
+                    onChange={(e) => updateNestedField("heroTagline", "de", e.target.value)}
+                    placeholder="Feine syrische Küche"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-orange-500 mt-1"
+                  />
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold text-gray-400 uppercase">Arabic (AR)</span>
+                  <input
+                    type="text"
+                    value={restaurant.heroTagline?.ar || ""}
+                    onChange={(e) => updateNestedField("heroTagline", "ar", e.target.value)}
+                    placeholder="أشهى المأكولات الشامية"
+                    dir="rtl"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-orange-500 mt-1"
+                  />
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold text-gray-400 uppercase">English (EN)</span>
+                  <input
+                    type="text"
+                    value={restaurant.heroTagline?.en || ""}
+                    onChange={(e) => updateNestedField("heroTagline", "en", e.target.value)}
+                    placeholder="Delicious Syrian Cuisine"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-orange-500 mt-1"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">Instagram Link</label>
+                  <input
+                    type="url"
+                    value={restaurant.socialInstagram || ""}
+                    onChange={(e) => updateField("socialInstagram", e.target.value)}
+                    placeholder="https://instagram.com/..."
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-orange-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">Facebook Link</label>
+                  <input
+                    type="url"
+                    value={restaurant.socialFacebook || ""}
+                    onChange={(e) => updateField("socialFacebook", e.target.value)}
+                    placeholder="https://facebook.com/..."
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-orange-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">TikTok Link</label>
+                  <input
+                    type="url"
+                    value={restaurant.socialTikTok || ""}
+                    onChange={(e) => updateField("socialTikTok", e.target.value)}
+                    placeholder="https://tiktok.com/..."
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-orange-500"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column: About Narrative */}
+            <div className="space-y-4">
+              <label className="block text-[11px] font-bold text-gray-500 uppercase -mb-1">About Narrative Text</label>
+              <div>
+                <span className="text-[10px] font-bold text-gray-400 uppercase">German (DE)</span>
+                <textarea
+                  value={restaurant.aboutText?.de || ""}
+                  onChange={(e) => updateNestedField("aboutText", "de", e.target.value)}
+                  placeholder="Wir bringen Ihnen..."
+                  rows={3}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-orange-500 mt-1 resize-y"
+                />
+              </div>
+              <div>
+                <span className="text-[10px] font-bold text-gray-400 uppercase">Arabic (AR)</span>
+                <textarea
+                  value={restaurant.aboutText?.ar || ""}
+                  onChange={(e) => updateNestedField("aboutText", "ar", e.target.value)}
+                  placeholder="نقدم لكم..."
+                  rows={3}
+                  dir="rtl"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-orange-500 mt-1 resize-y"
+                />
+              </div>
+              <div>
+                <span className="text-[10px] font-bold text-gray-400 uppercase">English (EN)</span>
+                <textarea
+                  value={restaurant.aboutText?.en || ""}
+                  onChange={(e) => updateNestedField("aboutText", "en", e.target.value)}
+                  placeholder="We bring you..."
+                  rows={3}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-orange-500 mt-1 resize-y"
+                />
+              </div>
             </div>
           </div>
         </div>

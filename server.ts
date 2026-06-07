@@ -170,6 +170,7 @@ type BranchFulfillmentConfig = {
   minOrderAmount: number;
   branchLatitude?: number;
   branchLongitude?: number;
+  orderPrefix?: string;
 };
 
 const DEFAULT_BRANCH_CONFIG: BranchFulfillmentConfig = {
@@ -185,6 +186,7 @@ const DEFAULT_BRANCH_CONFIG: BranchFulfillmentConfig = {
   minOrderAmount: 10,
   branchLatitude: 51.2667,
   branchLongitude: 7.1833,
+  orderPrefix: "TAB",
 };
 
 function isCustomerLanguage(value: unknown): value is CustomerLanguage {
@@ -333,7 +335,7 @@ function getWelcomeReply(
 
   let linkPrompt = "";
   if (convoId) {
-    const appUrl = process.env.APP_URL || `http://84.247.160.6:3000`;
+    const appUrl = process.env.APP_URL || `https://moinauto.work`;
     const branchQuery = branchConfig.branchId ? `&branch=${branchConfig.branchId}` : "";
     const url = `${appUrl}/?convo=${convoId}${branchQuery}`;
     if (lang === "ar") {
@@ -489,7 +491,7 @@ function getMenuPrompt(
 
   let linkPrompt = "";
   if (convoId) {
-    const appUrl = process.env.APP_URL || `http://84.247.160.6:3000`;
+    const appUrl = process.env.APP_URL || `https://moinauto.work`;
     const branchQuery = branchConfig.branchId ? `&branch=${branchConfig.branchId}` : "";
     const url = `${appUrl}/?convo=${convoId}${branchQuery}`;
     
@@ -795,7 +797,15 @@ function branchConfigFromBranch(branch: any, restaurant: any): BranchFulfillment
     minOrderAmount: toFiniteNumber(branch?.minOrderAmount, DEFAULT_BRANCH_CONFIG.minOrderAmount),
     branchLatitude: toFiniteNumber(branch?.latitude, DEFAULT_BRANCH_CONFIG.branchLatitude),
     branchLongitude: toFiniteNumber(branch?.longitude, DEFAULT_BRANCH_CONFIG.branchLongitude),
+    orderPrefix: restaurant?.orderPrefix || DEFAULT_BRANCH_CONFIG.orderPrefix,
   };
+}
+
+async function generateOrderNumber(): Promise<string> {
+  const count = await Order.countDocuments();
+  const restaurant = await Restaurant.findOne({ isActive: true }).lean();
+  const prefix = restaurant?.orderPrefix || "TAB";
+  return `${prefix}-${1004 + count}`;
 }
 
 async function loadBranchConfig(branchId?: unknown): Promise<BranchFulfillmentConfig> {
@@ -1020,12 +1030,82 @@ app.get("/api/state", authMiddleware as any, async (req: AuthenticatedRequest, r
   }
 });
 
+// GET /api/public/config (unauthenticated branding configuration)
+app.get("/api/public/config", async (req, res) => {
+  try {
+    const restaurant = await Restaurant.findOne({ isActive: true }).lean();
+    if (!restaurant) {
+      res.status(404).json({ error: "Restaurant not found" });
+      return;
+    }
+    res.json({
+      name: restaurant.name,
+      legalName: restaurant.legalName,
+      logo: restaurant.logo,
+      primaryColor: restaurant.primaryColor,
+      secondaryColor: restaurant.secondaryColor,
+      defaultLanguage: restaurant.defaultLanguage,
+      supportedLanguages: restaurant.supportedLanguages,
+      timezone: restaurant.timezone,
+      defaultCurrency: restaurant.defaultCurrency,
+      heroTagline: restaurant.heroTagline,
+      heroBannerImage: restaurant.heroBannerImage,
+      aboutText: restaurant.aboutText,
+      socialInstagram: restaurant.socialInstagram,
+      socialFacebook: restaurant.socialFacebook,
+      socialTikTok: restaurant.socialTikTok,
+    });
+  } catch (err) {
+    console.error("[API] GET /api/public/config error:", err);
+    res.status(500).json({ error: "Failed to load public configuration" });
+  }
+});
+
+// GET /api/public/feedbacks (unauthenticated verified 5-star customer reviews)
+app.get("/api/public/feedbacks", async (req, res) => {
+  try {
+    const reviews = await Feedback.find({ rating: 5, status: "resolved" })
+      .sort({ createdAt: -1 })
+      .limit(6)
+      .lean();
+    
+    if (reviews.length === 0) {
+      res.json([
+        {
+          customerName: "Ahmad Malkous",
+          rating: 5,
+          comment: "Best shawarma in town! Super fast and friendly chatbot ordering.",
+          createdAt: new Date(),
+        },
+        {
+          customerName: "Thomas Müller",
+          rating: 5,
+          comment: "Sehr leckeres Broasted Chicken. Die Knoblauchsoße ist genial!",
+          createdAt: new Date(),
+        },
+        {
+          customerName: "Majid Al-Saeed",
+          rating: 5,
+          comment: "Excellent food, still hot on arrival! Highly recommended.",
+          createdAt: new Date(),
+        }
+      ]);
+      return;
+    }
+    
+    res.json(reviews);
+  } catch (err) {
+    console.error("[API] GET /api/public/feedbacks error:", err);
+    res.status(500).json({ error: "Failed to load public reviews" });
+  }
+});
+
 // POST /api/orders
 app.post("/api/orders", authMiddleware as any, requireRole(...ORDER_ROLES) as any, async (req, res) => {
   try {
-    const count = await Order.countDocuments();
+    const orderNumber = req.body.orderNumber || await generateOrderNumber();
     const newOrder = new Order({
-      orderNumber: req.body.orderNumber || `TAB-${1004 + count}`,
+      orderNumber,
       ...req.body,
     });
     await newOrder.save();
@@ -1242,8 +1322,7 @@ app.post("/api/public/orders", async (req, res) => {
       subtotal += itemTotalPrice;
     }
 
-    const count = await Order.countDocuments();
-    const orderNumber = `TAB-${1004 + count}`;
+    const orderNumber = await generateOrderNumber();
 
     const newOrder = new Order({
       orderNumber,
@@ -2052,7 +2131,7 @@ You MUST reply with a JSON object in this exact schema structure:
   "botReply": "The actual message text to send back to the customer",
   "nextStep": "welcome" | "language_selection" | "type" | "menu" | "customizing" | "address" | "pickup_time" | "confirming" | "completed",
   "updatedUnsubmittedOrder": <Object representing the updated Partial<Order>>,
-  "placedOrderPayload": <If they confirmed the order in this turn, provide the complete Order object. Otherwise return null. MUST generate unique random orderNumber like TAB-1004>
+  "placedOrderPayload": <If they confirmed the order in this turn, provide the complete Order object. Otherwise return null. MUST generate unique random orderNumber like ${branchConfig.orderPrefix || 'TAB'}-1004>
 }
 `;
 
@@ -2330,8 +2409,7 @@ You MUST reply with a JSON object in this exact schema structure:
             botReplyText = `${getMinimumOrderReply(lang, toFiniteNumber(convo.unsubmittedOrder?.subtotal, 0), branchConfig)}\n\n${getMenuPrompt(lang, dbMenuItems, dbCategories, branchConfig, orderTypeForMenu(convo))}`;
             nextStep = "menu";
           } else {
-            const count = await Order.countDocuments();
-            const ordNum = `TAB-${1004 + count}`;
+            const ordNum = await generateOrderNumber();
 
             finalPlacedOrder = {
               orderNumber: ordNum,

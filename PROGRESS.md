@@ -280,9 +280,26 @@ NODE_ENV=development
 
 All jobs are non-blocking and log to console.
 
+
 ---
 
-## 9. File Structure Evolution
+## 9. Phase 8: Public Brand Website & White-label Customization
+
+### 9.1 Path-Based Routing & Setup
+* **App Routing**: Changed root routing in `src/App.tsx` so that root `/` renders the customer-facing `BrandWebsite` landing page, and moved the admin panel login and dashboard screens to `/admin`.
+* **Database Fields**: Added branding properties to the `Restaurant` schema (`heroTagline`, `heroBannerImage`, `aboutText`, social accounts).
+* **Settings Editor**: Integrated form controls in the admin dashboard `RestaurantSettings.tsx` drawer to customize these website fields.
+
+### 9.2 Customer Portal Component
+* **Landing Page**: Built `src/components/BrandWebsite.tsx` which fetches public configs (`/api/public/config`), verified customer reviews (`/api/public/feedbacks`), and categories/menu items (`/api/public/menu`).
+* **Realtime Indicators**: Timezone-aware calculation comparing opening hours with current local clock to display live "Open / Closed" badges.
+* **Review Carousel**: Auto-rotating card grid displaying verified 5-star feedback comments.
+* **Shopping Cart Drawer**: Local item accumulator supporting item quantities, optional modifier configurations, kitchen notes, and customer name inputs.
+* **WhatsApp Checkout**: Formulates structured order summaries and redirects users directly to their WhatsApp agent via `wa.me` chat links.
+
+---
+
+## 10. File Structure Evolution
 
 ### Before (Initial Commit)
 ```
@@ -297,7 +314,9 @@ server.ts              (689 lines, all in one file)
 ### After (Current State)
 ```
 src/
-  components/          (11 components total)
+  components/          (16 components total)
+    BrandWebsite.tsx   (NEW - customer landing page)
+    ...
   context/
     AuthContext.tsx
   lib/
@@ -329,12 +348,12 @@ src/
   App.tsx
   mockData.ts          (Static menu seed data, default branch/currency, status templates)
   types.ts
-server.ts              (Refactored, 870 lines, modular)
+server.ts              (Refactored, modular)
 ```
 
 ---
 
-## 10. API Endpoints Summary
+## 11. API Endpoints Summary
 
 | Endpoint | Method | Auth | Description |
 |----------|--------|------|-------------|
@@ -342,6 +361,9 @@ server.ts              (Refactored, 870 lines, modular)
 | `/api/auth/login` | POST | Public | Get JWT |
 | `/api/auth/me` | GET | Public | Default admin compatibility stub |
 | `/api/state` | GET | Public | Full system snapshot |
+| `/api/public/config` | GET | Public | Public white-label branding configurations |
+| `/api/public/feedbacks` | GET | Public | Top verified 5-star customer reviews |
+| `/api/public/menu` | GET | Public | Public category, branch, and menu item catalog |
 | `/api/orders` | POST | ✅ | Create order |
 | `/api/orders/:id/status` | PUT | ✅ | Update status |
 | `/api/conversations/:id/messages` | POST | ✅ | Send admin message |

@@ -7,6 +7,7 @@ DEPLOY_DIR="${DEPLOY_DIR:-/var/www/mr-tabboush-whatsapp-ordering-system}"
 PM2_NAME="${PM2_NAME:-mr-tabboush}"
 PORT="${PORT:-3000}"
 MONGODB_URI="${MONGODB_URI:-mongodb://localhost:27017/mr_tabboush_testing}"
+APP_URL="${APP_URL:-https://moinauto.work}"
 RUN_SEED="0"
 SKIP_LOCAL_CHECKS="${SKIP_LOCAL_CHECKS:-0}"
 
@@ -93,7 +94,7 @@ ssh "$SSH_HOST" \
   "cd '$DEPLOY_DIR' && npm ci && npm run build"
 
 echo "==> Ensuring remote .env exists"
-ssh "$SSH_HOST" "DEPLOY_DIR='$DEPLOY_DIR' PORT='$PORT' MONGODB_URI='$MONGODB_URI' SERVER_IP='$SERVER_IP' bash -s" <<'REMOTE_ENV'
+ssh "$SSH_HOST" "DEPLOY_DIR='$DEPLOY_DIR' PORT='$PORT' MONGODB_URI='$MONGODB_URI' SERVER_IP='$SERVER_IP' APP_URL='$APP_URL' bash -s" <<'REMOTE_ENV'
 set -Eeuo pipefail
 cd "$DEPLOY_DIR"
 
@@ -106,7 +107,7 @@ if [[ ! -f .env ]]; then
 
   cat > .env <<EOF
 GEMINI_API_KEY="MY_GEMINI_API_KEY"
-APP_URL="http://${SERVER_IP}:${PORT}"
+APP_URL="${APP_URL}"
 MONGODB_URI="${MONGODB_URI}"
 JWT_SECRET="${JWT_SECRET}"
 JWT_EXPIRES_IN="7d"

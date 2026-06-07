@@ -155,7 +155,7 @@ export default function PhoneSimulator({
               </div>
               <h4 className="text-sm font-semibold text-neutral-900">{t("phone.qrTitle")}</h4>
               <p className="text-xs text-neutral-500 mt-1 mb-4">
-                {t("phone.qrHint")}
+                {t("phone.qrHint", { restaurantName })}
               </p>
 
               {isConnecting ? (
@@ -263,7 +263,7 @@ export default function PhoneSimulator({
                 {activeChat && activeChat.currentStep === "completed" && (
                   <div className="self-center w-full max-w-[85%] bg-amber-50 border border-amber-200 rounded-xl p-3 shadow-lg flex flex-col items-center text-center gap-1.5 animate-bounce">
                     <div className="text-lg">🌟</div>
-                    <h4 className="text-xs font-semibold text-amber-900 leading-none">{t("phone.rate")}</h4>
+                    <h4 className="text-xs font-semibold text-amber-900 leading-none">{t("phone.rate", { restaurantName })}</h4>
                     <p className="text-[10px] text-amber-700 leading-snug">
                       {t("phone.rateHint")}
                     </p>

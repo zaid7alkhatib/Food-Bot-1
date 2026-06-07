@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { Lock, Mail, Loader2, AlertCircle } from "lucide-react";
 import { useI18n } from "../i18n";
@@ -6,10 +6,34 @@ import { useI18n } from "../i18n";
 export default function LoginPage() {
   const { login } = useAuth();
   const { language, setLanguage, t, dir } = useI18n();
-  const [email, setEmail] = useState("admin@mrtabboush.de");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [branding, setBranding] = useState<{
+    name: string;
+    legalName?: string;
+    logo?: string;
+    primaryColor?: string;
+    secondaryColor?: string;
+  } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/public/config")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && !data.error) {
+          setBranding(data);
+          if (data.primaryColor) {
+            document.documentElement.style.setProperty("--brand-primary", data.primaryColor);
+          }
+          if (data.secondaryColor) {
+            document.documentElement.style.setProperty("--brand-secondary", data.secondaryColor);
+          }
+        }
+      })
+      .catch((err) => console.error("Failed to load branding:", err));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,11 +53,19 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* Brand */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 rounded-xl bg-orange-500 text-white flex items-center justify-center font-bold text-2xl shadow-lg ring-2 ring-white/20 mx-auto mb-4 transform rotate-[-2deg]">
-            🌯
-          </div>
+          {branding?.logo ? (
+            <img
+              src={branding.logo}
+              alt={branding.name}
+              className="w-16 h-16 rounded-xl object-cover shadow-lg ring-2 ring-white/20 mx-auto mb-4 transform rotate-[-2deg]"
+            />
+          ) : (
+            <div className="w-16 h-16 rounded-xl bg-orange-500 text-white flex items-center justify-center font-bold text-2xl shadow-lg ring-2 ring-white/20 mx-auto mb-4 transform rotate-[-2deg]">
+              🌯
+            </div>
+          )}
           <h1 className="text-2xl font-serif font-bold text-white tracking-tight">
-            MR. Tabboush
+            {branding?.name || "Restaurant"}
           </h1>
           <p className="text-sm text-slate-400 mt-1">
             {t("login.subtitle")}
@@ -86,7 +118,7 @@ export default function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2.5 pl-9 pr-3 text-sm text-gray-900 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition"
-                  placeholder="admin@mrtabboush.de"
+                  placeholder={branding ? `admin@${branding.name.toLowerCase().replace(/[^a-z0-9]/g, "")}.de` : "admin@restaurant.de"}
                 />
               </div>
             </div>
@@ -129,14 +161,14 @@ export default function LoginPage() {
 
           <div className="mt-6 pt-4 border-t border-gray-100 text-center">
             <p className="text-[11px] text-gray-400">
-              {t("login.default")}: <span className="font-mono text-gray-600">admin@mrtabboush.de</span> /{" "}
+              {t("login.default")}: <span className="font-mono text-gray-600">{branding ? `admin@${branding.name.toLowerCase().replace(/[^a-z0-9]/g, "")}.de` : "admin@restaurant.de"}</span> /{" "}
               <span className="font-mono text-gray-600">tabboush2024</span>
             </p>
           </div>
         </div>
 
         <p className="text-center text-[11px] text-slate-500 mt-6">
-          © 2026 Farman GmbH — MR. Tabboush Ordering System
+          © 2026 {branding?.legalName || "System"} — {branding?.name || "Restaurant"} Ordering System
         </p>
       </div>
     </div>

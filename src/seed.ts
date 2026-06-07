@@ -32,25 +32,34 @@ async function seed() {
 
   console.log("[Seed] Cleared existing data");
 
+  // Configurable fields
+  const restName = process.env.RESTAURANT_NAME || "MR. Tabboush";
+  const restLegal = process.env.RESTAURANT_LEGAL_NAME || "Farman GmbH";
+  const restSlug = restName.toLowerCase().replace(/[^a-z0-9]/g, "") || "restaurant";
+  const adminEmail = process.env.ADMIN_EMAIL || `admin@${restSlug}.de`;
+  const adminPassword = process.env.ADMIN_PASSWORD || "tabboush2024";
+  const adminName = `${restName} Admin`;
+  const orderPrefix = process.env.ORDER_PREFIX || "TAB";
+
   // Create default admin user
   const adminUser = await User.create({
-    email: "admin@mrtabboush.de",
-    password: hashPassword("tabboush2024"),
-    name: "MR. Tabboush Admin",
+    email: adminEmail,
+    password: hashPassword(adminPassword),
+    name: adminName,
     role: "restaurant_admin",
   });
   console.log("[Seed] Created admin user:", adminUser.email);
 
   // Create restaurant
   const restaurant = await Restaurant.create({
-    name: "MR. Tabboush",
-    legalName: "Farman GmbH",
+    name: restName,
+    legalName: restLegal,
     logo: "https://images.unsplash.com/photo-1626074353765-517a681e40be?w=128&h=128&fit=crop&q=80",
     primaryColor: "#ea580c",
     secondaryColor: "#1f2937",
     phone: "+49 202 1234567",
     whatsappNumber: "+49 176 88889999",
-    email: "info@mrtabboush.de",
+    email: `info@${restSlug}.de`,
     address: "Berliner Str. 179, 42277 Wuppertal, Germany",
     defaultLanguage: "de",
     supportedLanguages: ["ar", "de", "en"],
@@ -59,6 +68,7 @@ async function seed() {
     isActive: true,
     googleMapsReviewLink: "https://g.page/r/Cgooglemapsreview",
     taxVatRate: 0,
+    orderPrefix: orderPrefix,
   });
   console.log("[Seed] Created restaurant:", restaurant.name);
 
@@ -547,7 +557,7 @@ async function seed() {
   console.log("[Seed] Created 1 WhatsApp session");
 
   console.log("\n✅ Database seeded successfully!");
-  console.log("Default login: admin@mrtabboush.de / tabboush2024");
+  console.log(`Default login: ${process.env.ADMIN_EMAIL || "admin@mrtabboush.de"} / ${process.env.ADMIN_PASSWORD || "tabboush2024"}`);
   await disconnectDB();
 }
 

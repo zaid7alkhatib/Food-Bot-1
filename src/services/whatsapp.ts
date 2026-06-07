@@ -7,7 +7,7 @@ import {
 import { Boom } from "@hapi/boom";
 import path from "path";
 import fs from "fs";
-import { WhatsAppSession } from "../models/index.js";
+import { WhatsAppSession, Restaurant } from "../models/index.js";
 
 const sessions = new Map<string, WASocket>();
 
@@ -128,10 +128,13 @@ export async function startWhatsAppSession(sessionName: string, onQR?: (qr: stri
 
   const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
 
+  const restaurant = await Restaurant.findOne({ isActive: true }).lean();
+  const browserName = restaurant?.name || "WhatsApp Bot";
+
   const sock = makeWASocket({
     auth: state,
     printQRInTerminal: !onQR,
-    browser: ["MR. Tabboush", "Chrome", "1.0"],
+    browser: [browserName, "Chrome", "1.0"],
   });
 
   sessions.set(sessionName, sock);

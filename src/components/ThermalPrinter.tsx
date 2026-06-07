@@ -9,6 +9,8 @@ interface ThermalPrinterProps {
   autoPrintEnabled: boolean;
   onToggleAutoPrint: (enabled: boolean) => void;
   currencySymbol: string;
+  restaurantInfo?: any;
+  branchInfo?: any;
 }
 
 export default function ThermalPrinter({
@@ -16,8 +18,10 @@ export default function ThermalPrinter({
   autoPrintEnabled,
   onToggleAutoPrint,
   currencySymbol,
+  restaurantInfo,
+  branchInfo,
 }: ThermalPrinterProps) {
-  const { t, text } = useI18n();
+  const { language, t, text } = useI18n();
   const [paperWidth, setPaperWidth] = useState<"58mm" | "80mm">("80mm");
   const [buzzerEnabled, setBuzzerEnabled] = useState(true);
   const [printerLogs, setPrinterLogs] = useState<string[]>([
@@ -237,10 +241,10 @@ export default function ThermalPrinter({
 
               {/* Header Title alignment */}
               <div className="text-center space-y-1 pb-4 border-b border-dashed border-neutral-400">
-                <span className="text-base font-bold uppercase tracking-wider block">MR. TABBOUSH</span>
-                <span className="text-[10px] block font-serif"> Damascus Fine Dining</span>
-                <span className="text-[9px] block">Berliner Str. 179, Wuppertal</span>
-                <span className="text-[9px] block">Tel: +49 202 1234567</span>
+                <span className="text-base font-bold uppercase tracking-wider block">{restaurantInfo?.name || "MR. TABBOUSH"}</span>
+                <span className="text-[10px] block font-serif">{restaurantInfo?.legalName || "Damascus Fine Dining"}</span>
+                <span className="text-[9px] block">{branchInfo?.address || "Berliner Str. 179"}, {branchInfo?.city || "Wuppertal"}</span>
+                <span className="text-[9px] block">Tel: {branchInfo?.phone || restaurantInfo?.phone || "+49 202 1234567"}</span>
               </div>
 
               {/* Order specifications */}
@@ -330,8 +334,7 @@ export default function ThermalPrinter({
                   💰 {activeOrderToPrint.orderType === "dine_in" ? "PAY AT TABLE" : t("printer.cash").toUpperCase()}
                 </div>
                 <div className="text-[9px] leading-snug">
-                  {t("printer.thanks")}<br />
-                  شكرًا عظيمًا لطلبكم من مستر طابوش!
+                  {t("printer.thanks", { restaurantName: restaurantInfo?.name || "MR. Tabboush" })}
                 </div>
                 
                 {/* Visual printed barcode simulator */}

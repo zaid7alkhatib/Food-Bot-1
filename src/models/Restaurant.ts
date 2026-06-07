@@ -17,6 +17,13 @@ export interface IRestaurant extends Document {
   isActive: boolean;
   googleMapsReviewLink?: string;
   taxVatRate?: number;
+  orderPrefix?: string;
+  heroTagline?: { ar: string; de: string; en: string };
+  heroBannerImage?: string;
+  aboutText?: { ar: string; de: string; en: string };
+  socialInstagram?: string;
+  socialFacebook?: string;
+  socialTikTok?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -39,6 +46,21 @@ const RestaurantSchema = new Schema<IRestaurant>(
     isActive: { type: Boolean, default: true },
     googleMapsReviewLink: String,
     taxVatRate: { type: Number, default: 0 },
+    orderPrefix: { type: String, default: "TAB" },
+    heroTagline: {
+      ar: { type: String, default: "أشهى المأكولات الشامية" },
+      de: { type: String, default: "Feine syrische Küche" },
+      en: { type: String, default: "Delicious Syrian Cuisine" }
+    },
+    heroBannerImage: { type: String, default: "https://images.unsplash.com/photo-1544025162-d76694265947?w=1600&auto=format&fit=crop&q=80" },
+    aboutText: {
+      ar: { type: String, default: "نقدم لكم عراقة الطعم الشامي الأصيل بمكونات طازجة وجودة عالية." },
+      de: { type: String, default: "Wir bringen Ihnen den traditionellen Geschmack Syriens mit frischen Zutaten." },
+      en: { type: String, default: "We bring you the authentic taste of Syrian cuisine crafted with fresh ingredients." }
+    },
+    socialInstagram: { type: String, default: "" },
+    socialFacebook: { type: String, default: "" },
+    socialTikTok: { type: String, default: "" },
   },
   { timestamps: true }
 );

@@ -32,6 +32,7 @@ import LoginPage from "./components/LoginPage";
 import SmartMenu from "./components/SmartMenu";
 import MenuBoard from "./components/MenuBoard";
 import MenuBoardSettings from "./components/MenuBoardSettings";
+import BrandWebsite from "./components/BrandWebsite";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { I18nProvider, useI18n, AppLanguage } from "./i18n";
 import { Order, OrderStatus, Conversation, MenuItem, Category, Campaign, Feedback, UserRole } from "./types";
@@ -154,6 +155,17 @@ function Dashboard() {
       setActiveTab(allowedTabs[0]);
     }
   }, [activeTab, allowedTabs]);
+
+  useEffect(() => {
+    if (restaurantInfo) {
+      if (restaurantInfo.primaryColor) {
+        document.documentElement.style.setProperty('--brand-primary', restaurantInfo.primaryColor);
+      }
+      if (restaurantInfo.secondaryColor) {
+        document.documentElement.style.setProperty('--brand-secondary', restaurantInfo.secondaryColor);
+      }
+    }
+  }, [restaurantInfo]);
 
   // ------------------------------------------------------------------
   // Socket.io + initial data fetch
@@ -659,6 +671,8 @@ function Dashboard() {
                     autoPrintEnabled={autoPrintEnabled}
                     onToggleAutoPrint={setAutoPrintEnabled}
                     currencySymbol={currencySymbol}
+                    restaurantInfo={restaurantInfo}
+                    branchInfo={branchInfo}
                   />
                 )}
 
@@ -675,9 +689,8 @@ function Dashboard() {
         </div>
       </main>
 
-      {/* Footer */}
       <footer className="bg-neutral-900 text-gray-400 py-6 border-t border-neutral-800 text-center text-xs mt-auto">
-        <p>{t("app.footer")}</p>
+        <p>{t("app.footer", { restaurantName: restaurantInfo?.name || "MR. Tabboush" })}</p>
         <p className="text-[10px] text-gray-600 mt-1">{t("app.poweredBy")}</p>
       </footer>
     </div>
@@ -717,17 +730,23 @@ function AppWithAuth() {
     return <SmartMenu tableNumber={tableNumber} branchId={branchId} />;
   }
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <div className="w-10 h-10 rounded-full border-4 border-orange-500 border-t-transparent animate-spin"></div>
-      </div>
-    );
+  const normalizedPath = window.location.pathname.replace(/\/$/, "");
+
+  if (normalizedPath === "/admin") {
+    if (isLoading) {
+      return (
+        <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-full border-4 border-orange-500 border-t-transparent animate-spin"></div>
+        </div>
+      );
+    }
+
+    if (!user) {
+      return <LoginPage />;
+    }
+
+    return <Dashboard />;
   }
 
-  if (!user) {
-    return <LoginPage />;
-  }
-
-  return <Dashboard />;
+  return <BrandWebsite />;
 }
