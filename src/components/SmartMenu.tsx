@@ -977,7 +977,7 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
                     >
                       {/* Product image */}
                       {item.image ? (
-                        <div className="relative w-22 h-22 rounded-xl overflow-hidden shrink-0 bg-stone-50 border border-stone-100">
+                        <div className="relative w-28 h-28 rounded-xl overflow-hidden shrink-0 bg-stone-50 border border-stone-100">
                           <img 
                             src={item.image} 
                             alt={text(item.name)} 
@@ -990,7 +990,7 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
                           )}
                         </div>
                       ) : (
-                        <div className="relative w-22 h-22 rounded-xl overflow-hidden shrink-0 bg-gradient-to-br from-stone-50 to-stone-100/80 border border-stone-200/30 flex items-center justify-center text-stone-300">
+                        <div className="relative w-28 h-28 rounded-xl overflow-hidden shrink-0 bg-gradient-to-br from-stone-50 to-stone-100/80 border border-stone-200/30 flex items-center justify-center text-stone-300">
                           <Utensils size={24} />
                           {item.isBestSeller && (
                             <div className="absolute top-1 left-1 bg-red-500 text-white text-[8px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider shadow-sm flex items-center gap-0.5">

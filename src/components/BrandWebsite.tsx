@@ -693,7 +693,7 @@ export default function BrandWebsite() {
                   onClick={() => handleQuickAdd(item)}
                 >
                   {/* Item Image */}
-                  <div className="relative w-24 h-24 rounded-xl overflow-hidden bg-slate-50 shrink-0 border border-slate-100">
+                  <div className="relative w-28 h-28 rounded-xl overflow-hidden bg-slate-50 shrink-0 border border-slate-100">
                     {item.image ? (
                       <img 
                         src={item.image} 
