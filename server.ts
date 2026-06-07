@@ -35,6 +35,7 @@ import { defaultCurrency, orderStatusMessages } from "./src/mockData.js";
 // ------------------------------------------------------------------
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 const app = express();
+app.set("trust proxy", 1);
 const httpServer = http.createServer(app);
 app.use(express.json());
 
