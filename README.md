@@ -140,6 +140,23 @@ Recommended production stack:
 - SSL via Let's Encrypt
 - MongoDB (local or Atlas)
 
+### Testing VPS Deployment
+
+The project includes a deployment script to deploy the codebase to a remote testing VPS:
+```bash
+./scripts/deploy-testing.sh
+```
+
+By default, the script target is configured to use:
+- **SSH Host**: `myvps` (configured via `SSH_HOST` env override)
+- **Server IP**: `84.247.160.6` (configured via `SERVER_IP` env override)
+- **Deployment Directory**: `/var/www/mr-tabboush-whatsapp-ordering-system`
+
+To run with options (for example, to seed the database on deployment):
+```bash
+./scripts/deploy-testing.sh --seed
+```
+
 ## License
 
 Proprietary — Farman GmbH

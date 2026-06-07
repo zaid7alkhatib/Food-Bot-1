@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-SSH_HOST="${SSH_HOST:-food-vps}"
-SERVER_IP="${SERVER_IP:-154.38.174.96}"
+SSH_HOST="${SSH_HOST:-myvps}"
+SERVER_IP="${SERVER_IP:-84.247.160.6}"
 DEPLOY_DIR="${DEPLOY_DIR:-/var/www/mr-tabboush-whatsapp-ordering-system}"
 PM2_NAME="${PM2_NAME:-mr-tabboush}"
 PORT="${PORT:-3000}"
@@ -18,8 +18,8 @@ Usage:
   scripts/deploy-testing.sh [--seed] [--skip-local-checks]
 
 Environment overrides:
-  SSH_HOST=food-vps
-  SERVER_IP=154.38.174.96
+  SSH_HOST=myvps
+  SERVER_IP=84.247.160.6
   DEPLOY_DIR=/var/www/mr-tabboush-whatsapp-ordering-system
   PM2_NAME=mr-tabboush
   PORT=3000

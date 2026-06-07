@@ -333,7 +333,7 @@ function getWelcomeReply(
 
   let linkPrompt = "";
   if (convoId) {
-    const appUrl = process.env.APP_URL || `http://154.38.174.96:3000`;
+    const appUrl = process.env.APP_URL || `http://84.247.160.6:3000`;
     const branchQuery = branchConfig.branchId ? `&branch=${branchConfig.branchId}` : "";
     const url = `${appUrl}/?convo=${convoId}${branchQuery}`;
     if (lang === "ar") {
@@ -489,7 +489,7 @@ function getMenuPrompt(
 
   let linkPrompt = "";
   if (convoId) {
-    const appUrl = process.env.APP_URL || `http://154.38.174.96:3000`;
+    const appUrl = process.env.APP_URL || `http://84.247.160.6:3000`;
     const branchQuery = branchConfig.branchId ? `&branch=${branchConfig.branchId}` : "";
     const url = `${appUrl}/?convo=${convoId}${branchQuery}`;
     
