@@ -86,6 +86,18 @@ export default function MenuBoard() {
   const [clock, setClock] = useState(() => new Date());
   const [rotationLang, setRotationLang] = useState<BoardLanguage>("de");
   const [activeSlide, setActiveSlide] = useState(0);
+  const [restaurant, setRestaurant] = useState<any>(null);
+
+  useEffect(() => {
+    if (restaurant) {
+      if (restaurant.primaryColor) {
+        document.documentElement.style.setProperty('--brand-primary', restaurant.primaryColor);
+      }
+      if (restaurant.secondaryColor) {
+        document.documentElement.style.setProperty('--brand-secondary', restaurant.secondaryColor);
+      }
+    }
+  }, [restaurant]);
 
   const activeLang: BoardLanguage = useMemo(() => {
     if (!board) return "de";
@@ -106,6 +118,7 @@ export default function MenuBoard() {
     }
 
     const data = await response.json();
+    setRestaurant(data.restaurant || null);
     setRestaurantName(data.restaurant?.name || "MR. Tabboush");
     setBranchName(data.branch?.name || "");
     setCurrencySymbol(data.currency?.symbol || "€");
@@ -164,12 +177,17 @@ export default function MenuBoard() {
   const labels = boardLabels[activeLang] || boardLabels.en;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-orange-950 text-white p-6 md:p-10">
+    <div 
+      className="min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 text-white p-6 md:p-10 transition-colors"
+      style={{
+        background: `linear-gradient(135deg, #0a0a0a 0%, #171717 50%, ${restaurant?.primaryColor ? restaurant.primaryColor + '15' : '#ea580c15'} 100%)`
+      }}
+    >
       <div className="mx-auto max-w-[1800px] h-[calc(100vh-3rem)] flex flex-col gap-5">
         <header className="flex items-end justify-between border-b border-white/15 pb-4">
           <div>
             <h1 className="text-4xl md:text-5xl font-black tracking-tight uppercase">{restaurantName}</h1>
-            <p className="text-lg md:text-2xl text-orange-300 font-semibold">
+            <p className="text-lg md:text-2xl font-semibold text-brand-primary">
               {branchName ? `${branchName} • ` : ""}{labels.screen} {screen}
             </p>
           </div>
@@ -191,7 +209,7 @@ export default function MenuBoard() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {grouped.map(({ category, items }) => (
                   <article key={category.id} className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <h2 className="text-2xl md:text-3xl font-extrabold mb-3 text-orange-300 uppercase tracking-wide">
+                    <h2 className="text-2xl md:text-3xl font-extrabold mb-3 text-brand-primary uppercase tracking-wide">
                       {text(category.name, activeLang)}
                       {showBilingual && <span className="block text-base md:text-lg text-white/75 normal-case">{text(category.name, "ar")}</span>}
                     </h2>
@@ -210,7 +228,7 @@ export default function MenuBoard() {
                                 )}
                               </div>
                               <div className="text-right">
-                                <p className="text-xl md:text-2xl font-black text-orange-200 whitespace-nowrap">{Number(item.basePrice || 0).toFixed(2)} {currencySymbol}</p>
+                                <p className="text-xl md:text-2xl font-black text-brand-primary/90 whitespace-nowrap">{Number(item.basePrice || 0).toFixed(2)} {currencySymbol}</p>
                                 {soldOut && <span className="text-xs md:text-sm uppercase font-bold text-red-200">{labels.soldOut}</span>}
                               </div>
                             </div>
@@ -236,7 +254,7 @@ export default function MenuBoard() {
                   <p className="text-2xl font-black">{text(currentSlide.title, activeLang)}</p>
                   {showBilingual && <p className="text-sm text-white/75">{text(currentSlide.title, "ar")}</p>}
                   {text(currentSlide.priceText, activeLang) && (
-                    <p className="text-3xl font-black text-orange-300 mt-1">{text(currentSlide.priceText, activeLang)}</p>
+                    <p className="text-3xl font-black text-brand-primary mt-1">{text(currentSlide.priceText, activeLang)}</p>
                   )}
                 </div>
               </div>
@@ -245,7 +263,13 @@ export default function MenuBoard() {
         </main>
 
         {board?.tickerEnabled && text(board.tickerText, activeLang) && (
-          <footer className="rounded-xl border border-orange-300/30 bg-orange-500/20 py-2 overflow-hidden">
+          <footer 
+            className="rounded-xl border py-2 overflow-hidden"
+            style={{
+              borderColor: `${restaurant?.primaryColor || '#ea580c'}30`,
+              backgroundColor: `${restaurant?.primaryColor || '#ea580c'}20`
+            }}
+          >
             <div className="whitespace-nowrap animate-[marquee_22s_linear_infinite] px-4 text-xl md:text-2xl font-bold text-orange-50">
               {text(board.tickerText, activeLang)}
             </div>
