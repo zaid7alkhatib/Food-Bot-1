@@ -488,6 +488,7 @@ export default function BrandWebsite() {
   const aboutBodyText = restaurant?.aboutText ? text(restaurant.aboutText) : "";
   const logoSrc = restaurant?.logo || "";
   const heroBanner = restaurant?.heroBannerImage || "https://images.unsplash.com/photo-1544025162-d76694265947?w=1600&auto=format&fit=crop&q=80";
+  const address = branch?.address || restaurant?.address || "";
 
   return (
     <div dir={dir} className="min-h-screen bg-white text-slate-800 font-sans flex flex-col scroll-smooth">
@@ -894,26 +895,26 @@ export default function BrandWebsite() {
           </div>
 
           {/* Embedded maps simulator */}
-          <div className="rounded-3xl overflow-hidden border border-slate-200 shadow-md relative min-h-[300px]">
-            {/* Embedded mockup map */}
-            <div className="absolute inset-0 bg-slate-100 flex flex-col items-center justify-center text-center p-6 space-y-4">
-              <MapPin size={40} className="text-brand-primary animate-bounce" />
-              <div className="space-y-1">
-                <h4 className="font-bold text-sm text-slate-900">{brandName} Location</h4>
-                <p className="text-xs text-slate-500 max-w-xs">{branch?.address || restaurant?.address || "42277 Wuppertal, Germany"}</p>
+          <div className="rounded-3xl overflow-hidden border border-slate-200 shadow-md relative min-h-[300px] bg-slate-50">
+            {address ? (
+              <iframe
+                title="Map Location"
+                width="100%"
+                height="100%"
+                frameBorder="0"
+                style={{ border: 0, minHeight: "300px" }}
+                src={`https://maps.google.com/maps?q=${encodeURIComponent(address)}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
+                allowFullScreen
+              ></iframe>
+            ) : (
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 space-y-4">
+                <MapPin size={40} className="text-brand-primary animate-bounce" />
+                <div className="space-y-1">
+                  <h4 className="font-bold text-sm text-slate-900">{brandName} Location</h4>
+                  <p className="text-xs text-slate-500 max-w-xs">Address not configured</p>
+                </div>
               </div>
-              {restaurant?.googleMapsReviewLink && (
-                <a 
-                  href={restaurant.googleMapsReviewLink}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5"
-                >
-                  Get Directions
-                  <ArrowRight size={12} />
-                </a>
-              )}
-            </div>
+            )}
           </div>
 
         </div>
@@ -1163,7 +1164,7 @@ export default function BrandWebsite() {
               <span className="font-serif font-extrabold text-base tracking-tight text-white uppercase">{brandName}</span>
             </div>
             <p className="text-[11px] font-light leading-relaxed max-w-xs">
-              Traditional Syrian Grill & Shawarma crafted with love and fresh ingredients in Wuppertal.
+              {aboutBodyText ? (aboutBodyText.substring(0, 120) + "...") : "Delicious dishes crafted with love and fresh ingredients."}
             </p>
           </div>
 
