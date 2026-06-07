@@ -41,7 +41,9 @@ A high-converting, fully customized public landing page tailored to represent th
 *   **Timezone-Aware Status**: Displays an active, pulsing "Open Now" or "Closed" badge by comparing opening hours against the local timezone.
 *   **Interactive Menu Catalog**: Customers can browse food categories, view descriptions, adjust quantity, choose custom modifiers (e.g., *extra cheese*, *spicy level*), and see bestseller highlights.
 *   **Verified Customer Testimonials**: Rotates real 5-star feedback left by verified buyers, enhancing social proof and trust.
-*   **One-Click WhatsApp Cart Checkout**: Customers build their basket visually on the web. Upon checkout, a beautifully formatted order summary is prepared and sent directly to the restaurant's WhatsApp business number to finalize the order.
+*   **Flexible Checkout Options**:
+    *   *Direct Web Checkout*: Customers place delivery or pickup orders directly on the website by entering their phone number and delivery address/pickup time. Orders are submitted in real-time to the kitchen and dashboard without WhatsApp redirection.
+    *   *WhatsApp Checkout*: Customers can redirect their visually built cart directly to the restaurant's WhatsApp number as a formatted text message to complete the conversation.
 
 ### 2. AI-Powered WhatsApp Chatbot
 An automated agent that handles conversational ordering 24/7.

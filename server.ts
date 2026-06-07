@@ -1233,8 +1233,9 @@ app.get("/api/public/menu-board", async (req, res) => {
 app.post("/api/public/orders", async (req, res) => {
   try {
     const { branchId, customerName, whatsAppPhone, tableNumber, items, notes } = req.body;
+    const orderType = req.body.orderType || "dine_in";
 
-    if (!tableNumber) {
+    if (orderType === "dine_in" && !tableNumber) {
       res.status(400).json({ error: "Table number is required for smart menu orders" });
       return;
     }
@@ -1324,24 +1325,39 @@ app.post("/api/public/orders", async (req, res) => {
     }
 
     const orderNumber = await generateOrderNumber();
+    const deliveryFee = orderType === "delivery" ? (branch.deliveryFee || 0) : 0;
+    const total = subtotal + deliveryFee;
+
+    let paymentMethod = "Pay at Table";
+    if (orderType === "delivery") {
+      paymentMethod = "Cash on Delivery";
+    } else if (orderType === "pickup") {
+      paymentMethod = "Cash on Pickup";
+    }
+
+    const defaultNotes = orderType === "dine_in" 
+      ? "Created via Table Smart Menu" 
+      : "Created via Public Brand Website";
 
     const newOrder = new Order({
       orderNumber,
       restaurantId: branch.restaurantId,
       branchId: branch._id,
-      customerName: customerName ? customerName.trim() : `Gast Tisch ${tableNumber}`,
+      customerName: customerName ? customerName.trim() : (orderType === "dine_in" ? `Gast Tisch ${tableNumber}` : "Online Gast"),
       whatsAppPhone: whatsAppPhone ? whatsAppPhone.trim() : "",
-      orderType: "dine_in",
+      orderType,
       items: validatedItems,
       subtotal,
-      deliveryFee: 0,
-      total: subtotal,
-      paymentMethod: "Pay at Table",
+      deliveryFee,
+      total,
+      paymentMethod,
       paymentStatus: "pending",
       status: "received",
-      tableNumber: String(tableNumber),
-      notes: notes || "Created via Table Smart Menu",
-      source: "table",
+      tableNumber: orderType === "dine_in" ? String(tableNumber || "") : undefined,
+      deliveryAddress: orderType === "delivery" ? (req.body.deliveryAddress || "").trim() : undefined,
+      pickupTime: orderType === "pickup" ? (req.body.pickupTime || "").trim() : undefined,
+      notes: notes || defaultNotes,
+      source: orderType === "dine_in" ? "table" : "website",
     });
 
     await newOrder.save();

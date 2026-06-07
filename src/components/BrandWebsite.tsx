@@ -169,6 +169,11 @@ export default function BrandWebsite() {
   const [customerName, setCustomerName] = useState("");
   const [notes, setNotes] = useState("");
   const [pickupTime, setPickupTime] = useState("");
+  const [orderType, setOrderType] = useState<"delivery" | "pickup">("delivery");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [deliveryAddress, setDeliveryAddress] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [placedOrder, setPlacedOrder] = useState<any>(null);
 
   const [selectedItemForMod, setSelectedItemForMod] = useState<MenuItem | null>(null);
   const [modSelections, setModSelections] = useState<Record<string, ModifierOption[]>>({});
@@ -418,9 +423,16 @@ export default function BrandWebsite() {
   const handlePlaceOrder = () => {
     if (cart.length === 0) return;
 
-    let message = language === "ar"
-      ? `مرحباً! أود تسجيل طلب جديد من الموقع الإلكتروني:\n\n`
-      : `Hallo! Ich möchte gerne folgende Speisen bestellen:\n\n`;
+    const isDelivery = orderType === "delivery";
+
+    let message = "";
+    if (language === "ar") {
+      message += `*طلب جديد من الموقع الإلكتروني (${isDelivery ? "توصيل" : "استلام"})*\n\n`;
+    } else if (language === "en") {
+      message += `*New Order from Brand Website (${isDelivery ? "Delivery" : "Pickup"})*\n\n`;
+    } else {
+      message += `*Neue Bestellung über die Webseite (${isDelivery ? "Lieferung" : "Abholung"})*\n\n`;
+    }
 
     cart.forEach(item => {
       message += `• ${item.quantity}x ${text(item.name)}`;
@@ -431,15 +443,34 @@ export default function BrandWebsite() {
       message += ` - ${(item.totalPrice * item.quantity).toFixed(2)} €\n`;
     });
 
-    message += `\nTotal: ${getCheckoutTotal().toFixed(2)} €`;
-    if (customerName.trim()) {
-      message += `\nName: ${customerName.trim()}`;
+    const deliveryFee = isDelivery ? (branch?.deliveryFee || 0) : 0;
+    const subtotal = getCheckoutTotal();
+    const total = subtotal + deliveryFee;
+
+    message += `\n`;
+    if (isDelivery && deliveryFee > 0) {
+      message += `Subtotal: ${subtotal.toFixed(2)} €\n`;
+      message += `Delivery Fee: ${deliveryFee.toFixed(2)} €\n`;
     }
-    if (pickupTime.trim()) {
-      message += `\nTime: ${pickupTime.trim()}`;
+    message += `*Total: ${total.toFixed(2)} €*\n\n`;
+
+    if (customerName.trim()) {
+      message += `Name: ${customerName.trim()}\n`;
+    }
+    if (customerPhone.trim()) {
+      message += `Phone: ${customerPhone.trim()}\n`;
+    }
+    if (isDelivery) {
+      if (deliveryAddress.trim()) {
+        message += `Address: ${deliveryAddress.trim()}\n`;
+      }
+    } else {
+      if (pickupTime.trim()) {
+        message += `Time: ${pickupTime.trim()}\n`;
+      }
     }
     if (notes.trim()) {
-      message += `\nNotes: ${notes.trim()}`;
+      message += `Notes: ${notes.trim()}\n`;
     }
 
     const waNumber = restaurant?.whatsappNumber || branch?.whatsappNumber || "";
@@ -447,6 +478,75 @@ export default function BrandWebsite() {
 
     const url = `https://wa.me/${cleanNumber}?text=${encodeURIComponent(message)}`;
     window.open(url, "_blank");
+  };
+
+  const handleDirectCheckout = () => {
+    if (cart.length === 0) return;
+    if (!customerPhone.trim()) {
+      alert(language === "ar" ? "رقم الهاتف مطلوب" : "Telefonnummer ist erforderlich");
+      return;
+    }
+    if (orderType === "delivery" && !deliveryAddress.trim()) {
+      alert(language === "ar" ? "عنوان التوصيل مطلوب" : "Lieferadresse ist erforderlich");
+      return;
+    }
+    if (orderType === "pickup" && !pickupTime.trim()) {
+      alert(language === "ar" ? "وقت الاستلام مطلوب" : "Abholzeit ist erforderlich");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    const payload = {
+      branchId: branch?._id || "",
+      customerName: customerName.trim() || undefined,
+      whatsAppPhone: customerPhone.trim(),
+      orderType,
+      deliveryAddress: orderType === "delivery" ? deliveryAddress.trim() : undefined,
+      pickupTime: orderType === "pickup" ? pickupTime.trim() : undefined,
+      notes: notes.trim() || undefined,
+      items: cart.map(item => ({
+        itemId: item.itemId,
+        quantity: item.quantity,
+        selectedModifiers: item.selectedModifiers?.map(m => ({
+          groupId: m.groupId,
+          optionId: m.option.id
+        })) || [],
+        selectedUpsell: item.selectedUpsell ? {
+          id: item.selectedUpsell.id,
+          added: true
+        } : undefined
+      }))
+    };
+
+    fetch("/api/public/orders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    })
+      .then(res => {
+        if (res.ok) {
+          return res.json();
+        } else {
+          return res.json().then(data => { throw new Error(data.error || "Failed to place order"); });
+        }
+      })
+      .then(data => {
+        setPlacedOrder(data);
+        setCart([]); // clear cart
+        setCustomerName("");
+        setCustomerPhone("");
+        setDeliveryAddress("");
+        setPickupTime("");
+        setNotes("");
+      })
+      .catch(err => {
+        console.error(err);
+        alert(err.message || "Failed to place order.");
+      })
+      .finally(() => {
+        setIsSubmitting(false);
+      });
   };
 
   const handleWhatsAppRedirect = () => {
@@ -941,13 +1041,78 @@ export default function BrandWebsite() {
 
             {/* Body */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {cart.length === 0 ? (
+              {placedOrder ? (
+                <div className="py-8 text-center space-y-5 animate-scale-in">
+                  <div className="w-16 h-16 bg-emerald-50 text-emerald-500 border border-emerald-100 rounded-full flex items-center justify-center mx-auto shadow-sm animate-pulse-subtle">
+                    <Check size={32} />
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="font-bold text-lg text-slate-950">
+                      {language === "ar" ? "تم استلام طلبك بنجاح!" : "Bestellung erfolgreich empfangen!"}
+                    </h3>
+                    <p className="text-xs text-slate-500 px-6 leading-relaxed">
+                      {language === "ar" 
+                        ? `طلبك رقم ${placedOrder.orderNumber} تم إرساله مباشرة لمطبخ المطعم للتحضير.`
+                        : `Ihre Bestellnummer ist ${placedOrder.orderNumber}. Sie wurde direkt in die Küche übertragen.`}
+                    </p>
+                  </div>
+                  
+                  <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl inline-flex flex-col gap-1.5 text-xs text-slate-700 min-w-[200px] mx-auto select-text">
+                    <div className="flex justify-between font-medium gap-4">
+                      <span>Total:</span>
+                      <span className="font-mono font-bold text-brand-primary">{placedOrder.total.toFixed(2)} €</span>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <span>Method:</span>
+                      <span className="font-semibold">{placedOrder.paymentMethod}</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <button
+                      onClick={() => {
+                        setPlacedOrder(null);
+                        setIsCartOpen(false);
+                      }}
+                      className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition cursor-pointer"
+                    >
+                      {language === "ar" ? "موافق" : "Fertig"}
+                    </button>
+                  </div>
+                </div>
+              ) : cart.length === 0 ? (
                 <div className="py-12 text-center text-slate-400 space-y-2">
                   <ShoppingBag size={36} className="mx-auto text-slate-300" />
                   <p className="text-xs font-bold">{localized.cartEmpty}</p>
                 </div>
               ) : (
                 <>
+                  {/* Order Type Selector */}
+                  <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl border border-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => setOrderType("delivery")}
+                      className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                        orderType === "delivery"
+                          ? "bg-brand-primary text-white shadow"
+                          : "text-slate-500 hover:text-slate-850"
+                      }`}
+                    >
+                      {language === "ar" ? "توصيل" : language === "en" ? "Delivery" : "Lieferung"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setOrderType("pickup")}
+                      className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                        orderType === "pickup"
+                          ? "bg-brand-primary text-white shadow"
+                          : "text-slate-500 hover:text-slate-855"
+                      }`}
+                    >
+                      {language === "ar" ? "استلام" : language === "en" ? "Pickup" : "Abholung"}
+                    </button>
+                  </div>
+
                   {cart.map((item, idx) => (
                     <div key={idx} className="p-3 bg-slate-50 border border-slate-100 rounded-2xl space-y-3">
                       <div className="flex justify-between items-start">
@@ -989,7 +1154,7 @@ export default function BrandWebsite() {
                   {/* Checkout inputs */}
                   <div className="border-t border-slate-100 pt-4 space-y-3 text-xs">
                     <div>
-                      <label className="text-[10px] text-slate-400 font-bold uppercase block mb-1">{localized.customerName}</label>
+                      <label className="text-[10px] text-slate-450 font-bold uppercase block mb-1">{localized.customerName}</label>
                       <input 
                         type="text" 
                         value={customerName}
@@ -1000,15 +1165,46 @@ export default function BrandWebsite() {
                     </div>
 
                     <div>
-                      <label className="text-[10px] text-slate-400 font-bold uppercase block mb-1">{localized.pickupTime}</label>
+                      <label className="text-[10px] text-slate-450 font-bold uppercase block mb-1">
+                        {language === "ar" ? "رقم الهاتف" : language === "en" ? "Phone Number" : "Telefonnummer"} *
+                      </label>
                       <input 
-                        type="text" 
-                        value={pickupTime}
-                        onChange={(e) => setPickupTime(e.target.value)}
-                        placeholder="z.B. 19:30"
+                        type="tel" 
+                        value={customerPhone}
+                        onChange={(e) => setCustomerPhone(e.target.value)}
+                        placeholder="z.B. +49176..."
+                        required
                         className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:border-brand-primary"
                       />
                     </div>
+
+                    {orderType === "delivery" ? (
+                      <div>
+                        <label className="text-[10px] text-slate-455 font-bold uppercase block mb-1">
+                          {language === "ar" ? "عنوان التوصيل" : language === "en" ? "Delivery Address" : "Lieferadresse"} *
+                        </label>
+                        <input 
+                          type="text" 
+                          value={deliveryAddress}
+                          onChange={(e) => setDeliveryAddress(e.target.value)}
+                          placeholder="z.B. Berliner Str. 179, Wuppertal"
+                          required
+                          className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:border-brand-primary"
+                        />
+                      </div>
+                    ) : (
+                      <div>
+                        <label className="text-[10px] text-slate-455 font-bold uppercase block mb-1">{localized.pickupTime} *</label>
+                        <input 
+                          type="text" 
+                          value={pickupTime}
+                          onChange={(e) => setPickupTime(e.target.value)}
+                          placeholder="z.B. 19:30"
+                          required
+                          className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:border-brand-primary"
+                        />
+                      </div>
+                    )}
 
                     <div>
                       <label className="text-[10px] text-slate-400 font-bold uppercase block mb-1">{localized.notes}</label>
@@ -1025,7 +1221,7 @@ export default function BrandWebsite() {
             </div>
 
             {/* Footer */}
-            {cart.length > 0 && (
+            {cart.length > 0 && !placedOrder && (
               <div className="p-4 border-t border-slate-100 bg-slate-50 space-y-3">
                 <div className="flex justify-between items-center text-xs text-slate-800 font-bold">
                   <span>Subtotal</span>
@@ -1033,8 +1229,21 @@ export default function BrandWebsite() {
                 </div>
 
                 <button 
+                  onClick={handleDirectCheckout}
+                  disabled={isSubmitting}
+                  className="w-full bg-brand-primary hover:bg-brand-primary/95 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-98 shadow-md cursor-pointer disabled:opacity-50"
+                >
+                  {isSubmitting ? (
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent animate-spin rounded-full"></span>
+                  ) : (
+                    <ShoppingBag size={14} />
+                  )}
+                  {language === "ar" ? "تأكيد وإرسال الطلب للمطبخ" : language === "en" ? "Confirm Order Direct (Web)" : "Direkt Bestellen (Web)"}
+                </button>
+
+                <button 
                   onClick={handlePlaceOrder}
-                  className="w-full bg-slate-900 hover:bg-slate-850 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-98 shadow-md"
+                  className="w-full bg-slate-900 hover:bg-slate-850 text-white font-bold py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-98 shadow-sm cursor-pointer"
                 >
                   <MessageSquare size={14} className="text-emerald-400" />
                   {localized.checkoutBtn}
