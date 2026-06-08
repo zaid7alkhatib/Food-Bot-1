@@ -1427,7 +1427,7 @@ export default function BrandWebsite() {
       )}
 
       {/* 9. Premium Footer */}
-      <footer className="bg-slate-900 text-slate-450 border-t border-slate-800 py-12 text-xs select-none">
+      <footer className="bg-brand-secondary text-slate-450 border-t border-white/10 py-12 text-xs select-none text-slate-400">
         <div className="max-w-5xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-8">
           
           {/* Logo & About */}
@@ -1461,17 +1461,17 @@ export default function BrandWebsite() {
             <h4 className="text-[10px] text-slate-500 font-extrabold uppercase tracking-widest">Connect & Legal</h4>
             <div className="flex items-center gap-3">
               {restaurant?.socialInstagram && (
-                <a href={restaurant.socialInstagram} target="_blank" rel="noreferrer" className="p-2 bg-slate-800 hover:bg-brand-primary text-slate-400 hover:text-white rounded-lg transition">
+                <a href={restaurant.socialInstagram} target="_blank" rel="noreferrer" className="p-2 bg-white/5 hover:bg-brand-primary text-slate-400 hover:text-white rounded-lg transition animate-pulse-subtle">
                   <Instagram size={16} />
                 </a>
               )}
               {restaurant?.socialFacebook && (
-                <a href={restaurant.socialFacebook} target="_blank" rel="noreferrer" className="p-2 bg-slate-800 hover:bg-brand-primary text-slate-400 hover:text-white rounded-lg transition">
+                <a href={restaurant.socialFacebook} target="_blank" rel="noreferrer" className="p-2 bg-white/5 hover:bg-brand-primary text-slate-400 hover:text-white rounded-lg transition animate-pulse-subtle">
                   <Facebook size={16} />
                 </a>
               )}
               {restaurant?.socialTikTok && (
-                <a href={restaurant.socialTikTok} target="_blank" rel="noreferrer" className="p-2 bg-slate-800 hover:bg-brand-primary text-slate-400 hover:text-white rounded-lg transition flex items-center justify-center font-bold font-sans">
+                <a href={restaurant.socialTikTok} target="_blank" rel="noreferrer" className="p-2 bg-white/5 hover:bg-brand-primary text-slate-400 hover:text-white rounded-lg transition flex items-center justify-center font-bold font-sans animate-pulse-subtle">
                   TikTok
                 </a>
               )}
@@ -1495,7 +1495,7 @@ export default function BrandWebsite() {
         </div>
 
         {/* Corporate line */}
-        <div className="max-w-5xl mx-auto px-4 mt-8 pt-8 border-t border-slate-800/60 text-center text-[10px] text-slate-600 font-light tracking-wide">
+        <div className="max-w-5xl mx-auto px-4 mt-8 pt-8 border-t border-white/10 text-center text-[10px] text-slate-600 font-light tracking-wide">
           <p>© 2026 {restaurant?.legalName || brandName}. All Rights Reserved.</p>
           <p className="mt-1">Powered by Farman GmbH White-Label Restaurant Cloud Suite</p>
         </div>
