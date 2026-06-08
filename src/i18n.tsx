@@ -148,6 +148,7 @@ const dictionaries: Record<AppLanguage, TranslationMap> = {
     "restaurant.reviewLink": "Google-Maps-Bewertungslink",
     "restaurant.reviewHint": "Wird nach 5-Sterne-Feedback an Kunden gesendet",
     "restaurant.taxHint": "Wird auf Bestellsummen angewendet (0 = keine Steuer)",
+    "restaurant.geminiEnabled": "Gemini KI-Chatbot aktivieren (bei Deaktivierung wird der regelbasierte Ablauf verwendet)",
 
     "users.title": "Benutzerverwaltung",
     "users.subtitle": "Teamkonten und Rollen fuer das Test-Dashboard verwalten",
@@ -509,6 +510,7 @@ const dictionaries: Record<AppLanguage, TranslationMap> = {
     "restaurant.reviewLink": "رابط تقييم Google Maps",
     "restaurant.reviewHint": "يرسل للعملاء بعد تقييم 5 نجوم",
     "restaurant.taxHint": "يطبق على إجمالي الطلبات (0 = بلا ضريبة)",
+    "restaurant.geminiEnabled": "تفعيل روبوت الدردشة بالذكاء الاصطناعي (Gemini) للمحادثات (سيتم الرجوع للمسار التقليدي عند التعطيل)",
 
     "users.title": "إدارة المستخدمين",
     "users.subtitle": "إدارة حسابات الفريق وأدواره في لوحة الاختبار",
@@ -870,6 +872,7 @@ const dictionaries: Record<AppLanguage, TranslationMap> = {
     "restaurant.reviewLink": "Google Maps Review Link",
     "restaurant.reviewHint": "Sent to customers after 5-star feedback",
     "restaurant.taxHint": "Applied to order totals (0 = no tax)",
+    "restaurant.geminiEnabled": "Enable Gemini AI Chatbot (falls back to rule-based engine when disabled)",
 
     "users.title": "User Management",
     "users.subtitle": "Manage team accounts and roles for testing",

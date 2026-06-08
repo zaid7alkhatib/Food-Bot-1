@@ -17,6 +17,17 @@ interface Branch {
   deliveryRadiusKm: number;
   deliveryFee: number;
   minOrderAmount: number;
+  printerSettings?: {
+    type?: "network" | "usb";
+    ip?: string;
+    port?: number;
+    vendorId?: string;
+    productId?: string;
+    width?: "58mm" | "80mm";
+    modelName?: string;
+    autoPrint?: boolean;
+    buzzer?: boolean;
+  };
 }
 
 export default function BranchSettings() {
@@ -77,6 +88,43 @@ export default function BranchSettings() {
   const updateField = (field: keyof Branch, value: any) => {
     if (!selectedBranch) return;
     setSelectedBranch({ ...selectedBranch, [field]: value });
+  };
+
+  const updatePrinterField = (field: string, value: any) => {
+    if (!selectedBranch) return;
+    const currentSettings = selectedBranch.printerSettings || {};
+    setSelectedBranch({
+      ...selectedBranch,
+      printerSettings: {
+        ...currentSettings,
+        [field]: value,
+      },
+    });
+  };
+
+  const [testingPrint, setTestingPrint] = useState(false);
+  const [testResult, setTestResult] = useState<string | null>(null);
+
+  const handleTestPrint = async () => {
+    if (!selectedBranch) return;
+    setTestingPrint(true);
+    setTestResult(null);
+    try {
+      const res = await fetch(`/api/branches/${selectedBranch._id}/test-print`, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (res.ok) {
+        setTestResult("Test job dispatched!");
+      } else {
+        setTestResult("Error sending test job.");
+      }
+    } catch (err) {
+      setTestResult("Request failed.");
+    } finally {
+      setTestingPrint(false);
+      setTimeout(() => setTestResult(null), 4000);
+    }
   };
 
   if (loading) {
@@ -312,6 +360,150 @@ export default function BranchSettings() {
               {t("branch.paymentNote")}
             </p>
           </div>
+        </div>
+
+        {/* Printer Settings */}
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-4 md:col-span-2">
+          <div className="flex items-center gap-2 mb-2">
+            <Store size={16} className="text-purple-500" />
+            <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">{t("printer.settings")}</h4>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">Connection Type</label>
+              <select
+                value={selectedBranch.printerSettings?.type || "network"}
+                onChange={(e) => updatePrinterField("type", e.target.value)}
+                className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-orange-500"
+              >
+                <option value="network">Network / LAN (TCP/IP)</option>
+                <option value="usb">USB Port</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">Printer Model Name</label>
+              <input
+                type="text"
+                placeholder="EPSON TM-T20III"
+                value={selectedBranch.printerSettings?.modelName || ""}
+                onChange={(e) => updatePrinterField("modelName", e.target.value)}
+                className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-orange-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">{t("printer.paperWidth")}</label>
+              <select
+                value={selectedBranch.printerSettings?.width || "80mm"}
+                onChange={(e) => updatePrinterField("width", e.target.value)}
+                className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-orange-500"
+              >
+                <option value="80mm">80mm</option>
+                <option value="58mm">58mm</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Conditional parameters based on type */}
+          {(selectedBranch.printerSettings?.type || "network") === "network" ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-gray-50 pt-3">
+              <div>
+                <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">Printer IP Address</label>
+                <input
+                  type="text"
+                  placeholder="192.168.1.150"
+                  value={selectedBranch.printerSettings?.ip || ""}
+                  onChange={(e) => updatePrinterField("ip", e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-orange-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">Printer Port</label>
+                <input
+                  type="number"
+                  placeholder="9100"
+                  value={selectedBranch.printerSettings?.port || 9100}
+                  onChange={(e) => updatePrinterField("port", parseInt(e.target.value) || 9100)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-orange-500"
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-gray-50 pt-3">
+              <div>
+                <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">USB Vendor ID (Hex)</label>
+                <input
+                  type="text"
+                  placeholder="0x04b8"
+                  value={selectedBranch.printerSettings?.vendorId || ""}
+                  onChange={(e) => updatePrinterField("vendorId", e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-orange-500 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">USB Product ID (Hex)</label>
+                <input
+                  type="text"
+                  placeholder="0x0202"
+                  value={selectedBranch.printerSettings?.productId || ""}
+                  onChange={(e) => updatePrinterField("productId", e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-orange-500 font-mono"
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="flex flex-col sm:flex-row gap-4 border-t border-gray-100 pt-4 mt-2">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={selectedBranch.printerSettings?.autoPrint !== false}
+                onChange={(e) => updatePrinterField("autoPrint", e.target.checked)}
+                className="w-4 h-4 text-orange-600 rounded border-gray-300 focus:ring-orange-500 cursor-pointer"
+              />
+              <div className="leading-tight">
+                <span className="text-xs font-semibold text-gray-700 block">Auto-Print incoming orders</span>
+                <span className="text-[10px] text-gray-400 block">Print orders instantly when they are confirmed</span>
+              </div>
+            </label>
+
+            <label className="flex items-center gap-2 cursor-pointer sm:ml-6">
+              <input
+                type="checkbox"
+                checked={selectedBranch.printerSettings?.buzzer !== false}
+                onChange={(e) => updatePrinterField("buzzer", e.target.checked)}
+                className="w-4 h-4 text-orange-600 rounded border-gray-300 focus:ring-orange-500 cursor-pointer"
+              />
+              <div className="leading-tight">
+                <span className="text-xs font-semibold text-gray-700 block">Trigger kitchen buzzer</span>
+                <span className="text-[10px] text-gray-400 block">Sound an alarm trigger on the printer upon receipt</span>
+              </div>
+            </label>
+          </div>
+
+          <div className="border-t border-gray-100 pt-4 flex items-center justify-between gap-4">
+            <div className="text-[10px] text-gray-500 leading-snug">
+              Connection Status: Connect the standalone local print bridge to Room <code className="bg-gray-100 px-1 py-0.5 rounded font-mono text-[9px]">branch:{selectedBranch._id}:printer</code> to process prints.
+            </div>
+            <button
+              type="button"
+              onClick={handleTestPrint}
+              disabled={testingPrint}
+              className="px-4 py-2 border border-purple-200 hover:border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100 text-xs font-bold rounded-lg flex items-center gap-1.5 transition disabled:opacity-50 shrink-0"
+            >
+              {testingPrint ? <Loader2 size={12} className="animate-spin" /> : null}
+              Send Test Print
+            </button>
+          </div>
+          {testResult && (
+            <div className={`text-xs font-bold mt-2 ${testResult.includes("dispatched") ? "text-emerald-600" : "text-rose-600"}`}>
+              {testResult}
+            </div>
+          )}
         </div>
       </div>
     </div>

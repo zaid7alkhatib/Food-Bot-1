@@ -14,7 +14,7 @@ import branchesRoutes from "./src/routes/branches.js";
 import categoriesRoutes from "./src/routes/categories.js";
 import reportsRoutes from "./src/routes/reports.js";
 import settingsRoutes from "./src/routes/settings.js";
-import { initSocket, emitGlobal } from "./src/services/socket.js";
+import { initSocket, emitGlobal, emitToRoom, getIO } from "./src/services/socket.js";
 import { startCronJobs } from "./src/services/cron.js";
 import { sendWhatsAppMessage, startWhatsAppSession, stopWhatsAppSession } from "./src/services/whatsapp.js";
 import {
@@ -809,6 +809,79 @@ async function generateOrderNumber(): Promise<string> {
   return `${prefix}-${1004 + count}`;
 }
 
+async function triggerAutoPrint(order: any): Promise<void> {
+  try {
+    const branch = await Branch.findById(order.branchId).lean();
+    if (!branch || !branch.printerSettings) return;
+
+    const settings = branch.printerSettings;
+    // Check if auto-printing is enabled
+    if (settings.autoPrint === false) {
+      return; // disabled
+    }
+
+    // Format receipt items
+    const formattedItems = order.items.map((item: any) => {
+      const modifiers = Array.isArray(item.selectedModifiers)
+        ? item.selectedModifiers.map((mod: any) => ({
+            groupName: mod.groupName,
+            optionName: mod.option?.name,
+            priceAdjustment: mod.option?.priceAdjustment || 0,
+          }))
+        : [];
+
+      const upsell = item.selectedUpsell
+        ? {
+            name: item.selectedUpsell.name,
+            price: item.selectedUpsell.price || 0,
+          }
+        : undefined;
+
+      return {
+        name: item.name,
+        quantity: item.quantity || 1,
+        basePrice: item.basePrice || 0,
+        totalPrice: item.totalPrice || 0,
+        modifiers,
+        upsell,
+      };
+    });
+
+    const printJob = {
+      orderNumber: order.orderNumber,
+      orderType: order.orderType,
+      customerName: order.customerName,
+      whatsAppPhone: order.whatsAppPhone,
+      deliveryAddress: order.deliveryAddress,
+      pickupTime: order.pickupTime,
+      tableNumber: order.tableNumber,
+      notes: order.notes,
+      items: formattedItems,
+      subtotal: order.subtotal,
+      deliveryFee: order.deliveryFee,
+      total: order.total,
+      currency: order.currency || "EUR",
+      createdAt: order.createdAt || new Date().toISOString(),
+      printerSettings: {
+        type: settings.type || "network",
+        ip: settings.ip,
+        port: settings.port || 9100,
+        vendorId: settings.vendorId,
+        productId: settings.productId,
+        width: settings.width || "80mm",
+        modelName: settings.modelName || "Generic ESC/POS",
+        buzzer: settings.buzzer !== false,
+      }
+    };
+
+    const roomName = `branch:${order.branchId?.toString()}:printer`;
+    emitToRoom(roomName, "printer:job", printJob);
+    console.log(`[Printer] Dispatched print job for order ${order.orderNumber} to room ${roomName}`);
+  } catch (err) {
+    console.error("[Printer] triggerAutoPrint error:", err);
+  }
+}
+
 async function loadBranchConfig(branchId?: unknown): Promise<BranchFulfillmentConfig> {
   const id = branchId?.toString?.();
   const branch = id && mongoose.isValidObjectId(id)
@@ -1112,10 +1185,27 @@ app.post("/api/orders", authMiddleware as any, requireRole(...ORDER_ROLES) as an
     await newOrder.save();
 
     emitGlobal("order:new", serializeDoc(newOrder));
+    triggerAutoPrint(newOrder);
     res.status(201).json(serializeDoc(newOrder));
   } catch (err) {
     console.error("[API] POST /api/orders error:", err);
     res.status(500).json({ error: "Failed to create order" });
+  }
+});
+
+// POST /api/orders/:id/print
+app.post("/api/orders/:id/print", authMiddleware as any, async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+    if (!order) {
+      res.status(404).json({ error: "Order not found" });
+      return;
+    }
+    await triggerAutoPrint(order);
+    res.json({ success: true, message: "Manual print job triggered successfully." });
+  } catch (err) {
+    console.error("[API] POST /api/orders/:id/print error:", err);
+    res.status(500).json({ error: "Failed to trigger manual print job" });
   }
 });
 
@@ -1362,7 +1452,7 @@ app.post("/api/public/orders", async (req, res) => {
 
     await newOrder.save();
     emitGlobal("order:new", serializeDoc(newOrder));
-
+    triggerAutoPrint(newOrder);
     res.status(201).json(serializeDoc(newOrder));
   } catch (err) {
     console.error("[API] POST /api/public/orders error:", err);
@@ -1903,7 +1993,9 @@ app.post("/api/bot-reply", async (req, res) => {
       return;
     }
 
-    const aiClient = getGeminiClient();
+    const activeRestaurant = await Restaurant.findOne({ isActive: true }).lean();
+    const isGeminiEnabled = activeRestaurant ? activeRestaurant.geminiEnabled !== false : true;
+    const aiClient = isGeminiEnabled ? getGeminiClient() : null;
     let botReplyText = "";
     let nextStep = convo.currentStep || "welcome";
     let finalPlacedOrder: any = null;
@@ -2471,15 +2563,140 @@ You MUST reply with a JSON object in this exact schema structure:
 
     // Save final order
     if (finalPlacedOrder) {
-      finalPlacedOrder.customerName = convo.customerName;
-      finalPlacedOrder.whatsAppPhone = convo.whatsAppPhone;
-      finalPlacedOrder.whatsAppJid = convo.whatsAppJid;
-      finalPlacedOrder.whatsAppPhoneJid = convo.whatsAppPhoneJid;
-      finalPlacedOrder.whatsAppLid = convo.whatsAppLid;
+      // 1. Ensure orderNumber is present, if not generate it
+      if (!finalPlacedOrder.orderNumber) {
+        finalPlacedOrder.orderNumber = await generateOrderNumber();
+      }
+
+      // 2. Ensure restaurantId and branchId are present and valid ObjectIds
+      if (!finalPlacedOrder.restaurantId) {
+        finalPlacedOrder.restaurantId = convo.restaurantId || (await Restaurant.findOne({ isActive: true }))?._id;
+      }
+      if (!finalPlacedOrder.branchId) {
+        finalPlacedOrder.branchId = convo.branchId || (await Branch.findOne({ isActive: true }))?._id;
+      }
+
+      // 3. Set customer info
+      finalPlacedOrder.customerName = convo.customerName || finalPlacedOrder.customerName || "WhatsApp Customer";
+      finalPlacedOrder.whatsAppPhone = convo.whatsAppPhone || finalPlacedOrder.whatsAppPhone || "";
+      finalPlacedOrder.whatsAppJid = convo.whatsAppJid || finalPlacedOrder.whatsAppJid || "";
+      finalPlacedOrder.whatsAppPhoneJid = convo.whatsAppPhoneJid || finalPlacedOrder.whatsAppPhoneJid || "";
+      finalPlacedOrder.whatsAppLid = convo.whatsAppLid || finalPlacedOrder.whatsAppLid || "";
+
+      // 4. Ensure orderType is valid
+      let rawOrderType = finalPlacedOrder.orderType || convo.unsubmittedOrder?.orderType || "delivery";
+      if (typeof rawOrderType === "string") {
+        rawOrderType = rawOrderType.toLowerCase().trim();
+      }
+      if (!["delivery", "pickup", "dine_in"].includes(rawOrderType)) {
+        rawOrderType = "delivery";
+      }
+      finalPlacedOrder.orderType = rawOrderType;
+
+      // 5. Sanitize items
+      if (!Array.isArray(finalPlacedOrder.items)) {
+        finalPlacedOrder.items = convo.unsubmittedOrder?.items || [];
+      }
+
+      const sanitizedItems: any[] = [];
+      for (const item of finalPlacedOrder.items) {
+        if (!item) continue;
+
+        // Match against dbMenuItems to get valid translation schema, etc.
+        const matchedMenuItem = dbMenuItems.find(dbItem => {
+          if (item.itemId && (dbItem._id?.toString() === item.itemId?.toString() || dbItem.id === item.itemId)) {
+            return true;
+          }
+          if (typeof item.name === 'string') {
+            const lowerName = item.name.toLowerCase();
+            return (
+              dbItem.name.en?.toLowerCase() === lowerName ||
+              dbItem.name.de?.toLowerCase() === lowerName ||
+              dbItem.name.ar?.toLowerCase() === lowerName
+            );
+          } else if (item.name && typeof item.name === 'object') {
+            return (
+              dbItem.name.en?.toLowerCase() === item.name.en?.toLowerCase() ||
+              dbItem.name.de?.toLowerCase() === item.name.de?.toLowerCase() ||
+              dbItem.name.ar?.toLowerCase() === item.name.ar?.toLowerCase()
+            );
+          }
+          return false;
+        });
+
+        const itemId = item.itemId || matchedMenuItem?._id?.toString() || matchedMenuItem?.id || new mongoose.Types.ObjectId().toString();
+        const basePrice = typeof item.basePrice === "number" ? item.basePrice : (matchedMenuItem?.basePrice || 0);
+        const quantity = typeof item.quantity === "number" ? item.quantity : 1;
+        const totalPrice = typeof item.totalPrice === "number" ? item.totalPrice : (basePrice * quantity);
+
+        let nameSchema = { ar: "", de: "", en: "" };
+        if (matchedMenuItem && matchedMenuItem.name) {
+          nameSchema = {
+            ar: matchedMenuItem.name.ar || "",
+            de: matchedMenuItem.name.de || "",
+            en: matchedMenuItem.name.en || "",
+          };
+        } else if (typeof item.name === "object" && item.name) {
+          nameSchema = {
+            ar: item.name.ar || item.name.en || item.name.de || "",
+            de: item.name.de || item.name.en || item.name.ar || "",
+            en: item.name.en || item.name.de || item.name.ar || "",
+          };
+        } else if (typeof item.name === "string") {
+          nameSchema = {
+            ar: item.name,
+            de: item.name,
+            en: item.name,
+          };
+        } else {
+          nameSchema = {
+            ar: "Item",
+            de: "Artikel",
+            en: "Item",
+          };
+        }
+
+        sanitizedItems.push({
+          itemId,
+          name: nameSchema,
+          basePrice,
+          quantity,
+          selectedModifiers: Array.isArray(item.selectedModifiers) ? item.selectedModifiers : [],
+          selectedUpsell: item.selectedUpsell || undefined,
+          totalPrice,
+        });
+      }
+      finalPlacedOrder.items = sanitizedItems;
+
+      // 6. Recalculate financial totals
+      let computedSubtotal = 0;
+      for (const item of finalPlacedOrder.items) {
+        computedSubtotal += item.totalPrice;
+      }
+      finalPlacedOrder.subtotal = typeof finalPlacedOrder.subtotal === "number" && finalPlacedOrder.subtotal > 0
+        ? finalPlacedOrder.subtotal
+        : computedSubtotal;
+
+      finalPlacedOrder.deliveryFee = typeof finalPlacedOrder.deliveryFee === "number"
+        ? finalPlacedOrder.deliveryFee
+        : (finalPlacedOrder.orderType === "delivery" ? branchConfig.deliveryFee : 0);
+
+      finalPlacedOrder.total = typeof finalPlacedOrder.total === "number" && finalPlacedOrder.total > 0
+        ? finalPlacedOrder.total
+        : (finalPlacedOrder.subtotal + finalPlacedOrder.deliveryFee);
+
+      const validStatuses = ["received", "under_review", "accepted", "preparing", "ready_for_pickup", "out_for_delivery", "delivered", "cancelled"];
+      if (!finalPlacedOrder.status || !validStatuses.includes(finalPlacedOrder.status)) {
+        finalPlacedOrder.status = "received";
+      }
+      finalPlacedOrder.paymentMethod = finalPlacedOrder.paymentMethod || "Cash on Delivery";
+      finalPlacedOrder.paymentStatus = finalPlacedOrder.paymentStatus || "pending";
+      finalPlacedOrder.source = "whatsapp";
 
       const newOrder = new Order(finalPlacedOrder);
       await newOrder.save();
       emitGlobal("order:new", serializeDoc(newOrder));
+      triggerAutoPrint(newOrder);
     }
 
     // Push bot reply

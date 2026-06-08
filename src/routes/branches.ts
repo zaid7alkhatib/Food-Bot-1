@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { Branch } from "../models/index.js";
-import { emitGlobal } from "../services/socket.js";
+import { emitGlobal, emitToRoom, getIO } from "../services/socket.js";
 
 const router = Router();
 
@@ -56,6 +56,72 @@ router.post("/", async (req, res) => {
   } catch (err) {
     console.error("[Branches] POST / error:", err);
     res.status(500).json({ error: "Failed to create branch" });
+  }
+});
+
+// GET /api/branches/:id/printer-status
+router.get("/:id/printer-status", async (req, res) => {
+  try {
+    const io = getIO();
+    const roomName = `branch:${req.params.id}:printer`;
+    const room = io.sockets.adapter.rooms.get(roomName);
+    const isOnline = !!(room && room.size > 0);
+    res.json({ isOnline });
+  } catch (err) {
+    res.json({ isOnline: false });
+  }
+});
+
+// POST /api/branches/:id/test-print
+router.post("/:id/test-print", async (req, res) => {
+  try {
+    const branch = await Branch.findById(req.params.id).lean();
+    if (!branch) {
+      res.status(404).json({ error: "Branch not found" });
+      return;
+    }
+    
+    const settings = branch.printerSettings || {};
+    
+    const testJob = {
+      orderNumber: `${branch.name.substring(0, 3).toUpperCase()}-TEST-101`,
+      orderType: "pickup",
+      customerName: "Test Printer Connection",
+      whatsAppPhone: "+49123456789",
+      pickupTime: "ASAP",
+      notes: "Test print job from Admin Panel Settings",
+      items: [
+        {
+          name: { ar: "اختبار الطابعة", de: "Drucker Testbeleg", en: "Test Print Bill" },
+          quantity: 1,
+          basePrice: 0.00,
+          totalPrice: 0.00,
+          modifiers: [],
+        }
+      ],
+      subtotal: 0.00,
+      deliveryFee: 0.00,
+      total: 0.00,
+      currency: "EUR",
+      createdAt: new Date().toISOString(),
+      printerSettings: {
+        type: settings.type || "network",
+        ip: settings.ip,
+        port: settings.port || 9100,
+        vendorId: settings.vendorId,
+        productId: settings.productId,
+        width: settings.width || "80mm",
+        modelName: settings.modelName || "Generic ESC/POS",
+        buzzer: settings.buzzer !== false,
+      }
+    };
+
+    const roomName = `branch:${branch._id?.toString()}:printer`;
+    emitToRoom(roomName, "printer:job", testJob);
+    res.json({ success: true, message: "Test print job dispatched." });
+  } catch (err) {
+    console.error("[Printer] Test print error:", err);
+    res.status(500).json({ error: "Failed to dispatch test print job" });
   }
 });
 

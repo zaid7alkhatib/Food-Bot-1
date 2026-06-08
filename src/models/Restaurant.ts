@@ -24,6 +24,7 @@ export interface IRestaurant extends Document {
   socialInstagram?: string;
   socialFacebook?: string;
   socialTikTok?: string;
+  geminiEnabled?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -61,6 +62,7 @@ const RestaurantSchema = new Schema<IRestaurant>(
     socialInstagram: { type: String, default: "" },
     socialFacebook: { type: String, default: "" },
     socialTikTok: { type: String, default: "" },
+    geminiEnabled: { type: Boolean, default: true },
   },
   { timestamps: true }
 );

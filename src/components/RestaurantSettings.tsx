@@ -26,6 +26,7 @@ interface Restaurant {
   socialInstagram?: string;
   socialFacebook?: string;
   socialTikTok?: string;
+  geminiEnabled?: boolean;
 }
 
 export default function RestaurantSettings() {
@@ -393,6 +394,29 @@ export default function RestaurantSettings() {
               <p className="text-[10px] text-gray-400 mt-1">
                 {t("restaurant.taxHint")}
               </p>
+            </div>
+          </div>
+
+          <div className="border-t border-gray-100 pt-4 mt-2">
+            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">
+              Gemini AI Chatbot
+            </label>
+            <div className="flex items-start gap-2.5 mt-2">
+              <input
+                type="checkbox"
+                id="geminiEnabled"
+                checked={restaurant.geminiEnabled !== false}
+                onChange={(e) => updateField("geminiEnabled", e.target.checked)}
+                className="mt-0.5 rounded border-gray-300 text-orange-600 focus:ring-orange-500 h-4 w-4 shrink-0 cursor-pointer"
+              />
+              <div className="space-y-0.5">
+                <label htmlFor="geminiEnabled" className="text-xs font-bold text-gray-800 cursor-pointer select-none">
+                  {t("restaurant.geminiEnabled")}
+                </label>
+                <p className="text-[10px] text-gray-400">
+                  When enabled, incoming WhatsApp messages will be processed dynamically using Gemini AI. When disabled, the bot will follow the standard, rule-based chatbot menus and flows.
+                </p>
+              </div>
             </div>
           </div>
         </div>

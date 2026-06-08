@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Printer, Settings, Volume2, CheckCircle2, RotateCw, Wifi } from "lucide-react";
 import { Order } from "../types";
 import { useI18n } from "../i18n";
@@ -24,10 +24,39 @@ export default function ThermalPrinter({
   const { language, t, text } = useI18n();
   const [paperWidth, setPaperWidth] = useState<"58mm" | "80mm">("80mm");
   const [buzzerEnabled, setBuzzerEnabled] = useState(true);
+  const [printerOnline, setPrinterOnline] = useState(false);
   const [printerLogs, setPrinterLogs] = useState<string[]>([
-    "Prn-Svr connected to port 9100 on 192.168.1.150",
     "Auto-Print daemon active",
   ]);
+
+  useEffect(() => {
+    if (branchInfo?.printerSettings?.width) {
+      setPaperWidth(branchInfo.printerSettings.width);
+    }
+  }, [branchInfo?.printerSettings?.width]);
+
+  useEffect(() => {
+    if (!branchInfo?._id) return;
+    
+    const checkStatus = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch(`/api/branches/${branchInfo._id}/printer-status`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setPrinterOnline(data.isOnline);
+        }
+      } catch (err) {
+        setPrinterOnline(false);
+      }
+    };
+
+    checkStatus();
+    const statusInterval = setInterval(checkStatus, 10000);
+    return () => clearInterval(statusInterval);
+  }, [branchInfo?._id]);
 
   const [isSimulatingPrint, setIsSimulatingPrint] = useState(false);
 
@@ -87,20 +116,39 @@ export default function ThermalPrinter({
     }
   };
 
-  const handlePrintAction = () => {
+  const handlePrintAction = async () => {
     if (!activeOrderToPrint) return;
     setIsSimulatingPrint(true);
     if (buzzerEnabled) {
       simulateTestBuzzer();
     }
     
-    setTimeout(() => {
-      setIsSimulatingPrint(false);
+    try {
+      const token = localStorage.getItem("token");
+      const orderId = (activeOrderToPrint as any)._id || activeOrderToPrint.id;
+      const res = await fetch(`/api/orders/${orderId}/print`, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (res.ok) {
+        setPrinterLogs((prev) => [
+          `[${new Date().toLocaleTimeString()}] Sent print job: ${activeOrderToPrint.orderNumber}`,
+          ...prev,
+        ]);
+      } else {
+        setPrinterLogs((prev) => [
+          `[${new Date().toLocaleTimeString()}] Failed to dispatch print job`,
+          ...prev,
+        ]);
+      }
+    } catch (err) {
       setPrinterLogs((prev) => [
-        `[${new Date().toLocaleTimeString()}] Print SUCCESS: ${activeOrderToPrint.orderNumber}`,
+        `[${new Date().toLocaleTimeString()}] Network error dispatching print job`,
         ...prev,
       ]);
-    }, 1500);
+    } finally {
+      setIsSimulatingPrint(false);
+    }
   };
 
   return (
@@ -116,14 +164,22 @@ export default function ThermalPrinter({
         {/* IP connection status */}
         <div className="flex items-center justify-between p-3 bg-neutral-50 border border-neutral-100 rounded-lg">
           <div className="flex items-center gap-2">
-            <Wifi size={14} className="text-emerald-500" />
+            <Wifi size={14} className={printerOnline ? "text-emerald-500" : "text-gray-400"} />
             <div className="leading-tight">
-              <span className="text-xs font-semibold text-neutral-800">EPSON TM-T88VI</span>
-              <span className="block text-[9px] font-mono text-gray-400">IP: 192.168.1.150 (Port 9100)</span>
+              <span className="text-xs font-semibold text-neutral-800">
+                {branchInfo?.printerSettings?.modelName || "Generic ESC/POS"}
+              </span>
+              <span className="block text-[9px] font-mono text-gray-400">
+                {branchInfo?.printerSettings?.type === "usb"
+                  ? `USB: ${branchInfo?.printerSettings?.vendorId || "0x0000"}:${branchInfo?.printerSettings?.productId || "0x0000"}`
+                  : `IP: ${branchInfo?.printerSettings?.ip || "192.168.1.150"}:${branchInfo?.printerSettings?.port || 9100}`}
+              </span>
             </div>
           </div>
-          <span className="bg-emerald-100 text-emerald-800 text-[9px] font-bold px-2 py-0.5 rounded uppercase">
-            {t("printer.online")}
+          <span className={`text-[9px] font-bold px-2 py-0.5 rounded uppercase ${
+            printerOnline ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"
+          }`}>
+            {printerOnline ? t("printer.online") : "Offline"}
           </span>
         </div>
 
