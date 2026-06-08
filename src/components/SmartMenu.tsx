@@ -151,7 +151,7 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
     
     // Auto-select required/default single modifiers
     const defaults: Record<string, ModifierOption[]> = {};
-    item.modifierGroups.forEach((group) => {
+    (item.modifierGroups || []).forEach((group) => {
       if (group.isRequired && group.type === "single" && group.options.length > 0) {
         defaults[group.id] = [group.options[0]];
       } else {
@@ -159,6 +159,21 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
       }
     });
     setModSelections(defaults);
+  };
+
+  const getSelectedModsAdjustment = () => {
+    if (!selectedItemForMod) return 0;
+    let extraPrice = 0;
+    Object.entries(modSelections).forEach(([groupId, optionsVal]) => {
+      const options = optionsVal as ModifierOption[];
+      const group = (selectedItemForMod.modifierGroups || []).find((g) => g.id === groupId);
+      if (group && options.length > 0) {
+        options.forEach((opt) => {
+          extraPrice += opt.priceAdjustment || 0;
+        });
+      }
+    });
+    return extraPrice;
   };
 
   const handleSelectModifier = (group: ModifierGroup, option: ModifierOption) => {
@@ -185,7 +200,7 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
     if (!selectedItemForMod) return;
 
     // Check if required modifier groups are filled
-    for (const group of selectedItemForMod.modifierGroups) {
+    for (const group of (selectedItemForMod.modifierGroups || [])) {
       if (group.isRequired) {
         const selections = modSelections[group.id] || [];
         if (selections.length < (group.minSelections || 1)) {
@@ -201,7 +216,7 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
     const selectedMods: any[] = [];
     Object.entries(modSelections).forEach(([groupId, optionsVal]) => {
       const options = optionsVal as ModifierOption[];
-      const group = selectedItemForMod.modifierGroups.find((g) => g.id === groupId);
+      const group = (selectedItemForMod.modifierGroups || []).find((g) => g.id === groupId);
       if (group && options.length > 0) {
         options.forEach((opt) => {
           selectedMods.push({
@@ -1069,7 +1084,7 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
 
             <button
               onClick={() => setIsCartOpen(true)}
-              className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-6 py-2.5 rounded-xl flex items-center gap-1.5 transition shadow-md cursor-pointer active:scale-95"
+              className="bg-slate-900 hover:bg-slate-800 text-xs font-bold px-6 py-2.5 rounded-xl flex items-center gap-1.5 transition shadow-md cursor-pointer active:scale-95"
             >
               {language === "ar" ? "استعراض السلة" : "Warenkorb ansehen"}
               <ChevronRight size={14} className={dir === "rtl" ? "rotate-180" : ""} />
@@ -1078,41 +1093,84 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
         </div>
       )}
 
-      {/* Modifiers Modal Dialog */}
+      {/* 8. Premium Product Detail Modal */}
       {selectedItemForMod && (
         <div className="fixed inset-0 bg-slate-950/45 backdrop-blur-sm z-50 flex items-end justify-center p-4 animate-fade-in">
           <div className="bg-white rounded-t-3xl rounded-b-2xl w-full max-w-md max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-slide-up border border-stone-100">
             
-            {/* Modal Header */}
-            <div className="p-4 border-b border-stone-100 flex items-center justify-between bg-stone-50 select-none">
-              <div>
-                <h3 className="font-bold text-sm text-neutral-900">{text(selectedItemForMod.name)}</h3>
-                <span className="text-[10px] font-mono text-orange-600 font-extrabold mt-0.5 block">
+            {/* Cover Image Header */}
+            {selectedItemForMod.image ? (
+              <div className="relative w-full h-48 bg-stone-50 shrink-0 border-b border-stone-100">
+                <img 
+                  src={selectedItemForMod.image} 
+                  alt={text(selectedItemForMod.name)} 
+                  className="w-full h-full object-cover" 
+                />
+                <button 
+                  onClick={() => setSelectedItemForMod(null)}
+                  className="absolute top-3 right-3 w-8 h-8 rounded-full bg-slate-950/60 text-white flex items-center justify-center font-bold text-sm hover:bg-slate-950/80 transition cursor-pointer"
+                >
+                  ✕
+                </button>
+                {selectedItemForMod.isBestSeller && (
+                  <div className="absolute top-3 left-3 bg-red-500 text-white text-[8px] px-2 py-0.5 rounded-md font-extrabold flex items-center gap-0.5 shadow-md">
+                    <Flame size={8} /> {language === "ar" ? "الأكثر طلباً" : "HOT"}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="relative w-full h-12 bg-stone-50 shrink-0 border-b border-stone-150 flex items-center justify-between px-4">
+                <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
+                  {language === "ar" ? "تفاصيل الوجبة" : "Details"}
+                </span>
+                <button 
+                  onClick={() => setSelectedItemForMod(null)}
+                  className="w-6 h-6 rounded-full bg-stone-200 text-neutral-600 flex items-center justify-center font-bold text-xs hover:bg-stone-300 transition cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
+            {/* Title & Info Header */}
+            <div className="p-4 border-b border-stone-100 flex justify-between items-start bg-stone-50 shrink-0">
+              <div className="space-y-1">
+                <h3 className="font-extrabold text-base text-neutral-900 flex items-center gap-2">
+                  {text(selectedItemForMod.name)}
+                  {selectedItemForMod.isBestSeller && !selectedItemForMod.image && (
+                    <span className="text-[8px] bg-red-550/10 text-red-600 border border-red-200/50 px-1.5 py-0.5 rounded font-extrabold">
+                      🔥 {language === "ar" ? "الأكثر طلباً" : "HOT"}
+                    </span>
+                  )}
+                </h3>
+                <span className="text-xs font-mono text-brand-primary font-bold block">
                   {selectedItemForMod.basePrice.toFixed(2)}{currency.symbol}
                 </span>
               </div>
-              <button
-                onClick={() => setSelectedItemForMod(null)}
-                className="p-1.5 text-neutral-400 hover:text-neutral-700 bg-white border border-stone-200 rounded-lg text-xs font-bold transition select-none cursor-pointer"
-              >
-                ✕
-              </button>
             </div>
 
-            {/* Modal Body */}
+            {/* Scrollable details body */}
             <div className="flex-1 overflow-y-auto p-4 space-y-5">
-              {selectedItemForMod.modifierGroups.map((group) => (
+              {/* Description box */}
+              {text(selectedItemForMod.description) && (
+                <p className="text-xs text-neutral-500 leading-relaxed bg-stone-50 border border-stone-200/50 p-3 rounded-xl">
+                  {text(selectedItemForMod.description)}
+                </p>
+              )}
+
+              {/* Modifier options selection */}
+              {(selectedItemForMod.modifierGroups || []).map((group) => (
                 <div key={group.id} className="space-y-2 border-b border-stone-100 pb-4 last:border-0 last:pb-0">
-                  <div className="flex items-center justify-between">
+                  <div className="flex justify-between items-center">
                     <span className="text-xs font-bold text-neutral-800 flex items-center gap-1.5">
                       {text(group.name)}
                       {group.isRequired && (
-                        <span className="text-[8px] bg-red-50 text-red-600 border border-red-100 px-1.5 py-0.5 rounded font-extrabold tracking-wide">
+                        <span className="text-[8px] bg-red-50 text-red-650 border border-red-150 px-1.5 py-0.5 rounded font-extrabold uppercase">
                           {language === "ar" ? "إجباري" : "Erforderlich"}
                         </span>
                       )}
                     </span>
-                    <span className="text-[10px] text-neutral-400 font-semibold">
+                    <span className="text-[10px] text-neutral-450 font-bold">
                       {group.type === "single" 
                         ? (language === "ar" ? "اختر واحداً" : "Wählen Sie 1") 
                         : (group.maxSelections ? `${language === "ar" ? "حد أقصى" : "Max"} ${group.maxSelections}` : "")
@@ -1122,27 +1180,27 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
 
                   <div className="grid grid-cols-1 gap-2">
                     {group.options.map((opt) => {
-                      const selected = (modSelections[group.id] || []).some((o) => o.id === opt.id);
+                      const selected = (modSelections[group.id] || []).some(o => o.id === opt.id);
                       return (
                         <button
                           key={opt.id}
                           onClick={() => handleSelectModifier(group, opt)}
-                          className={`p-3 rounded-xl border text-xs font-semibold text-left flex justify-between items-center transition-all duration-200 cursor-pointer select-none ${
+                          className={`p-3 rounded-xl border text-xs font-semibold text-left flex justify-between items-center transition cursor-pointer select-none ${
                             selected 
-                              ? "border-orange-500 bg-orange-50/50 text-neutral-900 shadow-xs" 
-                              : "border-stone-200/80 bg-white text-neutral-600 hover:bg-stone-50 hover:text-neutral-800"
+                              ? "border-brand-primary bg-brand-primary/5 text-neutral-900 font-bold" 
+                              : "border-stone-200 bg-white text-neutral-650 hover:bg-stone-50"
                           }`}
                         >
                           <span className="flex items-center gap-2.5">
-                            <span className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition ${
-                              selected ? "border-orange-500 bg-orange-500 text-white animate-scale-in" : "border-stone-300"
+                            <span className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
+                              selected ? "border-brand-primary bg-brand-primary text-white" : "border-stone-300"
                             }`}>
                               {selected && <Check size={10} className="stroke-[3px]" />}
                             </span>
                             {text(opt.name)}
                           </span>
                           {opt.priceAdjustment > 0 && (
-                            <span className="font-mono text-[11px] font-bold text-orange-600">
+                            <span className="font-mono text-[10px] font-bold text-brand-primary">
                               +{opt.priceAdjustment.toFixed(2)}{currency.symbol}
                             </span>
                           )}
@@ -1153,20 +1211,20 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
                 </div>
               ))}
 
-              {/* Quantity Selector */}
-              <div className="flex items-center justify-between border-t border-stone-100 pt-4 pb-2">
+              {/* Quantity Adjuster */}
+              <div className="flex items-center justify-between border-t border-stone-100 pt-4">
                 <span className="text-xs font-bold text-neutral-800">{language === "ar" ? "الكمية" : "Menge"}</span>
-                <div className="flex items-center bg-stone-100 border border-stone-200/60 rounded-xl p-1 gap-3">
-                  <button
+                <div className="flex items-center bg-stone-50 border border-stone-200 rounded-xl p-1 gap-3">
+                  <button 
                     onClick={() => setModQuantity(q => Math.max(1, q - 1))}
-                    className="p-1.5 bg-white border border-stone-200/80 rounded-lg text-neutral-500 hover:bg-stone-50 transition active:scale-90 select-none cursor-pointer"
+                    className="p-1.5 bg-white border border-stone-200 rounded-lg hover:bg-stone-100 transition cursor-pointer"
                   >
                     <Minus size={11} className="stroke-[3px]" />
                   </button>
                   <span className="font-mono font-bold text-xs min-w-4 text-center">{modQuantity}</span>
-                  <button
+                  <button 
                     onClick={() => setModQuantity(q => q + 1)}
-                    className="p-1.5 bg-white border border-stone-200/80 rounded-lg text-neutral-500 hover:bg-stone-50 transition active:scale-90 select-none cursor-pointer"
+                    className="p-1.5 bg-white border border-stone-200 rounded-lg hover:bg-stone-100 transition cursor-pointer"
                   >
                     <Plus size={11} className="stroke-[3px]" />
                   </button>
@@ -1174,13 +1232,15 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
               </div>
             </div>
 
-            {/* Modal Footer */}
-            <div className="p-4 border-t border-stone-100 bg-stone-50">
-              <button
+            {/* Footer Add Action */}
+            <div className="p-4 border-t border-stone-100 bg-stone-50 shrink-0">
+              <button 
                 onClick={handleAddToCart}
-                className="w-full bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold py-3.5 rounded-xl transition shadow-md hover:shadow-lg hover:shadow-orange-500/10 active:scale-98 cursor-pointer select-none"
+                className="w-full bg-brand-primary hover:bg-brand-primary/95 text-white font-bold py-3.5 rounded-xl transition shadow flex items-center justify-center gap-2 cursor-pointer"
               >
-                {language === "ar" ? "إضافة إلى السلة" : "In den Warenkorb"}
+                <span>{language === "ar" ? "إضافة إلى السلة" : "In den Warenkorb"}</span>
+                <span className="w-1 h-1 bg-white/40 rounded-full font-mono"></span>
+                <span>{((selectedItemForMod.basePrice + getSelectedModsAdjustment()) * modQuantity).toFixed(2)}{currency.symbol}</span>
               </button>
             </div>
           </div>
