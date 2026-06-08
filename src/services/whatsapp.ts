@@ -167,6 +167,19 @@ export async function startWhatsAppSession(sessionName: string, onQR?: (qr: stri
 
       if (shouldReconnect) {
         setTimeout(() => startWhatsAppSession(sessionName, onQR), 3000);
+      } else {
+        try {
+          if (fs.existsSync(sessionDir)) {
+            fs.rmSync(sessionDir, { recursive: true, force: true });
+            console.log(`[WhatsApp] Cleared session directory for ${sessionName} due to logout/invalid session`);
+          }
+          await WhatsAppSession.findOneAndUpdate(
+            { sessionName },
+            { qrCode: undefined, qrStatus: "pending" }
+          );
+        } catch (err) {
+          console.error(`[WhatsApp] Failed to clear session directory for ${sessionName}:`, err);
+        }
       }
     } else if (connection === "open") {
       console.log(`[WhatsApp] ${sessionName} connected`);
