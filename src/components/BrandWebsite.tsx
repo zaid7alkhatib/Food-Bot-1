@@ -1461,17 +1461,17 @@ export default function BrandWebsite() {
             <h4 className="text-[10px] text-slate-500 font-extrabold uppercase tracking-widest">Connect & Legal</h4>
             <div className="flex items-center gap-3">
               {restaurant?.socialInstagram && (
-                <a href={restaurant.socialInstagram} target="_blank" rel="noreferrer" className="p-2 bg-slate-800 hover:bg-brand-primary hover:text-white rounded-lg transition">
+                <a href={restaurant.socialInstagram} target="_blank" rel="noreferrer" className="p-2 bg-slate-800 hover:bg-brand-primary text-slate-400 hover:text-white rounded-lg transition">
                   <Instagram size={16} />
                 </a>
               )}
               {restaurant?.socialFacebook && (
-                <a href={restaurant.socialFacebook} target="_blank" rel="noreferrer" className="p-2 bg-slate-800 hover:bg-brand-primary hover:text-white rounded-lg transition">
+                <a href={restaurant.socialFacebook} target="_blank" rel="noreferrer" className="p-2 bg-slate-800 hover:bg-brand-primary text-slate-400 hover:text-white rounded-lg transition">
                   <Facebook size={16} />
                 </a>
               )}
               {restaurant?.socialTikTok && (
-                <a href={restaurant.socialTikTok} target="_blank" rel="noreferrer" className="p-2 bg-slate-800 hover:bg-brand-primary hover:text-white rounded-lg transition flex items-center justify-center font-bold font-sans">
+                <a href={restaurant.socialTikTok} target="_blank" rel="noreferrer" className="p-2 bg-slate-800 hover:bg-brand-primary text-slate-400 hover:text-white rounded-lg transition flex items-center justify-center font-bold font-sans">
                   TikTok
                 </a>
               )}
