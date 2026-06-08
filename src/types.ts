@@ -172,6 +172,7 @@ export interface Order {
   items: OrderItem[];
   subtotal: number;
   deliveryFee: number;
+  discount?: number;
   total: number;
   status: OrderStatus;
   paymentMethod: string;
@@ -179,6 +180,7 @@ export interface Order {
   pickupTime?: string;
   tableNumber?: string;
   notes?: string;
+  source?: string;
   createdAt: string;
   updatedAt: string;
 }

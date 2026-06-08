@@ -34,6 +34,7 @@ const dictionaries: Record<AppLanguage, TranslationMap> = {
 
     "nav.overview": "Übersicht",
     "nav.orders": "Live-Bestellungen",
+    "nav.pos": "POS Kasse",
     "nav.chat": "Live-Chats",
     "nav.campaigns": "Marketing",
     "nav.menu": "Menü-Editor",
@@ -396,6 +397,7 @@ const dictionaries: Record<AppLanguage, TranslationMap> = {
 
     "nav.overview": "نظرة عامة",
     "nav.orders": "الطلبات المباشرة",
+    "nav.pos": "نقاط البيع",
     "nav.chat": "المحادثات",
     "nav.campaigns": "التسويق",
     "nav.menu": "محرر القائمة",
@@ -758,6 +760,7 @@ const dictionaries: Record<AppLanguage, TranslationMap> = {
 
     "nav.overview": "Overview",
     "nav.orders": "Live Orders",
+    "nav.pos": "POS Cashier",
     "nav.chat": "Live Chats",
     "nav.campaigns": "Marketing",
     "nav.menu": "Menu Editor",

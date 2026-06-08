@@ -15,6 +15,7 @@ import {
   Smartphone,
   Building2,
   Users,
+  Calculator,
 } from "lucide-react";
 import { io, Socket } from "socket.io-client";
 import PhoneSimulator from "./components/PhoneSimulator";
@@ -33,6 +34,7 @@ import SmartMenu from "./components/SmartMenu";
 import MenuBoard from "./components/MenuBoard";
 import MenuBoardSettings from "./components/MenuBoardSettings";
 import BrandWebsite from "./components/BrandWebsite";
+import POSCashier from "./components/POSCashier";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { I18nProvider, useI18n, AppLanguage } from "./i18n";
 import { Order, OrderStatus, Conversation, MenuItem, Category, Campaign, Feedback, UserRole } from "./types";
@@ -40,6 +42,7 @@ import { Order, OrderStatus, Conversation, MenuItem, Category, Campaign, Feedbac
 type DashboardTab =
   | "overview"
   | "orders"
+  | "pos"
   | "chat"
   | "campaigns"
   | "menu"
@@ -51,10 +54,10 @@ type DashboardTab =
   | "users";
 
 const ROLE_TABS: Record<UserRole, DashboardTab[]> = {
-  super_admin: ["overview", "orders", "chat", "campaigns", "menu", "menuBoard", "hardware", "whatsapp", "settings", "restaurant", "users"],
-  restaurant_admin: ["overview", "orders", "chat", "campaigns", "menu", "menuBoard", "hardware", "whatsapp", "settings", "restaurant", "users"],
-  branch_manager: ["overview", "orders", "chat", "menu", "menuBoard", "hardware", "settings"],
-  staff: ["orders", "hardware"],
+  super_admin: ["overview", "orders", "pos", "chat", "campaigns", "menu", "menuBoard", "hardware", "whatsapp", "settings", "restaurant", "users"],
+  restaurant_admin: ["overview", "orders", "pos", "chat", "campaigns", "menu", "menuBoard", "hardware", "whatsapp", "settings", "restaurant", "users"],
+  branch_manager: ["overview", "orders", "pos", "chat", "menu", "menuBoard", "hardware", "settings"],
+  staff: ["orders", "pos", "hardware"],
   support_agent: ["chat"],
 };
 
@@ -65,6 +68,7 @@ const TAB_CONFIG: {
 }[] = [
   { id: "overview", labelKey: "nav.overview", Icon: TrendingUp },
   { id: "orders", labelKey: "nav.orders", Icon: ShoppingBag },
+  { id: "pos", labelKey: "nav.pos", Icon: Calculator },
   { id: "chat", labelKey: "nav.chat", Icon: MessageSquare },
   { id: "campaigns", labelKey: "nav.campaigns", Icon: Megaphone },
   { id: "menu", labelKey: "nav.menu", Icon: Settings },
@@ -130,6 +134,7 @@ function Dashboard() {
 
   // State populated from the server
   const [branchInfo, setBranchInfo] = useState<any>(null);
+  const [branches, setBranches] = useState<any[]>([]);
   const [restaurantInfo, setRestaurantInfo] = useState<any>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -176,6 +181,7 @@ function Dashboard() {
       if (response.ok) {
         const data = await response.json();
         setBranchInfo(data.branch);
+        setBranches(data.branches || []);
         setRestaurantInfo(data.restaurant);
         setCategories(data.categories);
         setMenuItems(data.menuItems);
@@ -631,6 +637,21 @@ function Dashboard() {
                     onUpdateStatus={handleUpdateOrderStatus}
                     onSelectPrintOrder={handleSelectPrintOrder}
                     currencySymbol={currencySymbol}
+                  />
+                )}
+
+                {activeTab === "pos" && (
+                  <POSCashier
+                    categories={categories}
+                    menuItems={menuItems}
+                    branchInfo={branchInfo}
+                    branches={branches}
+                    currencySymbol={currencySymbol}
+                    token={token}
+                    onOrderPlaced={() => {
+                      fetchSystemState();
+                      setActiveTab("orders");
+                    }}
                   />
                 )}
 
