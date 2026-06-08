@@ -22,7 +22,7 @@ Our ecosystem connects customers, kitchen staff, and restaurant managers through
                                        ▼
                   ┌──────────────────────────────────────────┐
                   │        Backoffice Admin Dashboard        │
-                  │    (Orders, Live Chats, Campaigns, CMS)  │
+                  │ (POS Cashier, Orders, Live Chats, CMS)   │
                   └────────────────────┬─────────────────────┘
                                        │
                                        ▼
@@ -66,13 +66,22 @@ A centralized control room for owners and managers.
 *   **Marketing Broadcast Campaigns**: Send bulk promotions (e.g., *Ramadan greetings*, *Weekend specials*) to customer segments with rate-limiting to protect WhatsApp accounts from spam filters.
 *   **Automated Feedback Loop**: Configurable cron jobs automatically message customers 30 minutes post-delivery requesting a 1-5 star rating. If 5 stars, it prompts them to review on Google Maps; if lower, it routes private feedback to managers.
 *   **Digital Menu Signage (CMS)**: Manage TV menu board layouts, orientations, pricing ticker-tapes, and promotional slides directly from the panel.
+*   **Thermal Printer Integration**: Configure network/LAN IP IP/Port or USB parameters for thermal kitchen printers. Automatically triggers receipts printing via a local Socket.io bridge client.
+
+### 5. POS Cashier Order Entry Terminal
+A desktop-optimized, fast cashier interface designed for phone-in, walk-in, and table orders.
+*   **Menu Catalog Grid & Search**: Easily filter items by category or search by name/SKU to select items.
+*   **Customization Drawer**: Configure required and optional modifiers, customize quantities, and add suggested upsell items to order slips.
+*   **Fulfillment Flexibility**: Select Dine-In (requires table number), Pickup, or Delivery, dynamically calculating fees.
+*   **Cashier Discounts**: Cashiers can apply manual flat-rate discounts directly on the checkout summary.
+*   **Role-Based Security**: Restricts cashier operations to the user's branch context, while allowing global switching for restaurant administrators.
 
 ---
 
 ## 🎨 White-Label & Customization Capabilities
 
 The platform is engineered to support multiple tenants on individual VPS deployments. A restaurant owner can fully brand the experience from the admin settings screen:
-*   **Brand Customization**: Upload logos and set brand primary/secondary colors. The entire interface (brand website, smart menu, login portals) dynamically styles itself.
+*   **Brand Customization**: Upload logos and set brand primary/secondary colors. The entire interface (brand website, smart menu, login portals, and dynamic footer) styles itself.
 *   **Multilingual Settings**: Select default and supported languages (German, Arabic, English).
 *   **Custom Order Prefixes**: Choose unique order prefix codes (e.g., `TAB-1051`, `BURG-2003`) to differentiate branches.
 *   **Flexible Currency**: Full support for Euro (€), US Dollars ($), British Pounds (£), or Saudi Riyals (﷼).
@@ -85,5 +94,6 @@ The platform is engineered to support multiple tenants on individual VPS deploym
 *   **Zero Commissions**: Avoid third-party aggregator cuts. Every cent of delivery and pickup revenue goes directly to the restaurant.
 *   **Own Your Customer Data**: Unlike delivery portals, you collect and own customer names, phone numbers, and ordering histories for future promotional campaigns.
 *   **Increase Average Order Value (AOV)**: Conversational and visual upsells prompt customers to add combos, drinks, and appetizers at the moment of highest intent.
+*   **Unified POS Entry**: Centralizes table, walk-in, and phone orders directly into the same live database, kitchen boards, and printer queues used for digital checkouts.
 *   **Operational Efficiency**: Automate routine order tasks to free up staff. Table-QR scans reduce waiter overhead during peak hours.
 *   **Premium Visual Experience**: Modern visual assets, glassmorphism UI components, fluid hover micro-animations, and fast page load times leave customers with a premium impression of the brand.
