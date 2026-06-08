@@ -313,6 +313,27 @@ export default function BrandWebsite() {
     }
   };
 
+  const handleOpenItemDetails = (item: MenuItem) => {
+    setSelectedItemForMod(item);
+    setModSelections({});
+    setModQuantity(1);
+  };
+
+  const getSelectedModsAdjustment = () => {
+    if (!selectedItemForMod) return 0;
+    let extraPrice = 0;
+    Object.keys(modSelections).forEach((groupId) => {
+      const group = (selectedItemForMod.modifierGroups || []).find(g => g.id === groupId);
+      const options = modSelections[groupId];
+      if (group && options) {
+        options.forEach(opt => {
+          extraPrice += opt.priceAdjustment || 0;
+        });
+      }
+    });
+    return extraPrice;
+  };
+
   const handleSelectModifier = (group: ModifierGroup, option: ModifierOption) => {
     const current = modSelections[group.id] || [];
     if (group.type === "single") {
@@ -338,7 +359,7 @@ export default function BrandWebsite() {
     if (!selectedItemForMod) return;
 
     // Validate required selections
-    for (const group of selectedItemForMod.modifierGroups) {
+    for (const group of (selectedItemForMod.modifierGroups || [])) {
       if (group.isRequired) {
         const selections = modSelections[group.id] || [];
         if (selections.length === 0) {
@@ -356,7 +377,7 @@ export default function BrandWebsite() {
     let extraPrice = 0;
 
     Object.keys(modSelections).forEach((groupId) => {
-      const group = selectedItemForMod.modifierGroups.find(g => g.id === groupId);
+      const group = (selectedItemForMod.modifierGroups || []).find(g => g.id === groupId);
       const options = modSelections[groupId];
       if (group && options) {
         options.forEach(opt => {
@@ -790,7 +811,7 @@ export default function BrandWebsite() {
                 <div 
                   key={item.id}
                   className="bg-white border border-slate-100 shadow-sm rounded-2xl p-4 flex gap-4 hover:scale-[1.02] hover:shadow-md hover:border-brand-primary/10 transition-all duration-300 group cursor-pointer"
-                  onClick={() => handleQuickAdd(item)}
+                  onClick={() => handleOpenItemDetails(item)}
                 >
                   {/* Item Image */}
                   <div className="relative w-28 h-28 rounded-xl overflow-hidden bg-slate-50 shrink-0 border border-slate-100">
@@ -1255,28 +1276,71 @@ export default function BrandWebsite() {
         </div>
       )}
 
-      {/* 8. Modifiers Choice Modal */}
+      {/* 8. Premium Product Detail Modal */}
       {selectedItemForMod && (
         <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-50 flex items-end justify-center p-4">
-          <div className="bg-white rounded-t-3xl rounded-b-2xl w-full max-w-md max-h-[80vh] flex flex-col shadow-2xl overflow-hidden animate-slide-up border border-slate-100">
+          <div className="bg-white rounded-t-3xl rounded-b-2xl w-full max-w-md max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-slide-up border border-slate-100">
             
-            {/* Header */}
-            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-              <div>
-                <h3 className="font-bold text-sm text-slate-950">{text(selectedItemForMod.name)}</h3>
-                <span className="text-[11px] font-mono text-brand-primary font-bold">{selectedItemForMod.basePrice.toFixed(2)} €</span>
+            {/* Cover Image Header */}
+            {selectedItemForMod.image ? (
+              <div className="relative w-full h-48 bg-slate-100 shrink-0 border-b border-slate-100">
+                <img 
+                  src={selectedItemForMod.image} 
+                  alt={text(selectedItemForMod.name)} 
+                  className="w-full h-full object-cover" 
+                />
+                <button 
+                  onClick={() => setSelectedItemForMod(null)}
+                  className="absolute top-3 right-3 w-8 h-8 rounded-full bg-slate-950/60 text-white flex items-center justify-center font-bold text-sm hover:bg-slate-950/80 transition cursor-pointer"
+                >
+                  ✕
+                </button>
+                {selectedItemForMod.isBestSeller && (
+                  <div className="absolute top-3 left-3 bg-red-500 text-white text-[8px] px-2 py-0.5 rounded-md font-extrabold flex items-center gap-0.5 shadow-md">
+                    <Flame size={8} /> {localized.bestseller.toUpperCase()}
+                  </div>
+                )}
               </div>
-              <button 
-                onClick={() => setSelectedItemForMod(null)}
-                className="p-1 text-slate-400 hover:text-slate-700 bg-white border border-slate-200 rounded-lg text-xs font-bold"
-              >
-                ✕
-              </button>
+            ) : (
+              <div className="relative w-full h-12 bg-slate-50 shrink-0 border-b border-slate-150 flex items-center justify-between px-4">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Product Details</span>
+                <button 
+                  onClick={() => setSelectedItemForMod(null)}
+                  className="w-6 h-6 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-xs hover:bg-slate-300 transition cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
+            {/* Title & Info Header */}
+            <div className="p-4 border-b border-slate-100 flex justify-between items-start bg-slate-50 shrink-0">
+              <div className="space-y-1">
+                <h3 className="font-extrabold text-base text-slate-950 flex items-center gap-2">
+                  {text(selectedItemForMod.name)}
+                  {selectedItemForMod.isSpicy && (
+                    <span className="text-[8px] bg-red-50 text-red-650 border border-red-150 px-1.5 py-0.5 rounded font-extrabold">
+                      🔥 {localized.spicy}
+                    </span>
+                  )}
+                </h3>
+                <span className="text-xs font-mono text-brand-primary font-bold block">
+                  {selectedItemForMod.basePrice.toFixed(2)} €
+                </span>
+              </div>
             </div>
 
-            {/* Options */}
+            {/* Scrollable details body */}
             <div className="flex-1 overflow-y-auto p-4 space-y-5">
-              {selectedItemForMod.modifierGroups.map((group) => (
+              {/* Description box */}
+              {text(selectedItemForMod.description) && (
+                <p className="text-xs text-slate-500 leading-relaxed bg-slate-50/50 border border-slate-100 p-3 rounded-xl">
+                  {text(selectedItemForMod.description)}
+                </p>
+              )}
+
+              {/* Modifier options selection */}
+              {(selectedItemForMod.modifierGroups || []).map((group) => (
                 <div key={group.id} className="space-y-2 border-b border-slate-50 pb-4 last:border-0">
                   <div className="flex justify-between items-center">
                     <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
@@ -1325,20 +1389,20 @@ export default function BrandWebsite() {
                 </div>
               ))}
 
-              {/* Quantity */}
+              {/* Quantity Adjuster */}
               <div className="flex items-center justify-between border-t border-slate-100 pt-4">
                 <span className="text-xs font-bold text-slate-800">{localized.quantity}</span>
                 <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl p-1 gap-3">
                   <button 
                     onClick={() => setModQuantity(q => Math.max(1, q - 1))}
-                    className="p-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition"
+                    className="p-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition cursor-pointer"
                   >
                     <Minus size={11} className="stroke-[3px]" />
                   </button>
                   <span className="font-mono font-bold text-xs min-w-4 text-center">{modQuantity}</span>
                   <button 
                     onClick={() => setModQuantity(q => q + 1)}
-                    className="p-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition"
+                    className="p-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition cursor-pointer"
                   >
                     <Plus size={11} className="stroke-[3px]" />
                   </button>
@@ -1346,13 +1410,15 @@ export default function BrandWebsite() {
               </div>
             </div>
 
-            {/* Footer */}
-            <div className="p-4 border-t border-slate-100 bg-slate-50">
+            {/* Footer Add Action */}
+            <div className="p-4 border-t border-slate-100 bg-slate-50 shrink-0">
               <button 
                 onClick={handleAddToCartFromModifiers}
-                className="w-full bg-brand-primary hover:bg-brand-primary/95 text-white font-bold py-3.5 rounded-xl transition shadow"
+                className="w-full bg-brand-primary hover:bg-brand-primary/95 text-white font-bold py-3.5 rounded-xl transition shadow flex items-center justify-center gap-2 cursor-pointer"
               >
-                {localized.add}
+                <span>{localized.add}</span>
+                <span className="w-1 h-1 bg-white/40 rounded-full"></span>
+                <span>{((selectedItemForMod.basePrice + getSelectedModsAdjustment()) * modQuantity).toFixed(2)} €</span>
               </button>
             </div>
 
