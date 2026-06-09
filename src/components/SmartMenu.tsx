@@ -42,6 +42,7 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
   const [restaurantName, setRestaurantName] = useState("MR. Tabboush");
   const [logoUrl, setLogoUrl] = useState("");
   const [brandStyles, setBrandStyles] = useState<React.CSSProperties>({});
+  const [heroTagline, setHeroTagline] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncedSuccess, setIsSyncedSuccess] = useState(false);
 
@@ -90,6 +91,7 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
           if (data.restaurant) {
             setRestaurantName(data.restaurant.name || "MR. Tabboush");
             setLogoUrl(data.restaurant.logo || "");
+            setHeroTagline(data.restaurant.heroTagline || null);
             setBrandStyles({
               "--brand-primary": data.restaurant.primaryColor || "#ea580c",
               "--brand-secondary": data.restaurant.secondaryColor || "#1f2937",
@@ -921,21 +923,17 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
           
           <div className="leading-tight space-y-1 relative z-10">
             <span className="text-[9px] font-bold tracking-widest text-orange-400/90 uppercase block font-mono">
-              {restaurantName.toUpperCase()} • Authentic Grill
+              {restaurantName.toUpperCase()} {heroTagline ? `• ${text(heroTagline)}` : ""}
             </span>
             <h3 className="font-bold text-sm text-slate-100">
               {isWhatsAppMode 
-                ? (language === "ar" ? "اختر وجباتك المفضلة وسنرسلها لواتساب" : "Stellen Sie Ihre Bestellung zusammen")
-                : (language === "ar" ? "اطلب طعامك طازجاً من طاولتك" : "Bestellen Sie direkt am Tisch")}
+                ? t("smartMenu.welcome.whatsapp.title")
+                : t("smartMenu.welcome.dineIn.title")}
             </h3>
             <p className="text-[10px] text-slate-400 font-medium leading-relaxed">
               {isWhatsAppMode
-                ? (language === "ar" 
-                  ? "تصفح قائمتنا الشامية المميزة، اختر وجباتك، وسنقوم بمزامنتها مع محادثة واتساب لإتمام الطلب." 
-                  : "Wählen Sie Ihre Lieblingsgerichte und wir synchronisieren sie direkt mit Ihrem WhatsApp-Chat.")
-                : (language === "ar" 
-                  ? "تصفح قائمتنا الشامية المميزة وسيتم تحضير وجبتك وتقديمها فوراً." 
-                  : "Wählen Sie Ihre Lieblingsgerichte, wir bringen sie frisch zubereitet an Ihren Tisch.")}
+                ? t("smartMenu.welcome.whatsapp.desc")
+                : t("smartMenu.welcome.dineIn.desc")}
             </p>
           </div>
         </div>
