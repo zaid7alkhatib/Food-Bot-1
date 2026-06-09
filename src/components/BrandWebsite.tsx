@@ -137,6 +137,7 @@ interface RestaurantBranding {
   timezone?: string;
   heroTagline?: { ar: string; de: string; en: string };
   heroBannerImage?: string;
+  heroOpacity?: number;
   aboutText?: { ar: string; de: string; en: string };
   socialInstagram?: string;
   socialFacebook?: string;
@@ -721,7 +722,8 @@ export default function BrandWebsite() {
           <img 
             src={heroBanner} 
             alt="Hero Banner" 
-            className="w-full h-full object-cover opacity-35 scale-105 transition duration-1000 transform"
+            style={{ opacity: (restaurant?.heroOpacity ?? 35) / 100 }}
+            className="w-full h-full object-cover scale-105 transition duration-1000 transform"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent"></div>
         </div>

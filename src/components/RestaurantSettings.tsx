@@ -22,6 +22,7 @@ interface Restaurant {
   orderPrefix?: string;
   heroTagline?: { ar: string; de: string; en: string };
   heroBannerImage?: string;
+  heroOpacity?: number;
   aboutText?: { ar: string; de: string; en: string };
   socialInstagram?: string;
   socialFacebook?: string;
@@ -440,6 +441,30 @@ export default function RestaurantSettings() {
                   placeholder="https://images.unsplash.com/photo-..."
                   className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-orange-500"
                 />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">
+                  Hero Banner Opacity ({restaurant.heroOpacity ?? 35}%)
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={restaurant.heroOpacity ?? 35}
+                    onChange={(e) => updateField("heroOpacity", parseInt(e.target.value))}
+                    className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-orange-600"
+                  />
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={restaurant.heroOpacity ?? 35}
+                    onChange={(e) => updateField("heroOpacity", Math.max(0, Math.min(100, parseInt(e.target.value) || 0)))}
+                    className="w-16 bg-gray-50 border border-gray-200 rounded-lg py-1 px-2 text-xs text-center focus:outline-none focus:border-orange-500 font-mono"
+                  />
+                </div>
               </div>
 
               <div className="space-y-3">

@@ -1124,6 +1124,7 @@ app.get("/api/public/config", async (req, res) => {
       defaultCurrency: restaurant.defaultCurrency,
       heroTagline: restaurant.heroTagline,
       heroBannerImage: restaurant.heroBannerImage,
+      heroOpacity: restaurant.heroOpacity ?? 35,
       aboutText: restaurant.aboutText,
       socialInstagram: restaurant.socialInstagram,
       socialFacebook: restaurant.socialFacebook,

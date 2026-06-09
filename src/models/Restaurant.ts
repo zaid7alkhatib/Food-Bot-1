@@ -20,6 +20,7 @@ export interface IRestaurant extends Document {
   orderPrefix?: string;
   heroTagline?: { ar: string; de: string; en: string };
   heroBannerImage?: string;
+  heroOpacity?: number;
   aboutText?: { ar: string; de: string; en: string };
   socialInstagram?: string;
   socialFacebook?: string;
@@ -54,6 +55,7 @@ const RestaurantSchema = new Schema<IRestaurant>(
       en: { type: String, default: "Delicious Syrian Cuisine" }
     },
     heroBannerImage: { type: String, default: "https://images.unsplash.com/photo-1544025162-d76694265947?w=1600&auto=format&fit=crop&q=80" },
+    heroOpacity: { type: Number, default: 35 },
     aboutText: {
       ar: { type: String, default: "نقدم لكم عراقة الطعم الشامي الأصيل بمكونات طازجة وجودة عالية." },
       de: { type: String, default: "Wir bringen Ihnen den traditionellen Geschmack Syriens mit frischen Zutaten." },
