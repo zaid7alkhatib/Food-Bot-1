@@ -1144,8 +1144,9 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
       return interpolate(template, values);
     };
 
-    const text = (value?: Translation | null) => {
+    const text = (value?: any) => {
       if (!value) return "";
+      if (typeof value === "string") return value;
       return value[language] || value.de || value.en || value.ar || "";
     };
 

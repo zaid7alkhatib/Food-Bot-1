@@ -2317,13 +2317,14 @@ You MUST reply with a JSON object in this exact schema structure:
         let targetLon: number | undefined = undefined;
         let isGps = false;
         
+        const branchCity = branchConfig.branchCity || "Wuppertal";
+
         if (latitude !== undefined && longitude !== undefined) {
           targetLat = Number(latitude);
           targetLon = Number(longitude);
           isGps = true;
         } else {
           // Geocode typed address text
-          const branchCity = branchConfig.branchCity || "Wuppertal";
           const searchQuery = message.toLowerCase().includes(branchCity.toLowerCase())
             ? message
             : `${message}, ${branchCity}`;
@@ -2344,7 +2345,7 @@ You MUST reply with a JSON object in this exact schema structure:
           
           if (distance > maxRadius) {
             botReplyText = isAr
-              ? `عذراً، العنوان المدخل (على بعد ${distance.toFixed(2)} كم) خارج نطاق التوصيل الخاص بنا (${maxRadius} كم).\nيرجى إرسال موقع آخر أو كتابة عنوانك يدوياً داخل فوبيرتال، أو اكتب "استلام" لتغيير الطلب إلى استلام من الفرع.`
+              ? `عذراً، العنوان المدخل (على بعد ${distance.toFixed(2)} كم) خارج نطاق التوصيل الخاص بنا (${maxRadius} كم).\nيرجى إرسال موقع آخر أو كتابة عنوانك يدوياً داخل ${branchCity}، أو اكتب "استلام" لتغيير الطلب إلى استلام من الفرع.`
               : isEn
               ? `Sorry, the address provided (distance: ${distance.toFixed(2)} km) is outside our delivery radius of ${maxRadius} km.\nPlease send another address, or type "pickup" to collect it yourself.`
               : `Es tut uns leid, die angegebene Adresse (Entfernung: ${distance.toFixed(2)} km) liegt außerhalb unseres Lieferradius von ${maxRadius} km.\nBitte geben Sie eine andere Adresse ein oder schreiben Sie "abholung", um die Bestellung selbst abzuholen.`;
@@ -2656,13 +2657,137 @@ You MUST reply with a JSON object in this exact schema structure:
           };
         }
 
+        const selectedModifiers: any[] = [];
+        if (Array.isArray(item.selectedModifiers)) {
+          for (const rawMod of item.selectedModifiers) {
+            if (!rawMod || typeof rawMod !== 'object') continue;
+
+            const groupId = rawMod.groupId || "";
+            let groupName = rawMod.groupName;
+            let optionId = rawMod.option?.id || rawMod.optionId || "";
+            let optionName = rawMod.option?.name || rawMod.optionName;
+            let priceAdjustment = typeof rawMod.option?.priceAdjustment === 'number'
+              ? rawMod.option.priceAdjustment
+              : (typeof rawMod.priceAdjustment === 'number' ? rawMod.priceAdjustment : 0);
+
+            // Try to find matching group/option in matchedMenuItem
+            let matchedGroup = matchedMenuItem?.modifierGroups?.find((g: any) => {
+              if (groupId && g.id === groupId) return true;
+              const gName = typeof groupName === 'string' ? groupName.toLowerCase().trim() : '';
+              return g.name?.en?.toLowerCase() === gName ||
+                     g.name?.de?.toLowerCase() === gName ||
+                     g.name?.ar?.toLowerCase() === gName;
+            });
+
+            let matchedOption = matchedGroup?.options?.find((o: any) => {
+              if (optionId && o.id === optionId) return true;
+              const oName = typeof optionName === 'string' ? optionName.toLowerCase().trim() : '';
+              return o.name?.en?.toLowerCase() === oName ||
+                     o.name?.de?.toLowerCase() === oName ||
+                     o.name?.ar?.toLowerCase() === oName;
+            });
+
+            let finalGroupName = { ar: "", de: "", en: "" };
+            let finalOptionName = { ar: "", de: "", en: "" };
+
+            if (matchedGroup) {
+              finalGroupName = {
+                ar: matchedGroup.name?.ar || "",
+                de: matchedGroup.name?.de || "",
+                en: matchedGroup.name?.en || "",
+              };
+            } else if (typeof groupName === 'object' && groupName) {
+              finalGroupName = {
+                ar: groupName.ar || groupName.en || groupName.de || "",
+                de: groupName.de || groupName.en || groupName.ar || "",
+                en: groupName.en || groupName.de || groupName.ar || "",
+              };
+            } else if (typeof groupName === 'string') {
+              finalGroupName = { ar: groupName, de: groupName, en: groupName };
+            } else {
+              finalGroupName = { ar: "إضافة", de: "Extra", en: "Extra" };
+            }
+
+            if (matchedOption) {
+              finalOptionName = {
+                ar: matchedOption.name?.ar || "",
+                de: matchedOption.name?.de || "",
+                en: matchedOption.name?.en || "",
+              };
+              priceAdjustment = typeof matchedOption.priceAdjustment === 'number' ? matchedOption.priceAdjustment : priceAdjustment;
+              optionId = matchedOption.id || optionId;
+            } else if (typeof optionName === 'object' && optionName) {
+              finalOptionName = {
+                ar: optionName.ar || optionName.en || optionName.de || "",
+                de: optionName.de || optionName.en || optionName.ar || "",
+                en: optionName.en || optionName.de || optionName.ar || "",
+              };
+            } else if (typeof optionName === 'string') {
+              finalOptionName = { ar: optionName, de: optionName, en: optionName };
+            } else {
+              finalOptionName = { ar: "خيار", de: "Option", en: "Option" };
+            }
+
+            selectedModifiers.push({
+              groupId: matchedGroup?.id || groupId,
+              groupName: finalGroupName,
+              option: {
+                id: optionId,
+                name: finalOptionName,
+                priceAdjustment
+              }
+            });
+          }
+        }
+
+        let sanitizedUpsell: any = undefined;
+        if (item.selectedUpsell) {
+          const upsellId = item.selectedUpsell.id || "";
+          const upsellPrice = typeof item.selectedUpsell.price === "number" ? item.selectedUpsell.price : 0;
+          let upsellName = item.selectedUpsell.name;
+
+          // Try to find in matchedMenuItem's upsellSuggestions
+          let matchedUpsell = matchedMenuItem?.upsellSuggestions?.find((u: any) => {
+            if (upsellId && u.id === upsellId) return true;
+            const uName = typeof upsellName === 'string' ? upsellName.toLowerCase().trim() : '';
+            return u.suggestedItemName?.en?.toLowerCase() === uName ||
+                   u.suggestedItemName?.de?.toLowerCase() === uName ||
+                   u.suggestedItemName?.ar?.toLowerCase() === uName;
+          });
+
+          let finalUpsellName = { ar: "", de: "", en: "" };
+          if (matchedUpsell) {
+            finalUpsellName = {
+              ar: matchedUpsell.suggestedItemName?.ar || "",
+              de: matchedUpsell.suggestedItemName?.de || "",
+              en: matchedUpsell.suggestedItemName?.en || "",
+            };
+          } else if (typeof upsellName === 'object' && upsellName) {
+            finalUpsellName = {
+              ar: upsellName.ar || upsellName.en || upsellName.de || "",
+              de: upsellName.de || upsellName.en || upsellName.ar || "",
+              en: upsellName.en || upsellName.de || upsellName.ar || "",
+            };
+          } else if (typeof upsellName === 'string') {
+            finalUpsellName = { ar: upsellName, de: upsellName, en: upsellName };
+          } else {
+            finalUpsellName = { ar: "عرض خاص", de: "Sonderangebot", en: "Special Offer" };
+          }
+
+          sanitizedUpsell = {
+            id: matchedUpsell?.id || upsellId,
+            name: finalUpsellName,
+            price: typeof matchedUpsell?.price === 'number' ? matchedUpsell.price : upsellPrice,
+          };
+        }
+
         sanitizedItems.push({
           itemId,
           name: nameSchema,
           basePrice,
           quantity,
-          selectedModifiers: Array.isArray(item.selectedModifiers) ? item.selectedModifiers : [],
-          selectedUpsell: item.selectedUpsell || undefined,
+          selectedModifiers,
+          selectedUpsell: sanitizedUpsell,
           totalPrice,
         });
       }

@@ -1273,11 +1273,18 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
                   <div className="flex justify-between items-start">
                     <div>
                       <h4 className="text-xs font-bold text-neutral-900">{text(item.name)}</h4>
-                      {(item.selectedModifiers || []).map((m, mIdx) => (
-                        <span key={mIdx} className="text-[10px] text-neutral-400 block mt-0.5">
-                          └ {text(m.groupName)}: {text(m.option.name)}
-                        </span>
-                      ))}
+                      {(item.selectedModifiers || [])
+                        .filter((m: any) => m && typeof m === "object")
+                        .map((m: any, mIdx: number) => {
+                          const groupNameText = m.groupName ? text(m.groupName) : "";
+                          const optionNameText = m.option?.name ? text(m.option.name) : "";
+                          if (!groupNameText && !optionNameText) return null;
+                          return (
+                            <span key={mIdx} className="text-[10px] text-neutral-400 block mt-0.5">
+                              └ {groupNameText}: {optionNameText}
+                            </span>
+                          );
+                        })}
                       {item.selectedUpsell && (
                         <span className="text-[10px] text-amber-600 font-bold block mt-1">
                           └ ⚡ {t("orders.combo")}: {text(item.selectedUpsell.name)}

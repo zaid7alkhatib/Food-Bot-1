@@ -297,14 +297,21 @@ export default function LiveOrdersList({
                       </div>
                       
                       {/* Modifiers List */}
-                      {(item.selectedModifiers || []).map((mod, mIdx) => (
-                        <div key={mIdx} className="text-[11px] text-gray-500 ml-3 flex justify-between">
-                          <span>└ ➕ {text(mod.groupName)}: {text(mod.option?.name)}</span>
-                          {toAmount(mod.option?.priceAdjustment) > 0 && (
-                            <span>+{money(mod.option?.priceAdjustment)}{currencySymbol}</span>
-                          )}
-                        </div>
-                      ))}
+                      {(item.selectedModifiers || [])
+                        .filter((mod: any) => mod && typeof mod === "object")
+                        .map((mod: any, mIdx: number) => {
+                          const groupNameText = mod.groupName ? text(mod.groupName) : "";
+                          const optionNameText = mod.option?.name ? text(mod.option.name) : "";
+                          if (!groupNameText && !optionNameText) return null;
+                          return (
+                            <div key={mIdx} className="text-[11px] text-gray-500 ml-3 flex justify-between">
+                              <span>└ ➕ {groupNameText}: {optionNameText}</span>
+                              {mod.option?.priceAdjustment && toAmount(mod.option.priceAdjustment) > 0 ? (
+                                <span>+{money(mod.option.priceAdjustment)}{currencySymbol}</span>
+                              ) : null}
+                            </div>
+                          );
+                        })}
 
                       {/* Upsell Sugesstion details */}
                       {item.selectedUpsell && (

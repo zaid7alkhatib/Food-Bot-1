@@ -352,11 +352,18 @@ export default function ThermalPrinter({
                       <span>{item.quantity || 1}x {text(item.name)}</span>
                       <span>{money(getItemTotal(item))}{currencySymbol}</span>
                     </div>
-                    {(item.selectedModifiers || []).map((mod, mId) => (
-                      <div key={mId} className="text-[9px] text-neutral-600 pl-2">
-                        + {text(mod.groupName)}: {text(mod.option?.name)}
-                      </div>
-                    ))}
+                    {(item.selectedModifiers || [])
+                      .filter((mod: any) => mod && typeof mod === "object")
+                      .map((mod: any, mId: number) => {
+                        const groupNameText = mod.groupName ? text(mod.groupName) : "";
+                        const optionNameText = mod.option?.name ? text(mod.option.name) : "";
+                        if (!groupNameText && !optionNameText) return null;
+                        return (
+                          <div key={mId} className="text-[9px] text-neutral-600 pl-2">
+                            + {groupNameText}: {optionNameText}
+                          </div>
+                        );
+                      })}
                     {item.selectedUpsell && (
                       <div className="text-[9px] text-neutral-600 pl-2">
                         + {t("orders.combo")}: {text(item.selectedUpsell.name)}
