@@ -30,6 +30,9 @@ export default function LoginPage() {
           if (data.secondaryColor) {
             document.documentElement.style.setProperty("--brand-secondary", data.secondaryColor);
           }
+          if (data.name) {
+            document.title = `${data.name} - Admin Login`;
+          }
         }
       })
       .catch((err) => console.error("Failed to load branding:", err));

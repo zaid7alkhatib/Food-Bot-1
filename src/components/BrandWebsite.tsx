@@ -209,6 +209,9 @@ export default function BrandWebsite() {
         if (configData.secondaryColor) {
           document.documentElement.style.setProperty("--brand-secondary", configData.secondaryColor);
         }
+        if (configData.name) {
+          document.title = configData.name;
+        }
       }
 
       if (menuRes.ok) {

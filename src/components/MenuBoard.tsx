@@ -120,6 +120,9 @@ export default function MenuBoard() {
     const data = await response.json();
     setRestaurant(data.restaurant || null);
     setRestaurantName(data.restaurant?.name || "MR. Tabboush");
+    if (data.restaurant?.name) {
+      document.title = `${data.restaurant.name} - Menu Board`;
+    }
     setBranchName(data.branch?.name || "");
     setCurrencySymbol(data.currency?.symbol || "€");
     setCategories((data.categories || []).map(normalizeCategory));

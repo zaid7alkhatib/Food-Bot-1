@@ -169,6 +169,9 @@ function Dashboard() {
       if (restaurantInfo.secondaryColor) {
         document.documentElement.style.setProperty('--brand-secondary', restaurantInfo.secondaryColor);
       }
+      if (restaurantInfo.name) {
+        document.title = `${restaurantInfo.name} - Admin Dashboard`;
+      }
     }
   }, [restaurantInfo]);
 

@@ -94,6 +94,9 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
               "--brand-primary": data.restaurant.primaryColor || "#ea580c",
               "--brand-secondary": data.restaurant.secondaryColor || "#1f2937",
             } as React.CSSProperties);
+            if (data.restaurant.name) {
+              document.title = `${data.restaurant.name} - Smart Menu`;
+            }
           }
         }
       } catch (err) {
