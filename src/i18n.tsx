@@ -57,6 +57,7 @@ const dictionaries: Record<AppLanguage, TranslationMap> = {
 
     "common.loading": "Wird geladen...",
     "common.saved": "Gespeichert",
+    "common.edit": "Bearbeiten",
     "common.saveChanges": "Änderungen speichern",
     "common.cancel": "Abbrechen",
     "common.close": "Schließen",
@@ -424,6 +425,7 @@ const dictionaries: Record<AppLanguage, TranslationMap> = {
 
     "common.loading": "جار التحميل...",
     "common.saved": "تم الحفظ",
+    "common.edit": "تعديل",
     "common.saveChanges": "حفظ التغييرات",
     "common.cancel": "إلغاء",
     "common.close": "إغلاق",
@@ -791,6 +793,7 @@ const dictionaries: Record<AppLanguage, TranslationMap> = {
 
     "common.loading": "Loading...",
     "common.saved": "Saved",
+    "common.edit": "Edit",
     "common.saveChanges": "Save Changes",
     "common.cancel": "Cancel",
     "common.close": "Close",

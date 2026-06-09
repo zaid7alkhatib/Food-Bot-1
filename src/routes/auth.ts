@@ -40,6 +40,7 @@ function isUserRole(value: unknown): value is UserRole {
 
 function allowedRolesFor(requesterRole?: string): UserRole[] {
   if (requesterRole === "super_admin") return [...USER_ROLES];
+  if (requesterRole === "restaurant_admin") return ["restaurant_admin", "branch_manager", "staff", "support_agent"];
   return ["branch_manager", "staff", "support_agent"];
 }
 

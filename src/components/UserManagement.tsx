@@ -5,7 +5,7 @@ import { useI18n } from "../i18n";
 import { UserAccount, UserRole } from "../types";
 
 const ALL_ROLES: UserRole[] = ["super_admin", "restaurant_admin", "branch_manager", "staff", "support_agent"];
-const RESTAURANT_ADMIN_ROLES: UserRole[] = ["branch_manager", "staff", "support_agent"];
+const RESTAURANT_ADMIN_ROLES: UserRole[] = ["restaurant_admin", "branch_manager", "staff", "support_agent"];
 
 const emptyForm = {
   name: "",
@@ -16,7 +16,7 @@ const emptyForm = {
 
 export default function UserManagement() {
   const { token, user: currentUser } = useAuth();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const [users, setUsers] = useState<UserAccount[]>([]);
   const [form, setForm] = useState(emptyForm);
   const [loading, setLoading] = useState(true);
@@ -24,6 +24,8 @@ export default function UserManagement() {
   const [actionUserId, setActionUserId] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ name: "", email: "", password: "" });
 
   const creatableRoles = currentUser?.role === "super_admin" ? ALL_ROLES : RESTAURANT_ADMIN_ROLES;
 
@@ -96,6 +98,25 @@ export default function UserManagement() {
     } finally {
       setActionUserId(null);
     }
+  };
+
+  const startEdit = (account: UserAccount) => {
+    setEditingUserId(account.id);
+    setEditForm({
+      name: account.name,
+      email: account.email,
+      password: "",
+    });
+  };
+
+  const handleUpdateDetails = async (e: React.FormEvent, account: UserAccount) => {
+    e.preventDefault();
+    await updateUser(account, {
+      name: editForm.name,
+      email: editForm.email,
+      ...(editForm.password.trim() ? { password: editForm.password } : {}),
+    });
+    setEditingUserId(null);
   };
 
   if (loading) {
@@ -205,60 +226,129 @@ export default function UserManagement() {
             {users.map((account) => {
               const canAssignRole = creatableRoles.includes(account.role);
               const isSelf = account.id === currentUser?.id;
+              const isEditing = editingUserId === account.id;
               return (
-                <div key={account.id} className="p-4 flex flex-col md:flex-row md:items-center gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <Shield size={14} className={account.isActive ? "text-emerald-500" : "text-gray-300"} />
-                      <h5 className="font-bold text-sm text-gray-900 truncate">{account.name}</h5>
-                      {isSelf && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-100">
-                          {t("users.you")}
+                <div key={account.id} className="flex flex-col">
+                  <div className="p-4 flex flex-col md:flex-row md:items-center gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <Shield size={14} className={account.isActive ? "text-emerald-500" : "text-gray-300"} />
+                        <h5 className="font-bold text-sm text-gray-900 truncate">{account.name}</h5>
+                        {isSelf && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-100">
+                            {t("users.you")}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-0.5">{account.email}</p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      {canAssignRole ? (
+                        <select
+                          value={account.role}
+                          disabled={actionUserId === account.id}
+                          onChange={(e) => updateUser(account, { role: e.target.value as UserRole })}
+                          className="bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-xs font-bold text-gray-700 focus:outline-none focus:border-orange-500 disabled:opacity-50"
+                        >
+                          {creatableRoles.map((role) => (
+                            <option key={role} value={role}>
+                              {t(`app.role.${role}`)}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span className="text-xs font-bold px-3 py-2 rounded-lg bg-slate-100 text-slate-700">
+                          {t(`app.role.${account.role}`)}
                         </span>
                       )}
-                    </div>
-                    <p className="text-xs text-gray-500 mt-0.5">{account.email}</p>
-                  </div>
 
-                  <div className="flex flex-wrap items-center gap-2">
-                    {canAssignRole ? (
-                      <select
-                        value={account.role}
-                        disabled={actionUserId === account.id}
-                        onChange={(e) => updateUser(account, { role: e.target.value as UserRole })}
-                        className="bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-xs font-bold text-gray-700 focus:outline-none focus:border-orange-500 disabled:opacity-50"
+                      <button
+                        type="button"
+                        disabled={isSelf || actionUserId === account.id}
+                        onClick={() => updateUser(account, { isActive: !account.isActive })}
+                        className={`px-3 py-2 rounded-lg text-xs font-bold border transition disabled:opacity-50 ${
+                          account.isActive
+                            ? "bg-emerald-50 border-emerald-100 text-emerald-700 hover:bg-emerald-100"
+                            : "bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100"
+                        }`}
                       >
-                        {creatableRoles.map((role) => (
-                          <option key={role} value={role}>
-                            {t(`app.role.${role}`)}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <span className="text-xs font-bold px-3 py-2 rounded-lg bg-slate-100 text-slate-700">
-                        {t(`app.role.${account.role}`)}
-                      </span>
-                    )}
+                        {actionUserId === account.id ? (
+                          <Loader2 size={12} className="animate-spin" />
+                        ) : account.isActive ? (
+                          t("users.active")
+                        ) : (
+                          t("users.inactive")
+                        )}
+                      </button>
 
-                    <button
-                      type="button"
-                      disabled={isSelf || actionUserId === account.id}
-                      onClick={() => updateUser(account, { isActive: !account.isActive })}
-                      className={`px-3 py-2 rounded-lg text-xs font-bold border transition disabled:opacity-50 ${
-                        account.isActive
-                          ? "bg-emerald-50 border-emerald-100 text-emerald-700 hover:bg-emerald-100"
-                          : "bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100"
-                      }`}
-                    >
-                      {actionUserId === account.id ? (
-                        <Loader2 size={12} className="animate-spin" />
-                      ) : account.isActive ? (
-                        t("users.active")
-                      ) : (
-                        t("users.inactive")
-                      )}
-                    </button>
+                      <button
+                        type="button"
+                        disabled={actionUserId === account.id}
+                        onClick={() => isEditing ? setEditingUserId(null) : startEdit(account)}
+                        className="px-3 py-2 rounded-lg text-xs font-bold border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 transition disabled:opacity-50"
+                      >
+                        {isEditing ? t("common.cancel") : t("common.edit")}
+                      </button>
+                    </div>
                   </div>
+
+                  {isEditing && (
+                    <form onSubmit={(e) => handleUpdateDetails(e, account)} className="bg-neutral-50/70 p-4 border-t border-gray-100 space-y-3">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">{t("common.name")}</label>
+                          <input
+                            required
+                            value={editForm.name}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                            className="w-full bg-white border border-gray-200 rounded-lg py-1.5 px-3 text-xs focus:outline-none focus:border-orange-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">{t("common.email")}</label>
+                          <input
+                            required
+                            type="email"
+                            value={editForm.email}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value }))}
+                            className="w-full bg-white border border-gray-200 rounded-lg py-1.5 px-3 text-xs focus:outline-none focus:border-orange-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">{t("users.password")}</label>
+                          <input
+                            type="password"
+                            minLength={8}
+                            placeholder="••••••••"
+                            value={editForm.password}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, password: e.target.value }))}
+                            className="w-full bg-white border border-gray-200 rounded-lg py-1.5 px-3 text-xs focus:outline-none focus:border-orange-500"
+                          />
+                          <span className="text-[9px] text-gray-400 mt-0.5 block">
+                            {language === "ar" ? "اتركه فارغاً للاحتفاظ بكلمة المرور الحالية" : (language === "de" ? "Leer lassen, um das aktuelle Passwort zu behalten" : "Leave blank to keep current password")}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setEditingUserId(null)}
+                          className="px-3 py-1.5 border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-xs font-bold rounded-lg transition"
+                        >
+                          {t("common.cancel")}
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={actionUserId === account.id}
+                          className="px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold rounded-lg flex items-center gap-1 transition disabled:opacity-50"
+                        >
+                          {actionUserId === account.id ? <Loader2 size={10} className="animate-spin" /> : <Save size={10} />}
+                          {t("common.saveChanges")}
+                        </button>
+                      </div>
+                    </form>
+                  )}
                 </div>
               );
             })}
