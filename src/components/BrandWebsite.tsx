@@ -138,7 +138,10 @@ interface RestaurantBranding {
   heroTagline?: { ar: string; de: string; en: string };
   heroBannerImage?: string;
   heroOpacity?: number;
+  aboutSubtitle?: { ar: string; de: string; en: string };
   aboutText?: { ar: string; de: string; en: string };
+  aboutImage?: string;
+  aboutFeatures?: string[];
   socialInstagram?: string;
   socialFacebook?: string;
   socialTikTok?: string;
@@ -887,32 +890,29 @@ export default function BrandWebsite() {
               {localized.aboutTitle}
             </span>
             <h2 className="text-3xl font-serif font-bold tracking-tight text-slate-900">
-              {localized.aboutSubtitle}
+              {restaurant?.aboutSubtitle ? text(restaurant.aboutSubtitle) : localized.aboutSubtitle}
             </h2>
             <p className="text-slate-650 text-sm leading-relaxed whitespace-pre-line font-light">
               {aboutBodyText || "We craft authentic Levant dishes prepared over wood embers, with fresh herbs and home-made signature recipes passed down through generations."}
             </p>
             
-            <div className="pt-2 flex items-center gap-4 text-xs font-semibold text-slate-500">
-              <div className="flex items-center gap-1.5">
-                <Check size={14} className="text-emerald-500" />
-                <span>100% Halal</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Check size={14} className="text-emerald-500" />
-                <span>Fresh Ingredients</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Check size={14} className="text-emerald-500" />
-                <span>Charcoal Smoked</span>
-              </div>
+            <div className="pt-2 flex flex-wrap items-center gap-4 text-xs font-semibold text-slate-500">
+              {(restaurant?.aboutFeatures && restaurant.aboutFeatures.length > 0
+                ? restaurant.aboutFeatures
+                : ["100% Halal", "Fresh Ingredients", "Charcoal Smoked"]
+              ).map((feature, fIdx) => (
+                <div key={fIdx} className="flex items-center gap-1.5 font-sans">
+                  <Check size={14} className="text-emerald-500 shrink-0" />
+                  <span>{feature}</span>
+                </div>
+              ))}
             </div>
           </div>
 
           <div className="md:col-span-6 relative">
             <div className="relative rounded-3xl overflow-hidden shadow-xl aspect-video md:aspect-square">
               <img 
-                src="https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=800&auto=format&fit=crop&q=80" 
+                src={restaurant?.aboutImage || "https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=800&auto=format&fit=crop&q=80"} 
                 alt="Grill cuisine" 
                 className="w-full h-full object-cover"
               />

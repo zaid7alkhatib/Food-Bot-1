@@ -21,7 +21,10 @@ export interface IRestaurant extends Document {
   heroTagline?: { ar: string; de: string; en: string };
   heroBannerImage?: string;
   heroOpacity?: number;
+  aboutSubtitle?: { ar: string; de: string; en: string };
   aboutText?: { ar: string; de: string; en: string };
+  aboutImage?: string;
+  aboutFeatures?: string[];
   socialInstagram?: string;
   socialFacebook?: string;
   socialTikTok?: string;
@@ -56,11 +59,18 @@ const RestaurantSchema = new Schema<IRestaurant>(
     },
     heroBannerImage: { type: String, default: "https://images.unsplash.com/photo-1544025162-d76694265947?w=1600&auto=format&fit=crop&q=80" },
     heroOpacity: { type: Number, default: 35 },
+    aboutSubtitle: {
+      ar: { type: String, default: "مأكولات أصيلة حضرت بشغف" },
+      de: { type: String, default: "Authentische Küche mit Leidenschaft zubereitet" },
+      en: { type: String, default: "Authentic cuisine made with passion" }
+    },
     aboutText: {
       ar: { type: String, default: "نقدم لكم عراقة الطعم الشامي الأصيل بمكونات طازجة وجودة عالية." },
       de: { type: String, default: "Wir bringen Ihnen den traditionellen Geschmack Syriens mit frischen Zutaten." },
       en: { type: String, default: "We bring you the authentic taste of Syrian cuisine crafted with fresh ingredients." }
     },
+    aboutImage: { type: String, default: "https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=800&auto=format&fit=crop&q=80" },
+    aboutFeatures: { type: [String], default: ["100% Halal", "Fresh Ingredients", "Charcoal Smoked"] },
     socialInstagram: { type: String, default: "" },
     socialFacebook: { type: String, default: "" },
     socialTikTok: { type: String, default: "" },
