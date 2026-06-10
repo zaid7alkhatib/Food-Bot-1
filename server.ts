@@ -1,6 +1,7 @@
 import "dotenv/config";
 import express from "express";
 import mongoose from "mongoose";
+import Stripe from "stripe";
 import path from "path";
 import fs from "fs";
 import http from "http";
@@ -37,7 +38,13 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 const app = express();
 app.set("trust proxy", 1);
 const httpServer = http.createServer(app);
-app.use(express.json());
+app.use(
+  express.json({
+    verify: (req: any, res, buf) => {
+      req.rawBody = buf;
+    },
+  })
+);
 
 // Rate limiting
 const apiLimiter = rateLimit({
@@ -1074,7 +1081,12 @@ app.get("/api/state", authMiddleware as any, async (req: AuthenticatedRequest, r
         Branch.find({ isActive: true }).lean(),
         Category.find({ isActive: true }).sort({ sortOrder: 1 }).lean(),
         MenuItem.find({ isActive: true }).sort({ sortOrder: 1 }).lean(),
-        Order.find().sort({ createdAt: -1 }).lean(),
+        Order.find({
+          $or: [
+            { paymentMethod: { $ne: "Stripe" } },
+            { paymentMethod: "Stripe", paymentStatus: "paid" }
+          ]
+        }).sort({ createdAt: -1 }).lean(),
         Campaign.find().sort({ createdAt: -1 }).lean(),
         Feedback.find().sort({ createdAt: -1 }).lean(),
         Conversation.find().sort({ updatedAt: -1 }).lean(),
@@ -1132,6 +1144,8 @@ app.get("/api/public/config", async (req, res) => {
       socialInstagram: restaurant.socialInstagram,
       socialFacebook: restaurant.socialFacebook,
       socialTikTok: restaurant.socialTikTok,
+      stripeEnabled: restaurant.stripeEnabled ?? false,
+      stripePublishableKey: restaurant.stripePublishableKey || "",
     });
   } catch (err) {
     console.error("[API] GET /api/public/config error:", err);
@@ -1422,8 +1436,13 @@ app.post("/api/public/orders", async (req, res) => {
     const deliveryFee = orderType === "delivery" ? (branch.deliveryFee || 0) : 0;
     const total = subtotal + deliveryFee;
 
+    const restaurant = await Restaurant.findById(branch.restaurantId);
+    const payWithStripe = restaurant?.stripeEnabled === true && req.body.paymentMethodSelection === "stripe";
+
     let paymentMethod = "Pay at Table";
-    if (orderType === "delivery") {
+    if (payWithStripe) {
+      paymentMethod = "Stripe";
+    } else if (orderType === "delivery") {
       paymentMethod = "Cash on Delivery";
     } else if (orderType === "pickup") {
       paymentMethod = "Cash on Pickup";
@@ -1454,6 +1473,69 @@ app.post("/api/public/orders", async (req, res) => {
       source: orderType === "dine_in" ? "table" : "website",
     });
 
+    if (payWithStripe) {
+      if (!restaurant?.stripeSecretKey) {
+        res.status(400).json({ error: "Stripe configuration is incomplete on this restaurant" });
+        return;
+      }
+      
+      const stripeInstance = new Stripe(restaurant.stripeSecretKey, {
+        apiVersion: "2023-10-16" as any,
+      });
+
+      const appUrl = process.env.APP_URL || `${req.protocol}://${req.get("host")}`;
+
+      const lineItems = validatedItems.map(item => {
+        const nameText = item.name.de || item.name.en || item.name.ar || "Menu Item";
+        return {
+          price_data: {
+            currency: "eur",
+            product_data: {
+              name: nameText,
+              metadata: { itemId: item.itemId },
+            },
+            unit_amount: Math.round((item.totalPrice / item.quantity) * 100),
+          },
+          quantity: item.quantity,
+        };
+      });
+
+      if (deliveryFee > 0) {
+        lineItems.push({
+          price_data: {
+            currency: "eur",
+            product_data: {
+              name: "Delivery Fee / Liefergebühr",
+              metadata: { itemId: "delivery" } as any,
+            },
+            unit_amount: Math.round(deliveryFee * 100),
+          },
+          quantity: 1,
+        });
+      }
+
+      const session = await stripeInstance.checkout.sessions.create({
+        payment_method_types: ["card"],
+        line_items: lineItems,
+        mode: "payment",
+        success_url: `${appUrl}/?checkout_status=success&orderId=${newOrder._id}`,
+        cancel_url: `${appUrl}/?checkout_status=cancelled`,
+        metadata: {
+          orderId: newOrder._id.toString(),
+          orderNumber: newOrder.orderNumber,
+        },
+      });
+
+      newOrder.stripeSessionId = session.id;
+      await newOrder.save();
+
+      res.status(201).json({
+        ...serializeDoc(newOrder),
+        checkoutUrl: session.url,
+      });
+      return;
+    }
+
     await newOrder.save();
     emitGlobal("order:new", serializeDoc(newOrder));
     triggerAutoPrint(newOrder);
@@ -1461,6 +1543,26 @@ app.post("/api/public/orders", async (req, res) => {
   } catch (err) {
     console.error("[API] POST /api/public/orders error:", err);
     res.status(500).json({ error: "Failed to submit table order" });
+  }
+});
+
+// GET /api/public/orders/:id (public order lookup for checkout status)
+app.get("/api/public/orders/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id || !mongoose.isValidObjectId(id)) {
+      res.status(400).json({ error: "Invalid order ID" });
+      return;
+    }
+    const order = await Order.findById(id);
+    if (!order) {
+      res.status(404).json({ error: "Order not found" });
+      return;
+    }
+    res.json(serializeDoc(order));
+  } catch (err: any) {
+    console.error("[API] GET /api/public/orders/:id error:", err);
+    res.status(500).json({ error: "Failed to retrieve order details" });
   }
 });
 
@@ -1593,6 +1695,62 @@ app.post("/api/public/whatsapp-cart", async (req, res) => {
   }
 });
 
+// POST /api/public/payments/webhook (Stripe Payment Completion Webhook)
+app.post("/api/public/payments/webhook", async (req: any, res) => {
+  const sig = req.headers["stripe-signature"];
+  try {
+    const restaurant = await Restaurant.findOne({ isActive: true });
+    if (!restaurant) {
+      res.status(404).json({ error: "Active restaurant not found" });
+      return;
+    }
+
+    if (!restaurant.stripeSecretKey || !restaurant.stripeWebhookSecret) {
+      res.status(400).json({ error: "Stripe configuration is incomplete on the server" });
+      return;
+    }
+
+    const stripeInstance = new Stripe(restaurant.stripeSecretKey, {
+      apiVersion: "2023-10-16" as any,
+    });
+
+    let event;
+    try {
+      event = stripeInstance.webhooks.constructEvent(
+        req.rawBody,
+        sig || "",
+        restaurant.stripeWebhookSecret
+      );
+    } catch (err: any) {
+      console.error(`[Webhook] Signature verification failed:`, err.message);
+      res.status(400).send(`Webhook Error: ${err.message}`);
+      return;
+    }
+
+    if (event.type === "checkout.session.completed") {
+      const session = event.data.object as any;
+      const orderId = session.metadata?.orderId;
+      if (orderId && mongoose.isValidObjectId(orderId)) {
+        const order = await Order.findById(orderId);
+        if (order && order.paymentStatus !== "paid") {
+          order.paymentStatus = "paid";
+          await order.save();
+
+          // Now notify dashboard and kitchen printing
+          emitGlobal("order:new", serializeDoc(order));
+          triggerAutoPrint(order);
+          console.log(`[Webhook] Order ${order.orderNumber} successfully marked as PAID`);
+        }
+      }
+    }
+
+    res.json({ received: true });
+  } catch (err: any) {
+    console.error("[Webhook] error:", err);
+    res.status(500).json({ error: "Webhook processing failed" });
+  }
+});
+
 // PUT /api/orders/:id/status
 app.put("/api/orders/:id/status", authMiddleware as any, requireRole(...ORDER_ROLES) as any, async (req, res) => {
   try {
@@ -1653,7 +1811,12 @@ app.put("/api/orders/:id/status", authMiddleware as any, requireRole(...ORDER_RO
       }
     }
 
-    const orders = await Order.find().sort({ createdAt: -1 }).lean();
+    const orders = await Order.find({
+      $or: [
+        { paymentMethod: { $ne: "Stripe" } },
+        { paymentMethod: "Stripe", paymentStatus: "paid" }
+      ]
+    }).sort({ createdAt: -1 }).lean();
     const conversations = await Conversation.find().sort({ updatedAt: -1 }).lean();
 
     emitGlobal("order:updated", { orderId: id, status });
@@ -2841,7 +3004,12 @@ You MUST reply with a JSON object in this exact schema structure:
 
     emitGlobal("conversation:updated", serializeDoc(convo));
 
-    const allOrders = await Order.find().sort({ createdAt: -1 }).lean();
+    const allOrders = await Order.find({
+      $or: [
+        { paymentMethod: { $ne: "Stripe" } },
+        { paymentMethod: "Stripe", paymentStatus: "paid" }
+      ]
+    }).sort({ createdAt: -1 }).lean();
     res.json({ conversation: serializeDoc(convo), dbOrders: serializeDocs(allOrders), botReplyText, orderPlaced: !!finalPlacedOrder });
   } catch (err) {
     console.error("[API] POST /api/bot-reply error:", err);

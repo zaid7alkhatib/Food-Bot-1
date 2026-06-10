@@ -9,9 +9,16 @@ router.get("/dashboard", async (req, res) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
+    const paidOrdersFilter = {
+      $or: [
+        { paymentMethod: { $ne: "Stripe" } },
+        { paymentMethod: "Stripe", paymentStatus: "paid" }
+      ]
+    };
+
     const [ordersToday, allOrders, allFeedbacks, allConversations] = await Promise.all([
-      Order.find({ createdAt: { $gte: today } }).lean(),
-      Order.find().lean(),
+      Order.find({ createdAt: { $gte: today }, ...paidOrdersFilter }).lean(),
+      Order.find(paidOrdersFilter).lean(),
       Feedback.find().lean(),
       Conversation.find().lean(),
     ]);
@@ -92,7 +99,13 @@ router.get("/orders", async (req, res) => {
     if (status) filter.status = status;
     if (orderType) filter.orderType = orderType;
 
-    const orders = await Order.find(filter).sort({ createdAt: -1 }).lean();
+    const paidOrdersFilter = {
+      $or: [
+        { paymentMethod: { $ne: "Stripe" } },
+        { paymentMethod: "Stripe", paymentStatus: "paid" }
+      ]
+    };
+    const orders = await Order.find({ ...filter, ...paidOrdersFilter }).sort({ createdAt: -1 }).lean();
     res.json(orders);
   } catch (err) {
     console.error("[Reports] orders error:", err);

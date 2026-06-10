@@ -145,6 +145,8 @@ interface RestaurantBranding {
   socialInstagram?: string;
   socialFacebook?: string;
   socialTikTok?: string;
+  stripeEnabled?: boolean;
+  stripePublishableKey?: string;
 }
 
 interface Review {
@@ -168,7 +170,14 @@ export default function BrandWebsite() {
   const [loading, setLoading] = useState(true);
   
   // Cart & Modifiers states
-  const [cart, setCart] = useState<OrderItem[]>([]);
+  const [cart, setCart] = useState<OrderItem[]>(() => {
+    try {
+      const saved = localStorage.getItem("brand_cart");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [customerName, setCustomerName] = useState("");
   const [notes, setNotes] = useState("");
@@ -176,8 +185,57 @@ export default function BrandWebsite() {
   const [orderType, setOrderType] = useState<"delivery" | "pickup">("delivery");
   const [customerPhone, setCustomerPhone] = useState("");
   const [deliveryAddress, setDeliveryAddress] = useState("");
+  const [paymentMethodSelection, setPaymentMethodSelection] = useState<"cash" | "stripe">("cash");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [placedOrder, setPlacedOrder] = useState<any>(null);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("brand_cart", JSON.stringify(cart));
+    } catch (err) {
+      console.error("Failed to save cart to localStorage", err);
+    }
+  }, [cart]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const checkoutStatus = params.get("checkout_status");
+    const orderId = params.get("orderId");
+
+    if (checkoutStatus === "success" && orderId) {
+      fetch(`/api/public/orders/${orderId}`)
+        .then((res) => {
+          if (!res.ok) {
+            throw new Error("Failed to load order");
+          }
+          return res.json();
+        })
+        .then((order) => {
+          setPlacedOrder(order);
+          setCart([]);
+          setIsCartOpen(true);
+          // Clean up URL parameters
+          const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+          window.history.replaceState({}, document.title, cleanUrl);
+        })
+        .catch((err) => {
+          console.error("Error loading order from checkout redirect:", err);
+        });
+    } else if (checkoutStatus === "cancelled") {
+      setPaymentError(
+        language === "ar"
+          ? "تم إلغاء عملية الدفع. يرجى المحاولة مرة أخرى أو اختيار الدفع نقداً."
+          : language === "en"
+          ? "Payment was cancelled. Please try again or select cash."
+          : "Zahlung wurde abgebrochen. Bitte versuchen Sie es erneut oder wählen Sie Barzahlung."
+      );
+      setIsCartOpen(true);
+      // Clean up URL parameters
+      const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+      window.history.replaceState({}, document.title, cleanUrl);
+    }
+  }, [language]);
 
   const [selectedItemForMod, setSelectedItemForMod] = useState<MenuItem | null>(null);
   const [modSelections, setModSelections] = useState<Record<string, ModifierOption[]>>({});
@@ -533,6 +591,7 @@ export default function BrandWebsite() {
       deliveryAddress: orderType === "delivery" ? deliveryAddress.trim() : undefined,
       pickupTime: orderType === "pickup" ? pickupTime.trim() : undefined,
       notes: notes.trim() || undefined,
+      paymentMethodSelection,
       items: cart.map(item => ({
         itemId: item.itemId,
         quantity: item.quantity,
@@ -560,6 +619,10 @@ export default function BrandWebsite() {
         }
       })
       .then(data => {
+        if (data.checkoutUrl) {
+          window.location.href = data.checkoutUrl;
+          return;
+        }
         setPlacedOrder(data);
         setCart([]); // clear cart
         setCustomerName("");
@@ -1067,6 +1130,21 @@ export default function BrandWebsite() {
 
             {/* Body */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {paymentError && (
+                <div className="p-3 bg-rose-50 border border-rose-100 text-rose-700 text-[11px] rounded-xl flex items-start justify-between gap-2 animate-fade-in">
+                  <div className="flex gap-2">
+                    <span className="text-sm">⚠️</span>
+                    <p className="font-semibold leading-relaxed">{paymentError}</p>
+                  </div>
+                  <button 
+                    onClick={() => setPaymentError(null)}
+                    className="text-rose-450 hover:text-rose-650 transition cursor-pointer"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
+
               {placedOrder ? (
                 <div className="py-8 text-center space-y-5 animate-scale-in">
                   <div className="w-16 h-16 bg-emerald-50 text-emerald-500 border border-emerald-100 rounded-full flex items-center justify-center mx-auto shadow-sm animate-pulse-subtle">
@@ -1248,6 +1326,40 @@ export default function BrandWebsite() {
                         className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:border-brand-primary h-16 resize-none"
                       />
                     </div>
+
+                    {restaurant?.stripeEnabled && (
+                      <div className="pt-2">
+                        <label className="text-[10px] text-slate-400 font-bold uppercase block mb-1">
+                          {language === "ar" ? "طريقة الدفع" : language === "en" ? "Payment Method" : "Zahlungsart"}
+                        </label>
+                        <div className="grid grid-cols-2 gap-2 mt-1">
+                          <button
+                            type="button"
+                            onClick={() => setPaymentMethodSelection("cash")}
+                            className={`p-2.5 rounded-xl border text-[11px] font-bold transition duration-200 cursor-pointer flex items-center justify-center gap-1.5 ${
+                              paymentMethodSelection === "cash"
+                                ? "bg-slate-900 border-slate-900 text-white shadow-sm"
+                                : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                            }`}
+                          >
+                            <span>💵</span>
+                            {language === "ar" ? "نقداً عند الاستلام" : language === "en" ? "Cash" : "Barzahlung"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPaymentMethodSelection("stripe")}
+                            className={`p-2.5 rounded-xl border text-[11px] font-bold transition duration-200 cursor-pointer flex items-center justify-center gap-1.5 ${
+                              paymentMethodSelection === "stripe"
+                                ? "bg-slate-900 border-slate-900 text-white shadow-sm"
+                                : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                            }`}
+                          >
+                            <span>💳</span>
+                            {language === "ar" ? "دفع إلكتروني (بطاقة)" : language === "en" ? "Pay Online" : "Online zahlen"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </>
               )}

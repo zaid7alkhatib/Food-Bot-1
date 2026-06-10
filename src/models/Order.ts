@@ -75,6 +75,7 @@ export interface IOrder extends Document {
   notes?: string;
   feedbackRequested?: boolean;
   source: string;
+  stripeSessionId?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -110,6 +111,7 @@ const OrderSchema = new Schema<IOrder>(
     notes: String,
     feedbackRequested: { type: Boolean, default: false },
     source: { type: String, default: "whatsapp" },
+    stripeSessionId: String,
   },
   { timestamps: true }
 );

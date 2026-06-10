@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Building2, Globe, Coins, MessageCircle, Save, Loader2, CheckCircle2, Link2 } from "lucide-react";
+import { Building2, Globe, Coins, MessageCircle, Save, Loader2, CheckCircle2, Link2, CreditCard } from "lucide-react";
 import { useI18n } from "../i18n";
 
 interface Restaurant {
@@ -31,6 +31,10 @@ interface Restaurant {
   socialFacebook?: string;
   socialTikTok?: string;
   geminiEnabled?: boolean;
+  stripeEnabled?: boolean;
+  stripePublishableKey?: string;
+  stripeSecretKey?: string;
+  stripeWebhookSecret?: string;
 }
 
 export default function RestaurantSettings() {
@@ -422,6 +426,71 @@ export default function RestaurantSettings() {
                 </p>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Stripe Integration Settings */}
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-4">
+          <div className="flex items-center gap-2 mb-2">
+            <CreditCard size={16} className="text-orange-500" />
+            <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Stripe Online Payments</h4>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <div className="flex items-start gap-2.5">
+                <input
+                  type="checkbox"
+                  id="stripeEnabled"
+                  checked={restaurant.stripeEnabled === true}
+                  onChange={(e) => updateField("stripeEnabled", e.target.checked)}
+                  className="mt-0.5 rounded border-gray-300 text-orange-600 focus:ring-orange-500 h-4 w-4 shrink-0 cursor-pointer"
+                />
+                <div className="space-y-0.5">
+                  <label htmlFor="stripeEnabled" className="text-xs font-bold text-gray-800 cursor-pointer select-none">
+                    Enable Stripe Card Payments
+                  </label>
+                  <p className="text-[10px] text-gray-400">
+                    Allow customers to pay online using cards, PayPal, and Apple/Google Pay via Stripe on your Brand Landing Page.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {restaurant.stripeEnabled && (
+              <div className="space-y-3 pt-2 animate-fade-in">
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Stripe Publishable Key</label>
+                  <input
+                    type="text"
+                    value={restaurant.stripePublishableKey || ""}
+                    onChange={(e) => updateField("stripePublishableKey", e.target.value)}
+                    placeholder="pk_test_..."
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-xs focus:outline-none focus:border-orange-500 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Stripe Secret Key</label>
+                  <input
+                    type="password"
+                    value={restaurant.stripeSecretKey || ""}
+                    onChange={(e) => updateField("stripeSecretKey", e.target.value)}
+                    placeholder="sk_test_..."
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-xs focus:outline-none focus:border-orange-500 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Stripe Webhook Secret</label>
+                  <input
+                    type="password"
+                    value={restaurant.stripeWebhookSecret || ""}
+                    onChange={(e) => updateField("stripeWebhookSecret", e.target.value)}
+                    placeholder="whsec_..."
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-xs focus:outline-none focus:border-orange-500 font-mono"
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

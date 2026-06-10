@@ -29,6 +29,10 @@ export interface IRestaurant extends Document {
   socialFacebook?: string;
   socialTikTok?: string;
   geminiEnabled?: boolean;
+  stripeEnabled?: boolean;
+  stripePublishableKey?: string;
+  stripeSecretKey?: string;
+  stripeWebhookSecret?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -75,6 +79,10 @@ const RestaurantSchema = new Schema<IRestaurant>(
     socialFacebook: { type: String, default: "" },
     socialTikTok: { type: String, default: "" },
     geminiEnabled: { type: Boolean, default: true },
+    stripeEnabled: { type: Boolean, default: false },
+    stripePublishableKey: { type: String, default: "" },
+    stripeSecretKey: { type: String, default: "" },
+    stripeWebhookSecret: { type: String, default: "" },
   },
   { timestamps: true }
 );
