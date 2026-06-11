@@ -119,10 +119,10 @@ function formatMoney(value: unknown): string {
   return toFiniteNumber(value).toFixed(2);
 }
 
-function translatedText(value: any, lang: "ar" | "de" | "en"): string {
+function translatedText(value: any, lang: "ar" | "de" | "en" | "tr"): string {
   if (!value) return "";
   if (typeof value === "string") return value;
-  return value[lang] || value.de || value.en || value.ar || "";
+  return value[lang] || value.tr || value.de || value.en || value.ar || "";
 }
 
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {

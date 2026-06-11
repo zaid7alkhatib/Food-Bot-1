@@ -979,9 +979,9 @@ export default function ReservationFloorPlan({
                   className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-sm focus:outline-none focus:border-orange-500"
                 >
                   <option value="">{t("reservation.autoAssignTable")}</option>
-                  {tables.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      T{t.number} ({t("reservation.capacitySeats")}: {t.capacity}p)
+                  {tables.map((tbl) => (
+                    <option key={tbl.id} value={tbl.id}>
+                      T{tbl.number} ({t("reservation.capacitySeats")}: {tbl.capacity}p)
                     </option>
                   ))}
                 </select>
