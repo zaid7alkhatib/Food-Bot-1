@@ -179,6 +179,8 @@ type BranchFulfillmentConfig = {
   branchLatitude?: number;
   branchLongitude?: number;
   orderPrefix?: string;
+  openingHours?: string;
+  closedDays?: number[];
 };
 
 const DEFAULT_BRANCH_CONFIG: BranchFulfillmentConfig = {
@@ -195,6 +197,8 @@ const DEFAULT_BRANCH_CONFIG: BranchFulfillmentConfig = {
   branchLatitude: 51.2667,
   branchLongitude: 7.1833,
   orderPrefix: "TAB",
+  openingHours: "12:00 - 22:30",
+  closedDays: [],
 };
 
 function isCustomerLanguage(value: unknown): value is CustomerLanguage {
@@ -728,6 +732,91 @@ function serializeDocs(docs: any[]) {
   return docs.map(serializeDoc);
 }
 
+function getLocalTimeDetails(timezone: string) {
+  const now = new Date();
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "numeric",
+    second: "numeric",
+    hour12: false,
+    weekday: "long"
+  });
+
+  const parts = formatter.formatToParts(now);
+  const partMap = Object.fromEntries(parts.map(p => [p.type, p.value]));
+  
+  const hour = parseInt(partMap.hour || "0", 10);
+  const minute = parseInt(partMap.minute || "0", 10);
+  const weekdayName = partMap.weekday || "";
+
+  const daysMap: Record<string, number> = {
+    Sunday: 0,
+    Monday: 1,
+    Tuesday: 2,
+    Wednesday: 3,
+    Thursday: 4,
+    Friday: 5,
+    Saturday: 6
+  };
+  const dayIndex = daysMap[weekdayName] ?? now.getDay();
+
+  return { hour, minute, dayIndex };
+}
+
+function isBranchOpen(branch: any, timezone: string): boolean {
+  try {
+    const { hour, minute, dayIndex } = getLocalTimeDetails(timezone);
+
+    if (branch.closedDays && branch.closedDays.includes(dayIndex)) {
+      return false;
+    }
+
+    const openingHoursStr = branch.openingHours;
+    if (!openingHoursStr) return false;
+
+    const parts = openingHoursStr.split("-");
+    if (parts.length !== 2) return false;
+
+    const [startH, startM] = parts[0].trim().split(":").map(Number);
+    const [endH, endM] = parts[1].trim().split(":").map(Number);
+
+    const currMinutes = hour * 60 + minute;
+    const startMinutes = startH * 60 + startM;
+    const endMinutes = endH * 60 + endM;
+
+    if (endMinutes < startMinutes) {
+      return currMinutes >= startMinutes || currMinutes <= endMinutes;
+    }
+
+    return currMinutes >= startMinutes && currMinutes <= endMinutes;
+  } catch (err) {
+    console.error("[Hours Validation] Error calculating open status:", err);
+    return false;
+  }
+}
+
+function getClosedDaysString(lang: string, closedDays: number[]): string {
+  if (!closedDays || closedDays.length === 0) return "";
+  const daysDE = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
+  const daysEN = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const daysAR = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+
+  if (lang === "ar") {
+    const names = closedDays.map(d => daysAR[d]).join("، ");
+    return `أيام الإغلاق: ${names}.`;
+  } else if (lang === "en") {
+    const names = closedDays.map(d => daysEN[d]).join(", ");
+    return `Closed on: ${names}.`;
+  } else {
+    const names = closedDays.map(d => daysDE[d]).join(", ");
+    return `Ruhetage: ${names}.`;
+  }
+}
+
 const ADMIN_ROLES = ["super_admin", "restaurant_admin"];
 const MANAGER_ROLES = ["super_admin", "restaurant_admin", "branch_manager"];
 const ORDER_ROLES = ["super_admin", "restaurant_admin", "branch_manager", "staff"];
@@ -806,6 +895,8 @@ function branchConfigFromBranch(branch: any, restaurant: any): BranchFulfillment
     branchLatitude: toFiniteNumber(branch?.latitude, DEFAULT_BRANCH_CONFIG.branchLatitude),
     branchLongitude: toFiniteNumber(branch?.longitude, DEFAULT_BRANCH_CONFIG.branchLongitude),
     orderPrefix: restaurant?.orderPrefix || DEFAULT_BRANCH_CONFIG.orderPrefix,
+    openingHours: branch?.openingHours || DEFAULT_BRANCH_CONFIG.openingHours,
+    closedDays: branch?.closedDays || DEFAULT_BRANCH_CONFIG.closedDays,
   };
 }
 
@@ -1357,6 +1448,13 @@ app.post("/api/public/orders", async (req, res) => {
       return;
     }
 
+    const restaurant = await Restaurant.findById(branch.restaurantId);
+    const timezone = restaurant?.timezone || "Europe/Berlin";
+    if (!isBranchOpen(branch, timezone)) {
+      res.status(400).json({ error: "Restaurant is currently closed / Restaurant ist derzeit geschlossen" });
+      return;
+    }
+
     if (!items || !Array.isArray(items) || items.length === 0) {
       res.status(400).json({ error: "Order must contain at least one item" });
       return;
@@ -1436,7 +1534,6 @@ app.post("/api/public/orders", async (req, res) => {
     const deliveryFee = orderType === "delivery" ? (branch.deliveryFee || 0) : 0;
     const total = subtotal + deliveryFee;
 
-    const restaurant = await Restaurant.findById(branch.restaurantId);
     const payWithStripe = restaurant?.stripeEnabled === true && req.body.paymentMethodSelection === "stripe";
 
     let paymentMethod = "Pay at Table";
@@ -2356,6 +2453,13 @@ app.post("/api/bot-reply", async (req, res) => {
           upsells: item.upsellSuggestions,
         }));
 
+        const timezone = activeRestaurant?.timezone || "Europe/Berlin";
+        const { hour, minute, dayIndex } = getLocalTimeDetails(timezone);
+        const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+        const currentDayName = daysOfWeek[dayIndex];
+        const currentTimeStr = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+        const isClosed = !isBranchOpen(branchConfig, timezone);
+
         const contextPrompt = `
 You are the AI WhatsApp Ordering Agent of "${branchConfig.restaurantName}" restaurant at ${branchConfig.branchAddress}, ${branchConfig.branchCity}.
 The current step of the customer order is: "${nextStep}"
@@ -2368,6 +2472,11 @@ Fulfillment config:
 - Branch address: ${branchConfig.branchAddress}
 - Delivery enabled: ${branchConfig.deliveryEnabled}
 - Pickup enabled: ${branchConfig.pickupEnabled}
+- Current local day of the week: ${currentDayName}
+- Current local time: ${currentTimeStr}
+- Operational status: ${isClosed ? "CLOSED right now. Do NOT take or confirm orders. If the customer tries to order or checkout, politely refuse, state that the restaurant is closed, and mention the opening hours and closed days." : "OPEN now. You can take orders."}
+- Business hours: ${branchConfig.openingHours}
+- Closed days (0=Sun, 1=Mon, etc.): ${JSON.stringify(branchConfig.closedDays || [])}
 - Delivery area text: within ${formatMoney(branchConfig.deliveryRadiusKm)} km of the branch. Real geocoding is not available yet.
 - Delivery fee: ${formatMoney(branchConfig.deliveryFee)}€.
 - Minimum delivery order before delivery fee: ${formatMoney(branchConfig.minOrderAmount)}€.
@@ -2437,6 +2546,20 @@ You MUST reply with a JSON object in this exact schema structure:
     }
 
     // Fallback Rule-Based Bot Engine
+    if (!botReplyText) {
+      const timezone = activeRestaurant?.timezone || "Europe/Berlin";
+      if (!isBranchOpen(branchConfig, timezone)) {
+        botReplyText = lang === "ar"
+          ? `شكراً لتواصلك معنا! المطعم مغلق حالياً. ساعات العمل لدينا هي: ${branchConfig.openingHours}.`
+          : lang === "en"
+          ? `Thank you for contacting us! The restaurant is currently closed. Our business hours are: ${branchConfig.openingHours}.`
+          : `Vielen Dank für Ihre Nachricht! Das Restaurant ist derzeit geschlossen. Unsere Öffnungszeiten sind: ${branchConfig.openingHours}.`;
+        if (branchConfig.closedDays && branchConfig.closedDays.length > 0) {
+          botReplyText += " " + getClosedDaysString(lang, branchConfig.closedDays);
+        }
+      }
+    }
+
     if (!botReplyText) {
       const isAr = lang === "ar";
       const isEn = lang === "en";

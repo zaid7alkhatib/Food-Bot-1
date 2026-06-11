@@ -12,6 +12,7 @@ interface Branch {
   country: string;
   phone: string;
   openingHours: string;
+  closedDays?: number[];
   pickupEnabled: boolean;
   deliveryEnabled: boolean;
   deliveryRadiusKm: number;
@@ -229,6 +230,37 @@ export default function BranchSettings() {
                 onChange={(e) => updateField("openingHours", e.target.value)}
                 className="flex-1 bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-orange-500"
               />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1.5">{t("branch.closedDays")}</label>
+            <div className="flex flex-wrap gap-2">
+              {[0, 1, 2, 3, 4, 5, 6].map((dayNum) => {
+                const dayKeys = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+                const dayLabel = t(`days.${dayKeys[dayNum]}`);
+                const isClosed = selectedBranch.closedDays?.includes(dayNum) || false;
+                
+                const handleToggle = () => {
+                  const currentClosed = selectedBranch.closedDays || [];
+                  const updatedClosed = isClosed
+                    ? currentClosed.filter((d: number) => d !== dayNum)
+                    : [...currentClosed, dayNum];
+                  updateField("closedDays", updatedClosed);
+                };
+
+                return (
+                  <label key={dayNum} className="flex items-center gap-1 cursor-pointer select-none bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg py-1 px-2 transition text-xs">
+                    <input
+                      type="checkbox"
+                      checked={isClosed}
+                      onChange={handleToggle}
+                      className="rounded border-gray-300 text-orange-500 focus:ring-orange-500 cursor-pointer w-3 h-3"
+                    />
+                    <span>{dayLabel}</span>
+                  </label>
+                );
+              })}
             </div>
           </div>
         </div>

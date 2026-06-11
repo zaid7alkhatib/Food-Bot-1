@@ -298,7 +298,7 @@ export default function BrandWebsite() {
   useEffect(() => {
     if (!branch) return;
     const checkOpenStatus = () => {
-      const isCurrentlyOpen = isOpen(branch.openingHours, restaurant?.timezone || "Europe/Berlin");
+      const isCurrentlyOpen = isOpen(branch.openingHours, branch.closedDays || [], restaurant?.timezone || "Europe/Berlin");
       setIsOpenNow(isCurrentlyOpen);
     };
 
@@ -308,25 +308,50 @@ export default function BrandWebsite() {
   }, [branch, restaurant]);
 
   // Dynamic Open Calculation helper
-  const isOpen = (openingHoursStr: string, timezone: string): boolean => {
+  const isOpen = (openingHoursStr: string, closedDays: number[], timezone: string): boolean => {
     try {
-      if (!openingHoursStr) return false;
-      const parts = openingHoursStr.split("-");
-      if (parts.length !== 2) return false;
-
       const now = new Date();
-      const localTimeStr = now.toLocaleTimeString("en-US", { timeZone: timezone, hour12: false });
-      const [currH, currM] = localTimeStr.split(":").map(Number);
-      const currMinutes = currH * 60 + currM;
+      const formatter = new Intl.DateTimeFormat("en-US", {
+        timeZone: timezone,
+        hour12: false,
+        hour: "numeric",
+        minute: "numeric",
+        weekday: "long"
+      });
+      const parts = formatter.formatToParts(now);
+      const partMap = Object.fromEntries(parts.map(p => [p.type, p.value]));
 
-      const [startH, startM] = parts[0].trim().split(":").map(Number);
-      const [endH, endM] = parts[1].trim().split(":").map(Number);
+      const currH = parseInt(partMap.hour || "0", 10);
+      const currM = parseInt(partMap.minute || "0", 10);
+      const weekdayName = partMap.weekday || "";
+
+      const daysMap: Record<string, number> = {
+        Sunday: 0,
+        Monday: 1,
+        Tuesday: 2,
+        Wednesday: 3,
+        Thursday: 4,
+        Friday: 5,
+        Saturday: 6
+      };
+      const dayIndex = daysMap[weekdayName] ?? now.getDay();
+
+      if (closedDays && closedDays.includes(dayIndex)) {
+        return false;
+      }
+
+      if (!openingHoursStr) return false;
+      const hoursParts = openingHoursStr.split("-");
+      if (hoursParts.length !== 2) return false;
+
+      const currMinutes = currH * 60 + currM;
+      const [startH, startM] = hoursParts[0].trim().split(":").map(Number);
+      const [endH, endM] = hoursParts[1].trim().split(":").map(Number);
 
       const startMinutes = startH * 60 + startM;
       const endMinutes = endH * 60 + endM;
 
       if (endMinutes < startMinutes) {
-        // Handles overnight hours, e.g. 18:00 - 02:00
         return currMinutes >= startMinutes || currMinutes <= endMinutes;
       }
 
@@ -508,6 +533,16 @@ export default function BrandWebsite() {
   // Launch prefilled checkout text directly into wa.me
   const handlePlaceOrder = () => {
     if (cart.length === 0) return;
+    if (!isOpenNow) {
+      alert(
+        language === "ar"
+          ? "عذراً، المطعم مغلق حالياً ولا يستقبل طلبات."
+          : language === "en"
+          ? "Sorry, the restaurant is currently closed and not accepting orders."
+          : "Entschuldigung, das Restaurant ist derzeit geschlossen und nimmt keine Bestellungen entgegen."
+      );
+      return;
+    }
 
     const isDelivery = orderType === "delivery";
 
@@ -568,6 +603,16 @@ export default function BrandWebsite() {
 
   const handleDirectCheckout = () => {
     if (cart.length === 0) return;
+    if (!isOpenNow) {
+      alert(
+        language === "ar"
+          ? "عذراً، المطعم مغلق حالياً ولا يستقبل طلبات."
+          : language === "en"
+          ? "Sorry, the restaurant is currently closed and not accepting orders."
+          : "Entschuldigung, das Restaurant ist derzeit geschlossen und nimmt keine Bestellungen entgegen."
+      );
+      return;
+    }
     if (!customerPhone.trim()) {
       alert(language === "ar" ? "رقم الهاتف مطلوب" : "Telefonnummer ist erforderlich");
       return;
@@ -1145,6 +1190,24 @@ export default function BrandWebsite() {
                 </div>
               )}
 
+              {!isOpenNow && (
+                <div className="p-3 bg-rose-50 border border-rose-100 text-rose-700 text-[11px] rounded-xl flex items-start gap-2 animate-fade-in">
+                  <span className="text-sm">⚠️</span>
+                  <div className="space-y-0.5">
+                    <p className="font-bold">
+                      {language === "ar" ? "المطعم مغلق حالياً" : language === "en" ? "Restaurant is currently closed" : "Restaurant geschlossen"}
+                    </p>
+                    <p className="text-[10px] leading-relaxed text-rose-600 font-medium">
+                      {language === "ar" 
+                        ? `عذراً، لا يمكن استقبال طلبات خارج ساعات العمل. ساعات العمل: ${branch?.openingHours || ""}`
+                        : language === "en"
+                        ? `Sorry, orders cannot be placed outside of business hours. Opening hours: ${branch?.openingHours || ""}`
+                        : `Leider können außerhalb der Geschäftszeiten keine Bestellungen aufgegeben werden. Öffnungszeiten: ${branch?.openingHours || ""}`}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {placedOrder ? (
                 <div className="py-8 text-center space-y-5 animate-scale-in">
                   <div className="w-16 h-16 bg-emerald-50 text-emerald-500 border border-emerald-100 rounded-full flex items-center justify-center mx-auto shadow-sm animate-pulse-subtle">
@@ -1375,7 +1438,7 @@ export default function BrandWebsite() {
 
                 <button 
                   onClick={handleDirectCheckout}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !isOpenNow}
                   className="w-full bg-brand-primary hover:bg-brand-primary/95 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-98 shadow-md cursor-pointer disabled:opacity-50"
                 >
                   {isSubmitting ? (
@@ -1383,12 +1446,15 @@ export default function BrandWebsite() {
                   ) : (
                     <ShoppingBag size={14} />
                   )}
-                  {language === "ar" ? "تأكيد وإرسال الطلب للمطبخ" : language === "en" ? "Confirm Order Direct (Web)" : "Direkt Bestellen (Web)"}
+                  {!isOpenNow 
+                    ? (language === "ar" ? "المطعم مغلق حالياً" : language === "en" ? "Restaurant is currently closed" : "Restaurant ist derzeit geschlossen")
+                    : (language === "ar" ? "تأكيد وإرسال الطلب للمطبخ" : language === "en" ? "Confirm Order Direct (Web)" : "Direkt Bestellen (Web)")}
                 </button>
 
                 <button 
                   onClick={handlePlaceOrder}
-                  className="w-full bg-slate-900 hover:bg-slate-850 text-white font-bold py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-98 shadow-sm cursor-pointer"
+                  disabled={!isOpenNow}
+                  className="w-full bg-slate-900 hover:bg-slate-850 text-white font-bold py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-98 shadow-sm cursor-pointer disabled:opacity-50"
                 >
                   <MessageSquare size={14} className="text-emerald-400" />
                   {localized.checkoutBtn}

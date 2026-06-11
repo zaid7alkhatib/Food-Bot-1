@@ -35,6 +35,7 @@ export interface Branch {
   paymentMethods: string[];
   isOpen: boolean;
   openingHours: string;
+  closedDays?: number[];
   menuBoardSettings?: MenuBoardSettings;
 }
 
