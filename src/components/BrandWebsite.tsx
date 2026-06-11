@@ -234,6 +234,7 @@ export default function BrandWebsite() {
           dateTime: bookingDateTime,
           tableId: bookingSelectedTableId || undefined,
           notes: bookingNotes,
+          language: language,
         }),
       });
 

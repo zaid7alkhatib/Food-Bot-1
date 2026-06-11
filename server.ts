@@ -1945,7 +1945,7 @@ app.put("/api/reservations/:id", authMiddleware as any, async (req: Authenticate
 // POST /api/public/reservations (customer website booking, unauthenticated)
 app.post("/api/public/reservations", async (req, res) => {
   try {
-    const { branchId, tableId, customerName, whatsAppPhone, guestCount, dateTime, notes } = req.body;
+    const { branchId, tableId, customerName, whatsAppPhone, guestCount, dateTime, notes, language } = req.body;
 
     if (!branchId || !mongoose.isValidObjectId(branchId)) {
       res.status(400).json({ error: "Valid branchId is required" });
@@ -2007,8 +2007,19 @@ app.post("/api/public/reservations", async (req, res) => {
 
     // Send direct WhatsApp confirmation to customer if whatsapp service is linked
     try {
-      const formattedDate = requestedTime.toLocaleString("de-DE", { timeZone: timezone });
-      const confirmationMsg = `*Tischreservierungsbestätigung / Reservation Received*\n\nHallo ${customerName.trim()},\nwir haben Ihre Reservierung für *${guestCount} Personen* am *${formattedDate}* erhalten.\n\nStatus: *Ausstehend / Pending* (Wir melden uns in Kürze!)\n\nDanke für Ihre Wahl,\n${branch.name}`;
+      const lang = (language === "ar" || language === "en" || language === "de") ? language : "de";
+      const formattedDate = requestedTime.toLocaleString(
+        lang === "ar" ? "ar-EG" : lang === "en" ? "en-US" : "de-DE",
+        { timeZone: timezone }
+      );
+      let confirmationMsg = "";
+      if (lang === "ar") {
+        confirmationMsg = `*تم استلام طلب حجز الطاولة*\n\nمرحباً ${customerName.trim()}،\nلقد تلقينا طلب الحجز الخاص بك لـ *${guestCount} أشخاص* في *${formattedDate}*.\n\nالحالة: *قيد الانتظار* (سنقوم بالرد عليك قريباً!)\n\nشكراً لاختيارك،\n${branch.name}`;
+      } else if (lang === "en") {
+        confirmationMsg = `*Table Reservation Request Received*\n\nHello ${customerName.trim()},\nwe have received your reservation request for *${guestCount} guests* on *${formattedDate}*.\n\nStatus: *Pending* (We will confirm shortly!)\n\nThank you for choosing us,\n${branch.name}`;
+      } else {
+        confirmationMsg = `*Tischreservierung erhalten*\n\nHallo ${customerName.trim()},\nwir haben Ihre Reservierung für *${guestCount} Personen* am *${formattedDate}* erhalten.\n\nStatus: *Ausstehend* (Wir melden uns in Kürze!)\n\nDanke für Ihre Wahl,\n${branch.name}`;
+      }
       await sendWhatsAppMessage(branch._id.toString(), whatsAppPhone.trim(), confirmationMsg);
     } catch (waErr) {
       console.warn("[Reservations Webhook] Failed to send auto-WhatsApp confirm:", waErr);
@@ -3504,8 +3515,18 @@ You MUST reply with a JSON object in this exact schema structure:
       try {
         const restaurant = await Restaurant.findById(convo.restaurantId);
         const timezone = restaurant?.timezone || "Europe/Berlin";
-        const formattedDate = resvDate.toLocaleString("de-DE", { timeZone: timezone });
-        const confirmationMsg = `*Tischreservierungsbestätigung / Reservation Received*\n\nHallo ${resv.customerName},\nwir haben Ihre Reservierung für *${resv.guestCount} Personen* am *${formattedDate}* erhalten.\n\nStatus: *Ausstehend / Pending* (Wir melden uns in Kürze!)\n\nDanke für Ihre Wahl,\n${branchConfig.restaurantName}`;
+        const formattedDate = resvDate.toLocaleString(
+          lang === "ar" ? "ar-EG" : lang === "en" ? "en-US" : "de-DE",
+          { timeZone: timezone }
+        );
+        let confirmationMsg = "";
+        if (lang === "ar") {
+          confirmationMsg = `*تم استلام طلب حجز الطاولة*\n\nمرحباً ${resv.customerName.trim()}،\nلقد تلقينا طلب الحجز الخاص بك لـ *${resv.guestCount} أشخاص* في *${formattedDate}*.\n\nالحالة: *قيد الانتظار* (سنقوم بالرد عليك قريباً!)\n\nشكراً لاختيارك،\n${branchConfig.restaurantName}`;
+        } else if (lang === "en") {
+          confirmationMsg = `*Table Reservation Request Received*\n\nHello ${resv.customerName.trim()},\nwe have received your reservation request for *${resv.guestCount} guests* on *${formattedDate}*.\n\nStatus: *Pending* (We will confirm shortly!)\n\nThank you for choosing us,\n${branchConfig.restaurantName}`;
+        } else {
+          confirmationMsg = `*Tischreservierung erhalten*\n\nHallo ${resv.customerName.trim()},\nwir haben Ihre Reservierung für *${resv.guestCount} Personen* am *${formattedDate}* erhalten.\n\nStatus: *Ausstehend* (Wir melden uns in Kürze!)\n\nDanke für Ihre Wahl,\n${branchConfig.restaurantName}`;
+        }
         await sendWhatsAppMessage(convo.branchId.toString(), resv.whatsAppPhone, confirmationMsg);
       } catch (waErr) {
         console.warn("[Reservations Webhook] Failed to send auto-WhatsApp confirm:", waErr);

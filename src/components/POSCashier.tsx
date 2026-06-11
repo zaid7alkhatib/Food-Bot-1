@@ -148,6 +148,8 @@ export default function POSCashier({
           type: "busy",
           message: language === "ar" 
             ? `تنبيه: الطاولة ${selectedTableObj.number} مشغولة حالياً بالطلب #${activeOrder.orderNumber}`
+            : language === "en"
+            ? `Warning: Table ${selectedTableObj.number} is currently occupied by order #${activeOrder.orderNumber}`
             : `Warnung: Tisch ${selectedTableObj.number} ist bereits belegt (Bestellung #${activeOrder.orderNumber}).`
         };
       }
@@ -156,6 +158,8 @@ export default function POSCashier({
           type: "busy",
           message: language === "ar"
             ? `تنبيه: الطاولة ${selectedTableObj.number} مشغولة حالياً بحجز العميل ${seatedResv.customerName}`
+            : language === "en"
+            ? `Warning: Table ${selectedTableObj.number} is currently occupied by reservation for ${seatedResv.customerName}`
             : `Warnung: Tisch ${selectedTableObj.number} ist bereits belegt durch Reservierung von ${seatedResv.customerName}.`
         };
       }
@@ -168,6 +172,8 @@ export default function POSCashier({
           type: "reserved",
           message: language === "ar"
             ? `تنبيه: الطاولة ${selectedTableObj.number} محجوزة قريباً للعميل ${upcoming.customerName} الساعة ${timeStr}`
+            : language === "en"
+            ? `Warning: Table ${selectedTableObj.number} is reserved soon for ${upcoming.customerName} at ${timeStr}`
             : `Warnung: Tisch ${selectedTableObj.number} ist bald reserviert für ${upcoming.customerName} um ${timeStr}.`
         };
       }
@@ -786,7 +792,7 @@ export default function POSCashier({
               <div className="animate-fade-in bg-white border border-gray-100 rounded-xl p-3 shadow-sm space-y-2">
                 <div>
                   <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">
-                    {language === "ar" ? "رقم الطاولة" : "Tischnummer"} *
+                    {language === "ar" ? "رقم الطاولة" : language === "en" ? "Table Number" : "Tischnummer"} *
                   </label>
                   {activeBranch?.reservationEnabled && branchTables.length > 0 ? (
                     <select
@@ -795,21 +801,22 @@ export default function POSCashier({
                       className="w-full bg-slate-50 border border-gray-200 rounded-lg py-1.5 px-3 text-xs focus:outline-none focus:border-orange-500 font-semibold"
                     >
                       <option value="">
-                        {language === "ar" ? "-- اختر طاولة --" : "-- Tisch wählen --"}
+                        {language === "ar" ? "-- اختر طاولة --" : language === "en" ? "-- Select Table --" : "-- Tisch wählen --"}
                       </option>
                       {branchTables.map((t) => {
                         const status = getTableStatus(t);
-                        let label = `Table ${t.number} (${t.capacity}p)`;
-                        if (language === "ar") {
-                          label = `طاولة ${t.number} (${t.capacity} مقاعد)`;
-                        }
+                        let label = language === "ar"
+                          ? `طاولة ${t.number} (${t.capacity} مقاعد)`
+                          : language === "en"
+                          ? `Table ${t.number} (${t.capacity}p)`
+                          : `Tisch ${t.number} (${t.capacity} Plätze)`;
 
                         if (status === "busy") {
-                          label += ` - [${language === "ar" ? "مشغولة 🔴" : "Belegt 🔴"}]`;
+                          label += ` - [${language === "ar" ? "مشغولة 🔴" : language === "en" ? "Occupied 🔴" : "Belegt 🔴"}]`;
                         } else if (status === "reserved") {
-                          label += ` - [${language === "ar" ? "محجوزة قريباً 🟡" : "Bald reserviert 🟡"}]`;
+                          label += ` - [${language === "ar" ? "محجوزة قريباً 🟡" : language === "en" ? "Reserved Soon 🟡" : "Bald reserviert 🟡"}]`;
                         } else {
-                          label += ` - [${language === "ar" ? "متاحة 🟢" : "Frei 🟢"}]`;
+                          label += ` - [${language === "ar" ? "متاحة 🟢" : language === "en" ? "Available 🟢" : "Frei 🟢"}]`;
                         }
 
                         return (
@@ -822,7 +829,7 @@ export default function POSCashier({
                   ) : (
                     <input
                       type="text"
-                      placeholder="e.g. Table 5"
+                      placeholder={language === "ar" ? "مثال: طاولة 5" : language === "en" ? "e.g. Table 5" : "z.B. Tisch 5"}
                       value={tableNumber}
                       onChange={(e) => setTableNumber(e.target.value)}
                       className="w-full bg-slate-50 border border-gray-200 rounded-lg py-1.5 px-3 text-xs focus:outline-none focus:border-orange-500 font-semibold"
@@ -846,11 +853,11 @@ export default function POSCashier({
             {orderType === "pickup" && (
               <div className="animate-fade-in bg-white border border-gray-100 rounded-xl p-3 shadow-sm">
                 <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">
-                  {language === "ar" ? "وقت الاستلام" : "Abholzeit"}
+                  {language === "ar" ? "وقت الاستلام" : language === "en" ? "Pickup Time" : "Abholzeit"}
                 </label>
                 <input
                   type="text"
-                  placeholder={language === "ar" ? "مثال: بعد 20 دقيقة" : "z.B. in 20 min"}
+                  placeholder={language === "ar" ? "مثال: بعد 20 دقيقة" : language === "en" ? "e.g. in 20 min" : "z.B. in 20 min"}
                   value={pickupTime}
                   onChange={(e) => setPickupTime(e.target.value)}
                   className="w-full bg-slate-50 border border-gray-200 rounded-lg py-1.5 px-3 text-xs focus:outline-none focus:border-orange-500 font-semibold"

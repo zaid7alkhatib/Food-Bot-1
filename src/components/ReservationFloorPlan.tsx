@@ -444,7 +444,7 @@ export default function ReservationFloorPlan({
         {/* Canvas Toolbar Controls */}
         <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <h3 className="text-sm font-bold text-gray-800 tracking-wide uppercase">{t("nav.reservations")} - Live Floor Plan</h3>
+            <h3 className="text-sm font-bold text-gray-800 tracking-wide uppercase">{t("nav.reservations")} - {t("reservation.liveFloorPlan")}</h3>
             <span className="flex h-2.5 w-2.5 relative">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
@@ -461,7 +461,7 @@ export default function ReservationFloorPlan({
               }`}
             >
               <Edit2 size={13} />
-              {isEditMode ? "Exit Edit Mode" : "Layout Edit Mode"}
+              {isEditMode ? t("reservation.exitEdit") : t("reservation.editMode")}
             </button>
 
             {isEditMode && (
@@ -470,7 +470,7 @@ export default function ReservationFloorPlan({
                 className="text-xs bg-orange-600 hover:bg-orange-700 text-white px-3 py-1.5 rounded-lg font-semibold transition flex items-center gap-1.5"
               >
                 <Plus size={13} />
-                Add Table
+                {t("reservation.addTable")}
               </button>
             )}
           </div>
@@ -485,7 +485,7 @@ export default function ReservationFloorPlan({
         >
           {/* Section Names Indicators */}
           <div className="absolute top-3 left-4 text-xs font-bold text-gray-400 opacity-50 uppercase tracking-widest pointer-events-none">
-            {sections.join("  |  ") || "Main Dining Area"}
+            {sections.join("  |  ") || t("reservation.mainDining")}
           </div>
 
           {/* Render Tables */}
@@ -544,7 +544,7 @@ export default function ReservationFloorPlan({
                 {/* Micro notification indicators */}
                 {activeOrder && (
                   <span className="absolute -top-1.5 -right-1.5 bg-yellow-400 border border-yellow-300 text-gray-900 text-[8px] font-bold px-1 rounded-full">
-                    Order
+                    {t("reservation.order")}
                   </span>
                 )}
               </div>
@@ -554,8 +554,8 @@ export default function ReservationFloorPlan({
           {/* Empty state instruction inside canvas if no tables */}
           {tables.length === 0 && (
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-8 pointer-events-none">
-              <p className="text-sm text-gray-400">No tables configured in layout yet.</p>
-              {isEditMode && <p className="text-xs text-gray-500 mt-1">Click "Add Table" to start placing tables.</p>}
+              <p className="text-sm text-gray-400">{t("reservation.noTables")}</p>
+              {isEditMode && <p className="text-xs text-gray-500 mt-1">{t("reservation.clickAddTable")}</p>}
             </div>
           )}
         </div>
@@ -567,7 +567,7 @@ export default function ReservationFloorPlan({
               
               <div>
                 <div className="flex items-center gap-2">
-                  <h4 className="text-base font-bold text-gray-900">Table {selectedTable.number}</h4>
+                  <h4 className="text-base font-bold text-gray-900">{t("reservation.table")} {selectedTable.number}</h4>
                   <span className={`text-xs px-2 py-0.5 rounded-full font-bold uppercase ${
                     getTableStatus(selectedTable) === "busy" 
                       ? "bg-red-50 text-red-600" 
@@ -576,15 +576,15 @@ export default function ReservationFloorPlan({
                       : "bg-emerald-50 text-emerald-600"
                   }`}>
                     {getTableStatus(selectedTable) === "busy" 
-                      ? "Seated / Occupied" 
+                      ? t("reservation.seatedOccupied") 
                       : getTableStatus(selectedTable) === "reserved" 
-                      ? "Reserved Soon" 
-                      : "Available"}
+                      ? t("reservation.reservedSoon") 
+                      : t("reservation.available")}
                   </span>
                 </div>
                 
                 <p className="text-xs text-gray-500 mt-1">
-                  Capacity: {selectedTable.capacity} Seats • Shape: {selectedTable.shape} • Section: {selectedTable.section}
+                  {t("reservation.capacitySeats")}: {selectedTable.capacity} • {t("reservation.shape")}: {t("reservation.shape." + selectedTable.shape)} • {t("reservation.sectionName")}: {selectedTable.section}
                 </p>
               </div>
 
@@ -594,7 +594,7 @@ export default function ReservationFloorPlan({
                   className="text-xs bg-gray-50 text-gray-700 border border-gray-200 hover:bg-gray-100 py-1.5 px-3 rounded-lg font-semibold transition flex items-center gap-1.5"
                 >
                   <QrCode size={13} />
-                  Table QR Link
+                  {t("reservation.qrLink")}
                 </button>
                 
                 <button
@@ -602,7 +602,7 @@ export default function ReservationFloorPlan({
                   className="text-xs bg-gray-50 text-gray-700 border border-gray-200 hover:bg-gray-100 py-1.5 px-3 rounded-lg font-semibold transition flex items-center gap-1.5"
                 >
                   <Printer size={13} />
-                  Print Sign
+                  {t("reservation.printSign")}
                 </button>
 
                 <button
@@ -610,7 +610,7 @@ export default function ReservationFloorPlan({
                   className="text-xs bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 py-1.5 px-3 rounded-lg font-semibold transition flex items-center gap-1.5"
                 >
                   <Trash2 size={13} />
-                  Remove
+                  {t("reservation.remove")}
                 </button>
 
                 <button
@@ -629,13 +629,13 @@ export default function ReservationFloorPlan({
                 {getActiveOrderForTable(selectedTable.number) && (
                   <div className="bg-orange-50/50 p-3 rounded-xl border border-orange-100/50">
                     <h5 className="text-xs font-bold text-orange-800 uppercase tracking-wide flex items-center gap-1.5 mb-1.5">
-                      <FileText size={12} /> Live POS Order
+                      <FileText size={12} /> {t("reservation.livePosOrder")}
                     </h5>
                     <p className="text-sm font-bold text-gray-900">
-                      Order #{getActiveOrderForTable(selectedTable.number)?.orderNumber}
+                      {t("reservation.order")} #{getActiveOrderForTable(selectedTable.number)?.orderNumber}
                     </p>
                     <p className="text-xs text-gray-600">
-                      Amount: {getActiveOrderForTable(selectedTable.number)?.total.toFixed(2)}€ • Status: {getActiveOrderForTable(selectedTable.number)?.status}
+                      {t("reservation.amount")}: {getActiveOrderForTable(selectedTable.number)?.total.toFixed(2)}€ • {t("common.status")}: {t("status." + getActiveOrderForTable(selectedTable.number)?.status)}
                     </p>
                   </div>
                 )}
@@ -644,19 +644,19 @@ export default function ReservationFloorPlan({
                 {getSeatedReservationForTable(selectedTable.id) && (
                   <div className="bg-blue-50/50 p-3 rounded-xl border border-blue-100/50">
                     <h5 className="text-xs font-bold text-blue-800 uppercase tracking-wide flex items-center gap-1.5 mb-1.5">
-                      <Calendar size={12} /> Seated Customer Reservation
+                      <Calendar size={12} /> {t("reservation.seatedCustomer")}
                     </h5>
                     <p className="text-sm font-bold text-gray-900">
                       {getSeatedReservationForTable(selectedTable.id)?.customerName}
                     </p>
                     <p className="text-xs text-gray-600">
-                      Guests: {getSeatedReservationForTable(selectedTable.id)?.guestCount} • WhatsApp: {getSeatedReservationForTable(selectedTable.id)?.whatsAppPhone}
+                      {t("reservation.guests")}: {getSeatedReservationForTable(selectedTable.id)?.guestCount} • {t("common.whatsapp")}: {getSeatedReservationForTable(selectedTable.id)?.whatsAppPhone}
                     </p>
                     <button
                       onClick={() => handleUpdateReservationStatus(getSeatedReservationForTable(selectedTable.id)!.id, "completed")}
                       className="mt-2 text-[10px] bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1 rounded font-semibold transition"
                     >
-                      Complete & Free Table
+                      {t("reservation.completeFree")}
                     </button>
                   </div>
                 )}
@@ -669,13 +669,13 @@ export default function ReservationFloorPlan({
       {/* Booking Timeline Sidebar (1 column) */}
       <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Bookings list</h4>
+          <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">{t("reservation.bookingsList")}</h4>
           <button
             onClick={() => setShowAddReservationModal(true)}
             className="text-[11px] bg-orange-600 hover:bg-orange-700 text-white font-bold py-1 px-2.5 rounded-lg flex items-center gap-1 transition"
           >
             <PlusCircle size={12} />
-            Book
+            {t("reservation.book")}
           </button>
         </div>
 
@@ -683,7 +683,7 @@ export default function ReservationFloorPlan({
         <div className="space-y-2">
           <input
             type="text"
-            placeholder="Search booking..."
+            placeholder={t("reservation.searchPlaceholder")}
             value={resvSearch}
             onChange={(e) => setResvSearch(e.target.value)}
             className="w-full bg-gray-50 border border-gray-200 rounded-lg py-1.5 px-3 text-xs focus:outline-none focus:border-orange-500"
@@ -694,12 +694,12 @@ export default function ReservationFloorPlan({
             onChange={(e: any) => setResvFilter(e.target.value)}
             className="w-full bg-gray-50 border border-gray-200 rounded-lg py-1.5 px-3 text-xs focus:outline-none focus:border-orange-500"
           >
-            <option value="all">All statuses</option>
-            <option value="pending">Pending</option>
-            <option value="confirmed">Confirmed</option>
-            <option value="seated">Seated</option>
-            <option value="completed">Completed</option>
-            <option value="cancelled">Cancelled</option>
+            <option value="all">{t("reservation.allStatuses")}</option>
+            <option value="pending">{t("reservation.status.pending")}</option>
+            <option value="confirmed">{t("reservation.status.confirmed")}</option>
+            <option value="seated">{t("reservation.status.seated")}</option>
+            <option value="completed">{t("reservation.status.completed")}</option>
+            <option value="cancelled">{t("reservation.status.cancelled")}</option>
           </select>
         </div>
 
@@ -739,7 +739,7 @@ export default function ReservationFloorPlan({
                       ? "bg-blue-100 text-blue-800"
                       : "bg-gray-200 text-gray-700"
                   }`}>
-                    {resv.status}
+                    {t("reservation.status." + resv.status)}
                   </span>
                 </div>
 
@@ -756,7 +756,7 @@ export default function ReservationFloorPlan({
 
                   {matchedTable && (
                     <span className="bg-gray-100 px-1.5 py-0.2 rounded font-mono text-[9px] text-gray-700">
-                      Table {matchedTable.number}
+                      {t("reservation.table")} {matchedTable.number}
                     </span>
                   )}
                 </div>
@@ -774,7 +774,7 @@ export default function ReservationFloorPlan({
                       onClick={() => handleUpdateReservationStatus(resv.id, "confirmed")}
                       className="text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-0.5 px-2 rounded transition"
                     >
-                      Confirm
+                      {t("reservation.confirm")}
                     </button>
                   )}
 
@@ -786,7 +786,7 @@ export default function ReservationFloorPlan({
                         value={resv.tableId || ""}
                         className="bg-white border border-gray-200 rounded px-1 py-0.5 text-[9px] max-w-[80px]"
                       >
-                        <option value="">Assign Table...</option>
+                        <option value="">{t("reservation.assignTable")}</option>
                         {tables.map((t) => (
                           <option key={t.id} value={t.id}>T{t.number} ({t.capacity}p)</option>
                         ))}
@@ -795,14 +795,14 @@ export default function ReservationFloorPlan({
                       <button
                         onClick={() => {
                           if (!resv.tableId) {
-                            triggerAlert("error", "Please select a table to seat the customer");
+                            triggerAlert("error", t("reservation.alert.selectTable"));
                             return;
                           }
                           handleUpdateReservationStatus(resv.id, "seated");
                         }}
                         className="text-[10px] bg-blue-600 hover:bg-blue-700 text-white font-bold py-0.5 px-2 rounded transition"
                       >
-                        Seat Guest
+                        {t("reservation.seatGuest")}
                       </button>
                     </div>
                   )}
@@ -812,7 +812,7 @@ export default function ReservationFloorPlan({
                       onClick={() => handleUpdateReservationStatus(resv.id, "completed")}
                       className="text-[10px] bg-gray-600 hover:bg-gray-700 text-white font-bold py-0.5 px-2 rounded transition"
                     >
-                      Finish
+                      {t("reservation.finish")}
                     </button>
                   )}
 
@@ -821,7 +821,7 @@ export default function ReservationFloorPlan({
                       onClick={() => handleUpdateReservationStatus(resv.id, "cancelled")}
                       className="text-[10px] text-red-600 hover:bg-red-50 font-bold py-0.5 px-2 rounded transition"
                     >
-                      Cancel
+                      {t("reservation.cancel")}
                     </button>
                   )}
                 </div>
@@ -831,7 +831,7 @@ export default function ReservationFloorPlan({
 
           {filteredReservations.length === 0 && (
             <div className="p-8 text-center text-xs text-gray-400">
-              No reservations found.
+              {t("reservation.noReservations")}
             </div>
           )}
         </div>
@@ -841,11 +841,11 @@ export default function ReservationFloorPlan({
       {showAddTableModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 transition">
           <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl p-6 relative animate-scale-in text-left">
-            <h3 className="text-base font-bold text-gray-900 mb-4 uppercase tracking-wide">Add New Layout Table</h3>
+            <h3 className="text-base font-bold text-gray-900 mb-4 uppercase tracking-wide">{t("reservation.addNewTable")}</h3>
             
             <form onSubmit={handleAddTableSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Table identifier / number</label>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">{t("reservation.tableIdentifier")}</label>
                 <input
                   type="text"
                   placeholder="e.g. T1"
@@ -858,7 +858,7 @@ export default function ReservationFloorPlan({
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Capacity (Seats)</label>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">{t("reservation.capacitySeats")}</label>
                   <input
                     type="number"
                     min={1}
@@ -871,21 +871,21 @@ export default function ReservationFloorPlan({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Shape</label>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">{t("reservation.shape")}</label>
                   <select
                     value={newTableShape}
                     onChange={(e: any) => setNewTableShape(e.target.value)}
                     className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-sm focus:outline-none focus:border-orange-500"
                   >
-                    <option value="square">Square</option>
-                    <option value="round">Round</option>
-                    <option value="rectangle">Rectangle</option>
+                    <option value="square">{t("reservation.shape.square")}</option>
+                    <option value="round">{t("reservation.shape.round")}</option>
+                    <option value="rectangle">{t("reservation.shape.rectangle")}</option>
                   </select>
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Section Area</label>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">{t("reservation.sectionName")}</label>
                 <input
                   type="text"
                   placeholder="e.g. Main Hall"
@@ -901,13 +901,13 @@ export default function ReservationFloorPlan({
                   onClick={() => setShowAddTableModal(false)}
                   className="px-4 py-2 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 text-sm font-semibold transition"
                 >
-                  Cancel
+                  {t("reservation.cancel")}
                 </button>
                 <button
                   type="submit"
                   className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-sm font-semibold transition"
                 >
-                  Save Table
+                  {t("reservation.createTable")}
                 </button>
               </div>
             </form>
@@ -919,11 +919,11 @@ export default function ReservationFloorPlan({
       {showAddReservationModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 transition">
           <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl p-6 relative animate-scale-in text-left">
-            <h3 className="text-base font-bold text-gray-900 mb-4 uppercase tracking-wide font-mono">Create Reservation</h3>
+            <h3 className="text-base font-bold text-gray-900 mb-4 uppercase tracking-wide font-mono">{t("reservation.addManual")}</h3>
             
             <form onSubmit={handleAddReservationSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Customer Name</label>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">{t("reservation.customerName")}</label>
                 <input
                   type="text"
                   placeholder="John Doe"
@@ -935,7 +935,7 @@ export default function ReservationFloorPlan({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">WhatsApp Phone Number</label>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">{t("reservation.phoneNum")}</label>
                 <input
                   type="text"
                   placeholder="+491761234567"
@@ -948,7 +948,7 @@ export default function ReservationFloorPlan({
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Guests Count</label>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">{t("reservation.guestsCount")}</label>
                   <input
                     type="number"
                     min={1}
@@ -960,7 +960,7 @@ export default function ReservationFloorPlan({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Date & Time</label>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">{t("reservation.dateTime")}</label>
                   <input
                     type="datetime-local"
                     required
@@ -972,23 +972,23 @@ export default function ReservationFloorPlan({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Assign Table (Optional)</label>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">{t("reservation.tableOptional")}</label>
                 <select
                   value={newResvTableId}
                   onChange={(e) => setNewResvTableId(e.target.value)}
                   className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-sm focus:outline-none focus:border-orange-500"
                 >
-                  <option value="">Auto-Assign Later / No Table</option>
+                  <option value="">{t("reservation.autoAssignTable")}</option>
                   {tables.map((t) => (
                     <option key={t.id} value={t.id}>
-                      T{t.number} (Capacity: {t.capacity}p)
+                      T{t.number} ({t("reservation.capacitySeats")}: {t.capacity}p)
                     </option>
                   ))}
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Additional Notes</label>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">{t("reservation.additionalNotes")}</label>
                 <textarea
                   placeholder="e.g. allergies, window table preference..."
                   value={newResvNotes}
@@ -1003,13 +1003,13 @@ export default function ReservationFloorPlan({
                   onClick={() => setShowAddReservationModal(false)}
                   className="px-4 py-2 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 text-sm font-semibold transition"
                 >
-                  Cancel
+                  {t("reservation.cancel")}
                 </button>
                 <button
                   type="submit"
                   className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-sm font-semibold transition"
                 >
-                  Save Booking
+                  {t("reservation.confirmBooking")}
                 </button>
               </div>
             </form>
@@ -1028,9 +1028,13 @@ export default function ReservationFloorPlan({
               <X size={20} />
             </button>
 
-            <h3 className="text-base font-bold text-gray-900 mb-2">Table {showQrModal.number} QR Code</h3>
+            <h3 className="text-base font-bold text-gray-900 mb-2">{t("reservation.table")} {showQrModal.number} QR Code</h3>
             <p className="text-xs text-gray-500 mb-6">
-              Customers scanning this code will open the Smart Menu pre-assigned to Table {showQrModal.number}.
+              {language === "ar" 
+                ? `المسح الضوئي لهذا الرمز سيفتح قائمة الطعام الذكية المخصصة لطاولة ${showQrModal.number}.`
+                : language === "en"
+                ? `Customers scanning this code will open the Smart Menu pre-assigned to Table ${showQrModal.number}.`
+                : `Das Scannen dieses Codes öffnet das Smart Menu, das Tisch ${showQrModal.number} zugeordnet ist.`}
             </p>
 
             <div className="bg-gray-50 p-4 rounded-xl inline-block border border-gray-100 mb-6">
@@ -1053,11 +1057,11 @@ export default function ReservationFloorPlan({
                   navigator.clipboard.writeText(
                     `${window.location.origin}/menu?branchId=${branchId}&table=${showQrModal.number}`
                   );
-                  triggerAlert("success", "Link copied to clipboard");
+                  triggerAlert("success", t("reservation.alert.linkCopied"));
                 }}
                 className="flex-1 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition"
               >
-                Copy Link
+                {language === "ar" ? "نسخ الرابط" : language === "en" ? "Copy Link" : "Link kopieren"}
               </button>
               <button
                 onClick={() => {
@@ -1067,7 +1071,7 @@ export default function ReservationFloorPlan({
                 className="flex-1 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5"
               >
                 <Printer size={13} />
-                Print Sign
+                {t("reservation.printSign")}
               </button>
             </div>
           </div>
