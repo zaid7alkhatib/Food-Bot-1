@@ -40,13 +40,93 @@ export default function DashboardOverview({ currencySymbol }: DashboardOverviewP
   const { t } = useI18n();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const [preset, setPreset] = useState<"today" | "yesterday" | "7days" | "30days" | "custom">("today");
+
+  const toLocalDateString = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const [customStart, setCustomStart] = useState(toLocalDateString(new Date()));
+  const [customEnd, setCustomEnd] = useState(toLocalDateString(new Date()));
 
   const token = localStorage.getItem("token");
 
+  const getTodayRange = () => {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
+    return { start, end };
+  };
+
+  const getYesterdayRange = () => {
+    const start = new Date();
+    start.setDate(start.getDate() - 1);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date();
+    end.setDate(end.getDate() - 1);
+    end.setHours(23, 59, 59, 999);
+    return { start, end };
+  };
+
+  const getLast7DaysRange = () => {
+    const start = new Date();
+    start.setDate(start.getDate() - 6);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
+    return { start, end };
+  };
+
+  const getLast30DaysRange = () => {
+    const start = new Date();
+    start.setDate(start.getDate() - 29);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
+    return { start, end };
+  };
+
   useEffect(() => {
     const fetchData = async () => {
+      if (data) setRefreshing(true);
+      else setLoading(true);
+
       try {
-        const res = await fetch("/api/reports/dashboard", {
+        let start: Date;
+        let end: Date;
+
+        if (preset === "today") {
+          const range = getTodayRange();
+          start = range.start;
+          end = range.end;
+        } else if (preset === "yesterday") {
+          const range = getYesterdayRange();
+          start = range.start;
+          end = range.end;
+        } else if (preset === "7days") {
+          const range = getLast7DaysRange();
+          start = range.start;
+          end = range.end;
+        } else if (preset === "30days") {
+          const range = getLast30DaysRange();
+          start = range.start;
+          end = range.end;
+        } else {
+          const s = new Date(customStart);
+          s.setHours(0, 0, 0, 0);
+          const e = new Date(customEnd);
+          e.setHours(23, 59, 59, 999);
+          start = s;
+          end = e;
+        }
+
+        const res = await fetch(`/api/reports/dashboard?startDate=${start.toISOString()}&endDate=${end.toISOString()}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
         if (res.ok) {
@@ -57,12 +137,13 @@ export default function DashboardOverview({ currencySymbol }: DashboardOverviewP
         console.error("Failed to load dashboard reports:", err);
       } finally {
         setLoading(false);
+        setRefreshing(false);
       }
     };
     fetchData();
-  }, [token]);
+  }, [token, preset, customStart, customEnd]);
 
-  if (loading) {
+  if (loading && !data) {
     return (
       <div className="bg-white rounded-xl border border-gray-100 p-12 text-center">
         <div className="w-8 h-8 rounded-full border-4 border-orange-500 border-t-transparent animate-spin mx-auto mb-2"></div>
@@ -105,7 +186,58 @@ export default function DashboardOverview({ currencySymbol }: DashboardOverviewP
   ];
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 transition duration-200 ${refreshing ? "opacity-60 pointer-events-none" : ""}`}>
+      {/* Date Range Selector Bar */}
+      <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-1.5 bg-neutral-100 p-1 rounded-xl">
+          {(["today", "yesterday", "7days", "30days", "custom"] as const).map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => setPreset(p)}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition select-none cursor-pointer ${
+                preset === p
+                  ? "bg-orange-500 text-white shadow-sm"
+                  : "text-neutral-500 hover:text-orange-600 hover:bg-neutral-200"
+              }`}
+            >
+              {p === "today" && t("overview.today")}
+              {p === "yesterday" && t("overview.yesterday")}
+              {p === "7days" && t("overview.last7Days")}
+              {p === "30days" && t("overview.last30Days")}
+              {p === "custom" && t("overview.customRange")}
+            </button>
+          ))}
+        </div>
+
+        {preset === "custom" && (
+          <div className="flex flex-wrap items-center gap-3 animate-fade-in">
+            <div className="flex items-center gap-2">
+              <label className="text-[10px] uppercase font-extrabold text-neutral-400 tracking-wider">
+                {t("overview.startDate")}:
+              </label>
+              <input
+                type="date"
+                value={customStart}
+                onChange={(e) => setCustomStart(e.target.value)}
+                className="bg-neutral-50 px-2.5 py-1.5 border border-neutral-200 rounded-lg text-xs font-medium outline-none text-neutral-800"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-[10px] uppercase font-extrabold text-neutral-400 tracking-wider">
+                {t("overview.endDate")}:
+              </label>
+              <input
+                type="date"
+                value={customEnd}
+                onChange={(e) => setCustomEnd(e.target.value)}
+                className="bg-neutral-50 px-2.5 py-1.5 border border-neutral-200 rounded-lg text-xs font-medium outline-none text-neutral-800"
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Stats cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center gap-4">

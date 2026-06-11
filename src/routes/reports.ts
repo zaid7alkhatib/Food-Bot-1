@@ -6,8 +6,18 @@ const router = Router();
 // GET /api/reports/dashboard
 router.get("/dashboard", async (req, res) => {
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const { startDate, endDate } = req.query;
+
+    const rangeFilter: any = {};
+    if (startDate || endDate) {
+      rangeFilter.createdAt = {};
+      if (startDate) rangeFilter.createdAt.$gte = new Date(startDate as string);
+      if (endDate) rangeFilter.createdAt.$lte = new Date(endDate as string);
+    } else {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      rangeFilter.createdAt = { $gte: today };
+    }
 
     const paidOrdersFilter = {
       $or: [
@@ -16,23 +26,20 @@ router.get("/dashboard", async (req, res) => {
       ]
     };
 
-    const [ordersToday, allOrders, allFeedbacks, allConversations] = await Promise.all([
-      Order.find({ createdAt: { $gte: today }, ...paidOrdersFilter }).lean(),
-      Order.find(paidOrdersFilter).lean(),
-      Feedback.find().lean(),
-      Conversation.find().lean(),
+    const [ordersInRange, allFeedbacks, allConversations] = await Promise.all([
+      Order.find({ ...rangeFilter, ...paidOrdersFilter }).lean(),
+      Feedback.find(rangeFilter.createdAt ? { createdAt: rangeFilter.createdAt } : {}).lean(),
+      Conversation.find(rangeFilter.createdAt ? { updatedAt: rangeFilter.createdAt } : {}).lean(),
     ]);
 
-    const deliveredOrders = allOrders.filter((o) => o.status === "delivered");
+    const deliveredOrders = ordersInRange.filter((o) => o.status === "delivered");
     const totalRevenue = deliveredOrders.reduce((sum, o) => sum + (o.total || 0), 0);
-    const revenueToday = ordersToday
-      .filter((o) => o.status === "delivered")
-      .reduce((sum, o) => sum + (o.total || 0), 0);
-    const activeOrders = allOrders.filter((o) => o.status !== "delivered" && o.status !== "cancelled");
+    const revenueToday = totalRevenue; // range revenue
+    const activeOrders = ordersInRange.filter((o) => o.status !== "delivered" && o.status !== "cancelled");
     const avgOrderValue = deliveredOrders.length > 0 ? totalRevenue / deliveredOrders.length : 0;
 
-    const deliveryCount = allOrders.filter((o) => o.orderType === "delivery").length;
-    const pickupCount = allOrders.filter((o) => o.orderType === "pickup").length;
+    const deliveryCount = ordersInRange.filter((o) => o.orderType === "delivery").length;
+    const pickupCount = ordersInRange.filter((o) => o.orderType === "pickup").length;
 
     const avgFeedback = allFeedbacks.length > 0
       ? allFeedbacks.reduce((sum, f) => sum + f.rating, 0) / allFeedbacks.length
@@ -40,7 +47,7 @@ router.get("/dashboard", async (req, res) => {
 
     // Top selling items
     const itemCounts: Record<string, { name: string; qty: number }> = {};
-    allOrders.forEach((o) => {
+    ordersInRange.forEach((o) => {
       o.items?.forEach((item: any) => {
         const enName = item.name?.en || item.name?.de || "Unknown";
         if (itemCounts[enName]) {
@@ -67,8 +74,8 @@ router.get("/dashboard", async (req, res) => {
 
     res.json({
       revenueToday: Math.round(revenueToday * 100) / 100,
-      totalOrders: allOrders.length,
-      ordersToday: ordersToday.length,
+      totalOrders: ordersInRange.length,
+      ordersToday: ordersInRange.length,
       activeOrders: activeOrders.length,
       avgOrderValue: Math.round(avgOrderValue * 100) / 100,
       totalRevenue: Math.round(totalRevenue * 100) / 100,
