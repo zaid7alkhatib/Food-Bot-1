@@ -909,11 +909,14 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
           <div className="flex items-center gap-2">
             {/* Language switcher */}
             <div className="flex items-center gap-0.5 bg-slate-800/80 rounded-xl p-0.5 border border-slate-700/60 shadow-inner">
-              {(["de", "ar", "en"] as const).map((lang) => (
+              {(restaurant?.supportedLanguages && restaurant.supportedLanguages.length > 0
+                ? restaurant.supportedLanguages
+                : ["de", "ar", "en", "tr"]
+              ).map((lang: any) => (
                 <button
                   key={lang}
                   type="button"
-                  onClick={() => setLanguage(lang)}
+                  onClick={() => setLanguage(lang as any)}
                   className={`h-6 px-2.5 rounded-lg text-[9px] font-bold uppercase transition-all duration-200 select-none cursor-pointer ${
                     language === lang 
                       ? "bg-orange-500 text-white shadow-sm" 

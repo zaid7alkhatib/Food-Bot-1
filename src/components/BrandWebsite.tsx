@@ -178,6 +178,7 @@ interface RestaurantBranding {
   socialTikTok?: string;
   stripeEnabled?: boolean;
   stripePublishableKey?: string;
+  supportedLanguages?: string[];
 }
 
 interface Review {
@@ -875,10 +876,13 @@ export default function BrandWebsite() {
           <div className="flex items-center gap-3">
             {/* Language Switcher */}
             <div className="flex items-center bg-slate-100 rounded-lg p-0.5 border border-slate-200">
-              {(["de", "ar", "en"] as const).map((lang) => (
+              {(restaurant?.supportedLanguages && restaurant.supportedLanguages.length > 0
+                ? restaurant.supportedLanguages
+                : ["de", "ar", "en", "tr"]
+              ).map((lang) => (
                 <button
                   key={lang}
-                  onClick={() => setLanguage(lang)}
+                  onClick={() => setLanguage(lang as any)}
                   className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase transition ${
                     language === lang 
                       ? "bg-brand-primary text-white shadow-sm" 

@@ -74,11 +74,14 @@ export default function LoginPage() {
             {t("login.subtitle")}
           </p>
           <div className="mt-4 inline-flex rounded-xl bg-slate-800 border border-slate-700 p-1">
-            {(["de", "ar", "en"] as const).map((lang) => (
+            {(branding?.supportedLanguages && branding.supportedLanguages.length > 0
+              ? branding.supportedLanguages
+              : ["de", "ar", "en", "tr"]
+            ).map((lang: any) => (
               <button
                 key={lang}
                 type="button"
-                onClick={() => setLanguage(lang)}
+                onClick={() => setLanguage(lang as any)}
                 className={`h-8 min-w-10 px-3 rounded-lg text-[11px] font-bold uppercase transition ${
                   language === lang
                     ? "bg-orange-500 text-white"
