@@ -69,6 +69,22 @@ export default function POSCashier({
     return branches.find(b => b.id === selectedBranchId || b._id === selectedBranchId) || branchInfo;
   }, [branches, selectedBranchId, branchInfo]);
 
+  // POS Layout States
+  const [activeCategory, setActiveCategory] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [cart, setCart] = useState<OrderItem[]>([]);
+  
+  // Checkout/Customer Info States
+  const [customerName, setCustomerName] = useState<string>("");
+  const [customerPhone, setCustomerPhone] = useState<string>("");
+  const [orderType, setOrderType] = useState<OrderType>("dine_in");
+  const [tableNumber, setTableNumber] = useState<string>("");
+  const [pickupTime, setPickupTime] = useState<string>("");
+  const [deliveryAddress, setDeliveryAddress] = useState<string>("");
+  const [paymentMethod, setPaymentMethod] = useState<string>("Cash");
+  const [discountValue, setDiscountValue] = useState<number>(0);
+  const [notes, setNotes] = useState<string>("");
+
   // Filter tables active in the selected branch
   const branchTables = useMemo(() => {
     return tables.filter((t) => (t.branchId === selectedBranchId || t.branchId === activeBranch?.id || t.branchId === activeBranch?._id) && t.isActive);
@@ -158,22 +174,6 @@ export default function POSCashier({
     }
     return null;
   }, [selectedTableObj, orders, reservations, language]);
-
-  // POS Layout States
-  const [activeCategory, setActiveCategory] = useState<string>("all");
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [cart, setCart] = useState<OrderItem[]>([]);
-  
-  // Checkout/Customer Info States
-  const [customerName, setCustomerName] = useState<string>("");
-  const [customerPhone, setCustomerPhone] = useState<string>("");
-  const [orderType, setOrderType] = useState<OrderType>("dine_in");
-  const [tableNumber, setTableNumber] = useState<string>("");
-  const [pickupTime, setPickupTime] = useState<string>("");
-  const [deliveryAddress, setDeliveryAddress] = useState<string>("");
-  const [paymentMethod, setPaymentMethod] = useState<string>("Cash");
-  const [discountValue, setDiscountValue] = useState<number>(0);
-  const [notes, setNotes] = useState<string>("");
 
   // Modifiers & Upsell popup states
   const [selectedItemForMod, setSelectedItemForMod] = useState<MenuItem | null>(null);
