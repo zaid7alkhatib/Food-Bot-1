@@ -135,6 +135,14 @@ function Dashboard() {
   const visibleTabs = TAB_CONFIG.filter((tab) => allowedTabs.includes(tab.id));
   const showSimulator = user?.role === "super_admin" || user?.role === "restaurant_admin" || user?.role === "branch_manager";
   const [activeTab, setActiveTab] = useState<DashboardTab>("overview");
+  const [simulatorVisible, setSimulatorVisible] = useState(() => {
+    const saved = localStorage.getItem("mr_tabboush_simulator_visible");
+    return saved === "true";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("mr_tabboush_simulator_visible", String(simulatorVisible));
+  }, [simulatorVisible]);
 
   // State populated from the server
   const [branchInfo, setBranchInfo] = useState<any>(null);
@@ -569,6 +577,25 @@ function Dashboard() {
               ))}
             </div>
 
+            {/* WhatsApp Simulator Toggle */}
+            {showSimulator && (
+              <button
+                type="button"
+                onClick={() => setSimulatorVisible(!simulatorVisible)}
+                className={`h-9 px-3 rounded-xl border transition flex items-center justify-center gap-1.5 cursor-pointer outline-none select-none ${
+                  simulatorVisible
+                    ? "bg-orange-500 border-orange-400 text-white font-bold"
+                    : "bg-slate-800 border-slate-700 text-slate-400 hover:text-white hover:bg-slate-700"
+                }`}
+                title={t("app.toggleSimulator")}
+              >
+                <Smartphone size={15} />
+                <span className="text-xs hidden md:inline font-bold">
+                  {simulatorVisible ? t("app.simulatorActive") : t("app.simulatorInactive")}
+                </span>
+              </button>
+            )}
+
             {/* User + Logout */}
             {user && (
               <div className="flex items-center gap-2">
@@ -595,9 +622,9 @@ function Dashboard() {
       </header>
 
       {/* Main workspace */}
-      <main className={`flex-1 max-w-7xl w-full mx-auto p-4 grid grid-cols-1 ${showSimulator ? "lg:grid-cols-12" : "lg:grid-cols-1"} gap-6 pb-12`}>
+      <main className={`flex-1 max-w-7xl w-full mx-auto p-4 grid grid-cols-1 ${showSimulator && simulatorVisible ? "lg:grid-cols-12" : "lg:grid-cols-1"} gap-6 pb-12`}>
         {/* Left column: Smartphone simulator */}
-        {showSimulator && (
+        {showSimulator && simulatorVisible && (
         <div className="lg:col-span-4 flex flex-col">
           <div className="sticky top-6 space-y-4">
             <div className="flex items-center justify-between pb-1 border-b border-gray-200">
@@ -633,7 +660,7 @@ function Dashboard() {
         )}
 
         {/* Right column: Admin dashboards */}
-        <div className={`${showSimulator ? "lg:col-span-8" : ""} flex flex-col gap-5`}>
+        <div className={`${showSimulator && simulatorVisible ? "lg:col-span-8" : ""} flex flex-col gap-5`}>
           {/* Tab triggers */}
           <div className="flex flex-wrap border-b border-gray-200 gap-1 select-none">
             {visibleTabs.map(({ id, labelKey, Icon }) => (
