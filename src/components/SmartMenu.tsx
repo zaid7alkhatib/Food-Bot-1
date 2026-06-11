@@ -45,6 +45,9 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
   const [heroTagline, setHeroTagline] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncedSuccess, setIsSyncedSuccess] = useState(false);
+  const [restaurant, setRestaurant] = useState<any>(null);
+  const [showImprintModal, setShowImprintModal] = useState(false);
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
 
   // Cart State
   const [cart, setCart] = useState<OrderItem[]>([]);
@@ -100,6 +103,7 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
           setCurrency(data.currency || { code: "EUR", symbol: "€" });
           setBranchName(data.branch?.name || data.restaurant?.name || "MR. Tabboush");
           if (data.restaurant) {
+            setRestaurant(data.restaurant);
             setRestaurantName(data.restaurant.name || "MR. Tabboush");
             setLogoUrl(data.restaurant.logo || "");
             setHeroTagline(data.restaurant.heroTagline || null);
@@ -764,8 +768,13 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
           </button>
         </main>
 
-        <footer className="py-4 text-center text-[9px] text-neutral-400 border-t border-stone-200/40 mt-auto bg-stone-100 select-none">
-          {restaurantName.toUpperCase()} SMART TABLE MENU
+        <footer className="py-4 text-center text-[9px] text-neutral-400 border-t border-stone-200/40 mt-auto bg-stone-100 select-none flex flex-col gap-1.5 items-center justify-center">
+          <div>{restaurantName.toUpperCase()} SMART TABLE MENU</div>
+          <div className="flex gap-3 text-[10px] text-neutral-500 font-light">
+            <button onClick={() => setShowImprintModal(true)} className="hover:text-slate-900 transition cursor-pointer bg-transparent border-none p-0 outline-none">{language === "ar" ? "إخلاء المسؤولية" : language === "en" ? "Imprint" : "Impressum"}</button>
+            <span>•</span>
+            <button onClick={() => setShowPrivacyModal(true)} className="hover:text-slate-900 transition cursor-pointer bg-transparent border-none p-0 outline-none">{language === "ar" ? "الخصوصية" : language === "en" ? "Privacy Policy" : "Datenschutz"}</button>
+          </div>
         </footer>
 
         {/* Service Request Drawer Modal */}
@@ -1461,6 +1470,115 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
                 className="flex-1 py-2.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-xl transition shadow-md cursor-pointer active:scale-95"
               >
                 {language === "ar" ? "نعم، أضف للوجبة" : "Ja, hinzufügen"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Impressum Modal */}
+      {showImprintModal && (
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-55 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-xl max-h-[85vh] overflow-y-auto p-6 shadow-2xl border border-neutral-100 flex flex-col relative animate-fade-in text-neutral-800">
+            <h3 className="font-serif font-extrabold text-base text-slate-900 border-b border-slate-100 pb-3 mb-4 flex items-center justify-between">
+              <span>{language === "ar" ? "إخلاء المسؤولية" : language === "en" ? "Imprint" : "Impressum"}</span>
+              <button 
+                onClick={() => setShowImprintModal(false)}
+                className="text-slate-400 hover:text-slate-600 text-sm font-sans font-bold cursor-pointer bg-transparent border-none p-0"
+              >
+                ✕
+              </button>
+            </h3>
+            
+            <div className="text-xs text-slate-700 space-y-4 leading-relaxed font-sans text-left">
+              <div>
+                <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[9px] mb-1">Angaben gemäß § 5 DDG</h4>
+                <p className="font-medium text-slate-800">{restaurant?.legalName || restaurant?.name || restaurantName}</p>
+                <p>{restaurant?.address || "Berliner Str. 179, 42277 Wuppertal"}</p>
+              </div>
+              
+              <div>
+                <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[9px] mb-1">Vertreten durch</h4>
+                <p>{language === "ar" ? "إدارة المطعم" : "Geschäftsführung"}</p>
+              </div>
+
+              <div>
+                <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[9px] mb-1">Kontakt</h4>
+                <p>{language === "ar" ? "الهاتف" : "Telefon"}: {restaurant?.phone || restaurant?.whatsappNumber}</p>
+                {restaurant?.email && (
+                  <p>{language === "ar" ? "البريد الإلكتروني" : "E-Mail"}: {restaurant.email}</p>
+                )}
+              </div>
+
+              <div>
+                <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[9px] mb-1">Umsatzsteuer-ID</h4>
+                <p>Umsatzsteuer-Identifikationsnummer gemäß § 27 a Umsatzsteuergesetz: DE318947510 (Muster-ID)</p>
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 text-[10px] text-slate-400">
+                <p>{language === "ar" ? "إخلاء المسؤولية: على الرغم من الرقابة الدقيقة على المحتوى، لا نتحمل أي مسؤولية عن محتوى الروابط الخارجية." : "Haftungsausschluss: Trotz sorgfältiger inhaltlicher Kontrolle übernehmen wir keine Haftung für die Inhalte externer Links. Für den Inhalt der verlinkten Seiten sind ausschließlich deren Betreiber verantwortlich."}</p>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => setShowImprintModal(false)}
+                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold cursor-pointer transition shadow"
+              >
+                {language === "ar" ? "إغلاق" : "Schließen"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Privacy Policy Modal */}
+      {showPrivacyModal && (
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-55 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-xl max-h-[85vh] overflow-y-auto p-6 shadow-2xl border border-neutral-100 flex flex-col relative animate-fade-in text-neutral-800">
+            <h3 className="font-serif font-extrabold text-base text-slate-900 border-b border-slate-100 pb-3 mb-4 flex items-center justify-between">
+              <span>{language === "ar" ? "الخصوصية" : language === "en" ? "Privacy Policy" : "Datenschutz"}</span>
+              <button 
+                onClick={() => setShowPrivacyModal(false)}
+                className="text-slate-400 hover:text-slate-600 text-sm font-sans font-bold cursor-pointer bg-transparent border-none p-0"
+              >
+                ✕
+              </button>
+            </h3>
+            
+            <div className="text-xs text-slate-700 space-y-4 leading-relaxed font-sans overflow-y-auto max-h-[45vh] pr-2 text-left">
+              <div>
+                <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[9px] mb-1">1. Datenschutz auf einen Blick</h4>
+                <p>Wir nehmen den Schutz Ihrer persönlichen Daten sehr ernst. Personenbezogene Daten werden auf dieser Website nur im technisch notwendigen Umfang (z. B. für den Bestellprozess über WhatsApp oder die Tischreservierung) verarbeitet.</p>
+              </div>
+
+              <div>
+                <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[9px] mb-1">2. Verantwortliche Stelle</h4>
+                <p className="font-medium text-slate-800">{restaurant?.legalName || restaurant?.name || restaurantName}</p>
+                <p>{restaurant?.address}</p>
+                <p>E-Mail: {restaurant?.email || "info@mr-tabboush.de"}</p>
+              </div>
+
+              <div>
+                <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[9px] mb-1">3. Erhebung und Verarbeitung von Daten</h4>
+                <ul className="list-disc pl-4 space-y-1">
+                  <li><strong>WhatsApp-Bestellungen:</strong> Wenn Sie Ihre Bestellung über den Smart Menu Service abschicken, werden die von Ihnen eingegebenen Daten (Name, Telefonnummer, Lieferadresse) zur Generierung des Bestelltexts und zur vertraglichen Abwicklung verarbeitet (Art. 6 Abs. 1 lit. b DSGVO).</li>
+                  <li><strong>Tischreservierung:</strong> Name, WhatsApp-Telefonnummer und Datum der Reservierung werden zur Bereitstellung des Reservierungsdienstes verarbeitet.</li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[9px] mb-1">4. Ihre Rechte</h4>
+                <p>Sie haben jederzeit das Recht auf unentgeltliche Auskunft über Herkunft, Empfänger und Zweck Ihrer gespeicherten personenbezogenen Daten sowie ein Recht auf Berichtigung, Sperrung oder Löschung dieser Daten. Wenden Sie sich hierzu an den im Impressum angegebenen Kontakt.</p>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => setShowPrivacyModal(false)}
+                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold cursor-pointer transition shadow"
+              >
+                {language === "ar" ? "إغلاق" : "Schließen"}
               </button>
             </div>
           </div>
