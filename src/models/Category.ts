@@ -5,6 +5,7 @@ const TranslationSchema = new Schema(
     ar: { type: String, default: "" },
     de: { type: String, default: "" },
     en: { type: String, default: "" },
+    tr: { type: String, default: "" },
   },
   { _id: false }
 );
@@ -12,8 +13,8 @@ const TranslationSchema = new Schema(
 export interface ICategory extends Document {
   restaurantId: mongoose.Types.ObjectId;
   branchIds: mongoose.Types.ObjectId[];
-  name: { ar: string; de: string; en: string };
-  description?: { ar: string; de: string; en: string };
+  name: { ar: string; de: string; en: string; tr?: string };
+  description?: { ar: string; de: string; en: string; tr?: string };
   sortOrder: number;
   image?: string;
   isActive: boolean;

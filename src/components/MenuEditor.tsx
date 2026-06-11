@@ -20,10 +20,10 @@ const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1561651823-34fed022540
 function emptyUpsellSuggestion(): UpsellSuggestion {
   return {
     id: `up-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
-    suggestedItemName: { ar: "", de: "", en: "" },
+    suggestedItemName: { ar: "", de: "", en: "", tr: "" },
     suggestedItemId: "",
     price: 0,
-    description: { ar: "", de: "", en: "" },
+    description: { ar: "", de: "", en: "", tr: "" },
     isActive: true,
   };
 }
@@ -35,10 +35,11 @@ function normalizeUpsellSuggestions(upsells: UpsellSuggestion[] = []): UpsellSug
       ar: upsell.suggestedItemName?.ar || "",
       de: upsell.suggestedItemName?.de || "",
       en: upsell.suggestedItemName?.en || "",
+      tr: upsell.suggestedItemName?.tr || "",
     },
     suggestedItemId: upsell.suggestedItemId || "",
     price: Number(upsell.price) || 0,
-    description: upsell.description || { ar: "", de: "", en: "" },
+    description: upsell.description || { ar: "", de: "", en: "", tr: "" },
     isActive: upsell.isActive !== false,
   }));
 }
@@ -50,6 +51,7 @@ function normalizeModifierGroups(groups: ModifierGroup[] = []): ModifierGroup[] 
       ar: g.name?.ar || "",
       de: g.name?.de || "",
       en: g.name?.en || "",
+      tr: g.name?.tr || "",
     },
     type: g.type === "multiple" ? "multiple" : "single",
     isRequired: g.isRequired === true,
@@ -61,6 +63,7 @@ function normalizeModifierGroups(groups: ModifierGroup[] = []): ModifierGroup[] 
         ar: opt.name?.ar || "",
         de: opt.name?.de || "",
         en: opt.name?.en || "",
+        tr: opt.name?.tr || "",
       },
       priceAdjustment: Number(opt.priceAdjustment) || 0,
     })),
@@ -86,9 +89,11 @@ export default function MenuEditor({
   const [nameAr, setNameAr] = useState("");
   const [nameDe, setNameDe] = useState("");
   const [nameEn, setNameEn] = useState("");
+  const [nameTr, setNameTr] = useState("");
   const [descAr, setDescAr] = useState("");
   const [descDe, setDescDe] = useState("");
   const [descEn, setDescEn] = useState("");
+  const [descTr, setDescTr] = useState("");
   const [basePrice, setBasePrice] = useState(0);
   const [sku, setSku] = useState("");
   const [isBestSeller, setIsBestSeller] = useState(false);
@@ -100,11 +105,13 @@ export default function MenuEditor({
   const [categoryNameAr, setCategoryNameAr] = useState("");
   const [categoryNameDe, setCategoryNameDe] = useState("");
   const [categoryNameEn, setCategoryNameEn] = useState("");
+  const [categoryNameTr, setCategoryNameTr] = useState("");
   const [categoryDescAr, setCategoryDescAr] = useState("");
   const [categoryDescDe, setCategoryDescDe] = useState("");
   const [categoryDescEn, setCategoryDescEn] = useState("");
+  const [categoryDescTr, setCategoryDescTr] = useState("");
 
-  const [activeTranslationTab, setActiveTranslationTab] = useState<"de" | "ar" | "en">("de");
+  const [activeTranslationTab, setActiveTranslationTab] = useState<"de" | "ar" | "en" | "tr">("de");
 
   useEffect(() => {
     if (categories.length === 0) {
@@ -124,9 +131,11 @@ export default function MenuEditor({
     setNameAr(item.name.ar);
     setNameDe(item.name.de);
     setNameEn(item.name.en);
+    setNameTr(item.name.tr || "");
     setDescAr(item.description.ar);
     setDescDe(item.description.de);
     setDescEn(item.description.en);
+    setDescTr(item.description.tr || "");
     setBasePrice(item.basePrice);
     setSku(item.skucode);
     setIsBestSeller(item.isBestSeller);
@@ -141,9 +150,11 @@ export default function MenuEditor({
     setCategoryNameAr("فئة جديدة");
     setCategoryNameDe("Neue Kategorie");
     setCategoryNameEn("New Category");
+    setCategoryNameTr("Yeni Kategori");
     setCategoryDescAr("");
     setCategoryDescDe("");
     setCategoryDescEn("");
+    setCategoryDescTr("");
   };
 
   const handleStartEditCategory = (category: Category) => {
@@ -151,15 +162,17 @@ export default function MenuEditor({
     setCategoryNameAr(category.name.ar || "");
     setCategoryNameDe(category.name.de || "");
     setCategoryNameEn(category.name.en || "");
+    setCategoryNameTr(category.name.tr || "");
     setCategoryDescAr(category.description?.ar || "");
     setCategoryDescDe(category.description?.de || "");
     setCategoryDescEn(category.description?.en || "");
+    setCategoryDescTr(category.description?.tr || "");
   };
 
   const handleSaveCategory = () => {
     const payload: Partial<Category> = {
-      name: { ar: categoryNameAr, de: categoryNameDe, en: categoryNameEn },
-      description: { ar: categoryDescAr, de: categoryDescDe, en: categoryDescEn },
+      name: { ar: categoryNameAr, de: categoryNameDe, en: categoryNameEn, tr: categoryNameTr },
+      description: { ar: categoryDescAr, de: categoryDescDe, en: categoryDescEn, tr: categoryDescTr },
       sortOrder: editingCategoryId === "new" ? categories.length + 1 : categories.find((category) => category.id === editingCategoryId)?.sortOrder || 0,
       isActive: true,
     };
@@ -188,14 +201,14 @@ export default function MenuEditor({
 
   const handleSaveEdit = (id: string) => {
     onUpdateItem(id, {
-      name: { ar: nameAr, de: nameDe, en: nameEn },
-      description: { ar: descAr, de: descDe, en: descEn },
+      name: { ar: nameAr, de: nameDe, en: nameEn, tr: nameTr },
+      description: { ar: descAr, de: descDe, en: descEn, tr: descTr },
       basePrice: Number(basePrice),
       image: imageUrl.trim(),
       skucode: sku,
       preparationTimeMinutes: Number(prepMinutes) || 0,
       isBestSeller,
-      upsellSuggestions: normalizeUpsellSuggestions(upsellDrafts).filter((upsell) => upsell.suggestedItemName.ar || upsell.suggestedItemName.de || upsell.suggestedItemName.en),
+      upsellSuggestions: normalizeUpsellSuggestions(upsellDrafts).filter((upsell) => upsell.suggestedItemName.ar || upsell.suggestedItemName.de || upsell.suggestedItemName.en || upsell.suggestedItemName.tr),
       modifierGroups: normalizeModifierGroups(modGroupsDraft),
     });
     setEditingItemId(null);
@@ -205,7 +218,7 @@ export default function MenuEditor({
     setUpsellDrafts((prev) => prev.map((upsell, i) => i === index ? { ...upsell, ...patch } : upsell));
   };
 
-  const updateUpsellName = (index: number, lang: "ar" | "de" | "en", value: string) => {
+  const updateUpsellName = (index: number, lang: "ar" | "de" | "en" | "tr", value: string) => {
     setUpsellDrafts((prev) => prev.map((upsell, i) => i === index
       ? { ...upsell, suggestedItemName: { ...upsell.suggestedItemName, [lang]: value } }
       : upsell
@@ -232,7 +245,7 @@ export default function MenuEditor({
       ...prev,
       {
         id: `mod-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
-        name: { ar: "", de: "", en: "" },
+        name: { ar: "", de: "", en: "", tr: "" },
         type: "single",
         isRequired: false,
         minSelections: 0,
@@ -250,7 +263,7 @@ export default function MenuEditor({
   };
 
   // Helper to update a modifier group's name translation
-  const handleUpdateModGroupName = (index: number, lang: "ar" | "de" | "en", value: string) => {
+  const handleUpdateModGroupName = (index: number, lang: "ar" | "de" | "en" | "tr", value: string) => {
     setModGroupsDraft((prev) =>
       prev.map((g, i) =>
         i === index
@@ -276,7 +289,7 @@ export default function MenuEditor({
             ...g.options,
             {
               id: `opt-${Math.random().toString(36).slice(2, 8)}`,
-              name: { ar: "", de: "", en: "" },
+              name: { ar: "", de: "", en: "", tr: "" },
               priceAdjustment: 0,
             },
           ],
@@ -308,7 +321,7 @@ export default function MenuEditor({
   const handleUpdateModOptionName = (
     groupIndex: number,
     optionIndex: number,
-    lang: "ar" | "de" | "en",
+    lang: "ar" | "de" | "en" | "tr",
     value: string
   ) => {
     setModGroupsDraft((prev) =>
@@ -342,11 +355,12 @@ export default function MenuEditor({
   const handleAddNewItem = () => {
     const defaultNew: Partial<MenuItem> = {
       categoryId: activeCategoryId,
-      name: { ar: "شاورما جديدة", de: "Neues Shawarma", en: "New Shawarma" },
+      name: { ar: "شاورما جديدة", de: "Neues Shawarma", en: "New Shawarma", tr: "Yeni Shawarma" },
       description: {
         ar: "تفاصيل الساندويتش اللذيذ",
         de: "Leckerer neuer Shawarma Wrap",
         en: "Tasty classic new custom wrapper",
+        tr: "Lezzetli yeni Shawarma Dürüm",
       },
       basePrice: 5.90,
       image: "https://images.unsplash.com/photo-1561651823-34fed0225408?w=500&auto=format&fit=crop",
@@ -389,7 +403,7 @@ export default function MenuEditor({
         </div>
         {editingCategoryId && (
           <div className="p-3 bg-orange-50/60 border-b border-orange-100 space-y-2">
-            <div className="grid grid-cols-3 gap-1">
+            <div className="grid grid-cols-4 gap-1">
               <input
                 type="text"
                 value={categoryNameDe}
@@ -411,6 +425,13 @@ export default function MenuEditor({
                 placeholder="EN"
                 className="min-w-0 bg-white p-2 border border-orange-100 rounded text-[11px] outline-none"
               />
+              <input
+                type="text"
+                value={categoryNameTr}
+                onChange={(e) => setCategoryNameTr(e.target.value)}
+                placeholder="TR"
+                className="min-w-0 bg-white p-2 border border-orange-100 rounded text-[11px] outline-none"
+              />
             </div>
             <textarea
               rows={2}
@@ -419,6 +440,7 @@ export default function MenuEditor({
                 setCategoryDescDe(e.target.value);
                 setCategoryDescAr((prev) => prev || e.target.value);
                 setCategoryDescEn((prev) => prev || e.target.value);
+                setCategoryDescTr((prev) => prev || e.target.value);
               }}
               placeholder={t("common.description")}
               className="w-full bg-white p-2 border border-orange-100 rounded text-[11px] outline-none"
@@ -538,7 +560,7 @@ export default function MenuEditor({
                         </span>
                         
                         <div className="flex gap-1">
-                          {(["de", "ar", "en"] as const).map((lang) => (
+                          {(["de", "ar", "en", "tr"] as const).map((lang) => (
                             <button
                               key={lang}
                               type="button"
@@ -619,6 +641,29 @@ export default function MenuEditor({
                               rows={2}
                               value={descEn}
                               onChange={(e) => setDescEn(e.target.value)}
+                              className="w-full bg-white p-2 border border-neutral-300 rounded outline-none font-sans"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {activeTranslationTab === "tr" && (
+                        <div className="space-y-2">
+                          <div>
+                            <label className="block text-[10px] text-gray-400 font-bold mb-1">{t("menu.nameTr")}:</label>
+                            <input
+                              type="text"
+                              value={nameTr}
+                              onChange={(e) => setNameTr(e.target.value)}
+                              className="w-full bg-white p-2 border border-neutral-300 rounded outline-none font-sans"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] text-gray-400 font-bold mb-1">{t("menu.descTr")}:</label>
+                            <textarea
+                              rows={2}
+                              value={descTr}
+                              onChange={(e) => setDescTr(e.target.value)}
                               className="w-full bg-white p-2 border border-neutral-300 rounded outline-none font-sans"
                             />
                           </div>

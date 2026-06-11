@@ -5,6 +5,7 @@ const TranslationSchema = new Schema(
     ar: { type: String, default: "" },
     de: { type: String, default: "" },
     en: { type: String, default: "" },
+    tr: { type: String, default: "" },
   },
   { _id: false }
 );
@@ -48,8 +49,8 @@ const UpsellSuggestionSchema = new Schema(
 export interface IMenuItem extends Document {
   restaurantId: mongoose.Types.ObjectId;
   categoryId: mongoose.Types.ObjectId;
-  name: { ar: string; de: string; en: string };
-  description: { ar: string; de: string; en: string };
+  name: { ar: string; de: string; en: string; tr?: string };
+  description: { ar: string; de: string; en: string; tr?: string };
   basePrice: number;
   image?: string;
   skucode: string;

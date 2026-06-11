@@ -2,6 +2,7 @@ export interface Translation {
   ar: string;
   de: string;
   en: string;
+  tr?: string;
 }
 
 export type UserRole = "super_admin" | "restaurant_admin" | "branch_manager" | "staff" | "support_agent";
@@ -61,7 +62,7 @@ export interface MenuBoardPromoSlide {
 export interface MenuBoardSettings {
   enabled: boolean;
   languageMode: "fixed" | "rotate" | "bilingual";
-  fixedLanguage: "ar" | "de" | "en";
+  fixedLanguage: "ar" | "de" | "en" | "tr";
   rotationSeconds: number;
   tickerEnabled: boolean;
   tickerText: Translation;
@@ -200,7 +201,7 @@ export interface Conversation {
   whatsAppJid?: string;
   whatsAppPhoneJid?: string;
   whatsAppLid?: string;
-  customerLanguage?: "ar" | "de" | "en";
+  customerLanguage?: "ar" | "de" | "en" | "tr";
   botEnabled: boolean;
   assignedTo?: string;
   takeoverReason?: string;
@@ -216,7 +217,7 @@ export interface Campaign {
   title: string;
   description?: string;
   segment?: "all" | "active" | "dormant";
-  language: "all" | "ar" | "de" | "en";
+  language: "all" | "ar" | "de" | "en" | "tr";
   message: Translation;
   scheduledTime?: string;
   status: "draft" | "sending" | "sent";
