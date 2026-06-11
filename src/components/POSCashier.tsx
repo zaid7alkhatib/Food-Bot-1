@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useI18n } from "../i18n";
-import { Category, MenuItem, Branch, OrderItem, ModifierGroup, ModifierOption, OrderType, Order } from "../types";
+import { Category, MenuItem, Branch, OrderItem, ModifierGroup, ModifierOption, OrderType, Order, Table, Reservation } from "../types";
 
 interface POSCashierProps {
   categories: Category[];
@@ -29,6 +29,9 @@ interface POSCashierProps {
   branches: any[];
   currencySymbol: string;
   token: string | null;
+  tables?: Table[];
+  reservations?: Reservation[];
+  orders?: Order[];
   onOrderPlaced: () => void;
 }
 
@@ -39,6 +42,9 @@ export default function POSCashier({
   branches,
   currencySymbol,
   token,
+  tables = [],
+  reservations = [],
+  orders = [],
   onOrderPlaced
 }: POSCashierProps) {
   const { language, t, text, dir } = useI18n();
@@ -62,6 +68,96 @@ export default function POSCashier({
   const activeBranch = useMemo(() => {
     return branches.find(b => b.id === selectedBranchId || b._id === selectedBranchId) || branchInfo;
   }, [branches, selectedBranchId, branchInfo]);
+
+  // Filter tables active in the selected branch
+  const branchTables = useMemo(() => {
+    return tables.filter((t) => (t.branchId === selectedBranchId || t.branchId === activeBranch?.id || t.branchId === activeBranch?._id) && t.isActive);
+  }, [tables, selectedBranchId, activeBranch]);
+
+  // Helper to determine active order at table
+  const getActiveOrderForTable = (tableNum: string) => {
+    return orders.find(
+      (o) =>
+        o.orderType === "dine_in" &&
+        o.tableNumber === tableNum &&
+        !["delivered", "cancelled"].includes(o.status)
+    );
+  };
+
+  // Helper to determine current seated reservation
+  const getSeatedReservationForTable = (tableId: string) => {
+    return reservations.find(
+      (r) => r.tableId === tableId && r.status === "seated"
+    );
+  };
+
+  // Helper to determine upcoming reservation (next 45 minutes)
+  const getUpcomingReservationForTable = (tableId: string) => {
+    const now = new Date();
+    const fortyFiveMinutesLater = new Date(now.getTime() + 45 * 60 * 1000);
+
+    return reservations.find((r) => {
+      if (r.tableId !== tableId || ["cancelled", "completed"].includes(r.status)) return false;
+      const resvTime = new Date(r.dateTime);
+      return resvTime >= now && resvTime <= fortyFiveMinutesLater;
+    });
+  };
+
+  // Determine Table Color Status
+  const getTableStatus = (table: Table) => {
+    const activeOrder = getActiveOrderForTable(table.number);
+    const seatedResv = getSeatedReservationForTable(table.id);
+    if (activeOrder || seatedResv) {
+      return "busy";
+    }
+    const upcoming = getUpcomingReservationForTable(table.id);
+    if (upcoming) {
+      return "reserved";
+    }
+    return "free";
+  };
+
+  const selectedTableObj = useMemo(() => {
+    return branchTables.find(t => t.number === tableNumber);
+  }, [branchTables, tableNumber]);
+
+  const selectedTableConflict = useMemo(() => {
+    if (!selectedTableObj) return null;
+    const status = getTableStatus(selectedTableObj);
+    if (status === "busy") {
+      const activeOrder = getActiveOrderForTable(selectedTableObj.number);
+      const seatedResv = getSeatedReservationForTable(selectedTableObj.id);
+      if (activeOrder) {
+        return {
+          type: "busy",
+          message: language === "ar" 
+            ? `تنبيه: الطاولة ${selectedTableObj.number} مشغولة حالياً بالطلب #${activeOrder.orderNumber}`
+            : `Warnung: Tisch ${selectedTableObj.number} ist bereits belegt (Bestellung #${activeOrder.orderNumber}).`
+        };
+      }
+      if (seatedResv) {
+        return {
+          type: "busy",
+          message: language === "ar"
+            ? `تنبيه: الطاولة ${selectedTableObj.number} مشغولة حالياً بحجز العميل ${seatedResv.customerName}`
+            : `Warnung: Tisch ${selectedTableObj.number} ist bereits belegt durch Reservierung von ${seatedResv.customerName}.`
+        };
+      }
+    }
+    if (status === "reserved") {
+      const upcoming = getUpcomingReservationForTable(selectedTableObj.id);
+      if (upcoming) {
+        const timeStr = new Date(upcoming.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return {
+          type: "reserved",
+          message: language === "ar"
+            ? `تنبيه: الطاولة ${selectedTableObj.number} محجوزة قريباً للعميل ${upcoming.customerName} الساعة ${timeStr}`
+            : `Warnung: Tisch ${selectedTableObj.number} ist bald reserviert für ${upcoming.customerName} um ${timeStr}.`
+        };
+      }
+    }
+    return null;
+  }, [selectedTableObj, orders, reservations, language]);
 
   // POS Layout States
   const [activeCategory, setActiveCategory] = useState<string>("all");
@@ -687,17 +783,63 @@ export default function POSCashier({
 
             {/* Dynamic fields based on Order Type */}
             {orderType === "dine_in" && (
-              <div className="animate-fade-in bg-white border border-gray-100 rounded-xl p-3 shadow-sm">
-                <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">
-                  {language === "ar" ? "رقم الطاولة" : "Tischnummer"} *
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Table 5"
-                  value={tableNumber}
-                  onChange={(e) => setTableNumber(e.target.value)}
-                  className="w-full bg-slate-50 border border-gray-200 rounded-lg py-1.5 px-3 text-xs focus:outline-none focus:border-orange-500 font-semibold"
-                />
+              <div className="animate-fade-in bg-white border border-gray-100 rounded-xl p-3 shadow-sm space-y-2">
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">
+                    {language === "ar" ? "رقم الطاولة" : "Tischnummer"} *
+                  </label>
+                  {activeBranch?.reservationEnabled && branchTables.length > 0 ? (
+                    <select
+                      value={tableNumber}
+                      onChange={(e) => setTableNumber(e.target.value)}
+                      className="w-full bg-slate-50 border border-gray-200 rounded-lg py-1.5 px-3 text-xs focus:outline-none focus:border-orange-500 font-semibold"
+                    >
+                      <option value="">
+                        {language === "ar" ? "-- اختر طاولة --" : "-- Tisch wählen --"}
+                      </option>
+                      {branchTables.map((t) => {
+                        const status = getTableStatus(t);
+                        let label = `Table ${t.number} (${t.capacity}p)`;
+                        if (language === "ar") {
+                          label = `طاولة ${t.number} (${t.capacity} مقاعد)`;
+                        }
+
+                        if (status === "busy") {
+                          label += ` - [${language === "ar" ? "مشغولة 🔴" : "Belegt 🔴"}]`;
+                        } else if (status === "reserved") {
+                          label += ` - [${language === "ar" ? "محجوزة قريباً 🟡" : "Bald reserviert 🟡"}]`;
+                        } else {
+                          label += ` - [${language === "ar" ? "متاحة 🟢" : "Frei 🟢"}]`;
+                        }
+
+                        return (
+                          <option key={t.id} value={t.number}>
+                            {label}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      placeholder="e.g. Table 5"
+                      value={tableNumber}
+                      onChange={(e) => setTableNumber(e.target.value)}
+                      className="w-full bg-slate-50 border border-gray-200 rounded-lg py-1.5 px-3 text-xs focus:outline-none focus:border-orange-500 font-semibold"
+                    />
+                  )}
+                </div>
+
+                {selectedTableConflict && (
+                  <div className={`p-2 rounded-lg text-[10px] font-semibold flex items-start gap-1.5 border transition animate-fade-in ${
+                    selectedTableConflict.type === "busy"
+                      ? "bg-red-50 border-red-100 text-red-800"
+                      : "bg-amber-50 border-amber-100 text-amber-800"
+                  }`}>
+                    <AlertCircle size={12} className="shrink-0 mt-0.5" />
+                    <span>{selectedTableConflict.message}</span>
+                  </div>
+                )}
               </div>
             )}
 

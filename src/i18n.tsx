@@ -34,6 +34,7 @@ const dictionaries: Record<AppLanguage, TranslationMap> = {
 
     "nav.overview": "Übersicht",
     "nav.orders": "Live-Bestellungen",
+    "nav.reservations": "Reservierungen",
     "nav.pos": "POS Kasse",
     "nav.chat": "Live-Chats",
     "nav.campaigns": "Marketing",
@@ -139,6 +140,7 @@ const dictionaries: Record<AppLanguage, TranslationMap> = {
     "branch.minOrder": "Mindestbestellwert (€)",
     "branch.pickupPayment": "Abholung & Zahlung",
     "branch.pickupEnabled": "Abholung aktiv",
+    "branch.reservationEnabled": "Reservierungen aktiv",
     "branch.paymentNote": "Zahlungsarten werden pro Filiale verwaltet. Standardmäßig werden Barzahlung bei Lieferung und Barzahlung bei Abholung unterstützt.",
 
     "restaurant.title": "Restaurant-Einstellungen",
@@ -202,6 +204,7 @@ const dictionaries: Record<AppLanguage, TranslationMap> = {
     "smartMenu.welcome.whatsapp.desc": "Tapsen Sie auf unserer Speisekarte, wählen Sie Ihre Gerichte und wir synchronisieren sie direkt mit Ihrem WhatsApp-Chat.",
     "smartMenu.welcome.dineIn.title": "Bestellen Sie direkt am Tisch",
     "smartMenu.welcome.dineIn.desc": "Wählen Sie Ihre Lieblingsgerichte, wir bringen sie frisch zubereitet an Ihren Tisch.",
+    "smartMenu.tableReservedWarning": "Dieser Tisch ist für {time} reserviert. Sie können trotzdem bestellen oder das Personal bitten, Sie umzusetzen.",
     "orders.sendCartToWhatsApp": "Warenkorb an WhatsApp senden",
     "orders.cartSyncedTitle": "Warenkorb synchronisiert!",
     "orders.cartSyncedMessage": "Wir haben Ihre Auswahl geladen. Bitte kehren Sie zu Ihrem WhatsApp-Chat zurück, um Ihre Bestellung zu bestätigen und abzuschließen.",
@@ -410,6 +413,7 @@ const dictionaries: Record<AppLanguage, TranslationMap> = {
 
     "nav.overview": "نظرة عامة",
     "nav.orders": "الطلبات المباشرة",
+    "nav.reservations": "الحجوزات",
     "nav.pos": "نقاط البيع",
     "nav.chat": "المحادثات",
     "nav.campaigns": "التسويق",
@@ -515,6 +519,7 @@ const dictionaries: Record<AppLanguage, TranslationMap> = {
     "branch.minOrder": "الحد الأدنى (€)",
     "branch.pickupPayment": "الاستلام والدفع",
     "branch.pickupEnabled": "الاستلام مفعّل",
+    "branch.reservationEnabled": "تفعيل الحجوزات",
     "branch.paymentNote": "طرق الدفع تدار لكل فرع. النظام يدعم الدفع نقداً عند التوصيل أو الاستلام افتراضياً.",
 
     "restaurant.title": "إعدادات المطعم",
@@ -578,6 +583,7 @@ const dictionaries: Record<AppLanguage, TranslationMap> = {
     "smartMenu.welcome.whatsapp.desc": "تصفح قائمتنا المميزة، اختر وجباتك، وسنقوم بمزامنتها مع محادثة واتساب لإتمام الطلب.",
     "smartMenu.welcome.dineIn.title": "اطلب طعامك طازجاً من طاولتك",
     "smartMenu.welcome.dineIn.desc": "تصفح قائمتنا المميزة وسيتم تحضير وجبتك وتقديمها فوراً.",
+    "smartMenu.tableReservedWarning": "هذه الطاولة محجوزة في {time}. لا يزال بإمكانك الطلب أو طلب تغيير الطاولة من الموظف.",
     "orders.sendCartToWhatsApp": "إرسال السلة إلى واتساب",
     "orders.cartSyncedTitle": "تمت مزامنة السلة!",
     "orders.cartSyncedMessage": "لقد قمنا بتحميل اختياراتك. يرجى العودة إلى محادثة واتساب لتأكيد طلبك وإتمامه.",
@@ -786,6 +792,7 @@ const dictionaries: Record<AppLanguage, TranslationMap> = {
 
     "nav.overview": "Overview",
     "nav.orders": "Live Orders",
+    "nav.reservations": "Reservations",
     "nav.pos": "POS Cashier",
     "nav.chat": "Live Chats",
     "nav.campaigns": "Marketing",
@@ -891,6 +898,7 @@ const dictionaries: Record<AppLanguage, TranslationMap> = {
     "branch.minOrder": "Min Order (€)",
     "branch.pickupPayment": "Pickup & Payment",
     "branch.pickupEnabled": "Pickup Enabled",
+    "branch.reservationEnabled": "Reservations Enabled",
     "branch.paymentNote": "Payment methods are currently managed per branch. The system supports Cash on Delivery and Cash on Pickup by default.",
 
     "restaurant.title": "Restaurant Settings",
@@ -954,6 +962,7 @@ const dictionaries: Record<AppLanguage, TranslationMap> = {
     "smartMenu.welcome.whatsapp.desc": "Browse our menu, select your favorite dishes, and we will sync them directly with your WhatsApp chat.",
     "smartMenu.welcome.dineIn.title": "Order directly from your table",
     "smartMenu.welcome.dineIn.desc": "Select your favorite dishes and we will bring them freshly prepared to your table.",
+    "smartMenu.tableReservedWarning": "This table is reserved for {time}. You can still order or ask staff to re-assign you.",
     "orders.sendCartToWhatsApp": "Send Cart to WhatsApp",
     "orders.cartSyncedTitle": "Cart Synced!",
     "orders.cartSyncedMessage": "We have loaded your selections. Please return to your WhatsApp chat to confirm and finalize your order.",

@@ -14,6 +14,7 @@ interface Branch {
   openingHours: string;
   closedDays?: number[];
   pickupEnabled: boolean;
+  reservationEnabled?: boolean;
   deliveryEnabled: boolean;
   deliveryRadiusKm: number;
   deliveryFee: number;
@@ -375,7 +376,7 @@ export default function BranchSettings() {
             <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">{t("branch.pickupPayment")}</h4>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col gap-3">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
@@ -384,6 +385,16 @@ export default function BranchSettings() {
                 className="w-4 h-4 text-orange-600 rounded border-gray-300 focus:ring-orange-500"
               />
               <span className="text-sm font-medium text-gray-700">{t("branch.pickupEnabled")}</span>
+            </label>
+
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={selectedBranch.reservationEnabled || false}
+                onChange={(e) => updateField("reservationEnabled", e.target.checked)}
+                className="w-4 h-4 text-orange-600 rounded border-gray-300 focus:ring-orange-500"
+              />
+              <span className="text-sm font-medium text-gray-700">{t("branch.reservationEnabled")}</span>
             </label>
           </div>
 

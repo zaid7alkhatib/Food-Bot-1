@@ -8,3 +8,5 @@ export { default as Conversation } from "./Conversation";
 export { default as Campaign } from "./Campaign";
 export { default as Feedback } from "./Feedback";
 export { default as WhatsAppSession } from "./WhatsAppSession";
+export { default as Table } from "./Table";
+export { default as Reservation } from "./Reservation";

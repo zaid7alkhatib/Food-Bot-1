@@ -235,3 +235,36 @@ export interface Feedback {
   status: "pending" | "resolved";
   createdAt: string;
 }
+
+export interface Table {
+  id: string;
+  _id?: string;
+  branchId: string;
+  number: string;
+  capacity: number;
+  shape: "square" | "round" | "rectangle";
+  posX: number;
+  posY: number;
+  section: string;
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface Reservation {
+  id: string;
+  _id?: string;
+  branchId: string;
+  tableId?: string;
+  customerName: string;
+  whatsAppPhone: string;
+  guestCount: number;
+  dateTime: string;
+  durationMinutes: number;
+  status: "pending" | "confirmed" | "seated" | "cancelled" | "completed";
+  source: "website" | "whatsapp" | "dashboard";
+  notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+

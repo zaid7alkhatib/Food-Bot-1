@@ -68,6 +68,7 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
   // Order Placement State
   const [placedOrder, setPlacedOrder] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [upcomingReservation, setUpcomingReservation] = useState<any>(null);
   const socketRef = useRef<Socket | null>(null);
 
   // Service Request State (Call Waiter / Request Bill)
@@ -75,6 +76,16 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
   const [isServiceSubmitting, setIsServiceSubmitting] = useState(false);
   const [serviceSuccessMsg, setServiceSuccessMsg] = useState<string | null>(null);
   const [activeServiceRequests, setActiveServiceRequests] = useState<string[]>([]);
+
+  // Load upcoming table reservation conflicts
+  useEffect(() => {
+    if (tableNumber && branchId) {
+      fetch(`/api/public/tables/upcoming-reservation?branchId=${branchId}&tableNumber=${tableNumber}`)
+        .then((res) => res.json())
+        .then((data) => setUpcomingReservation(data.upcoming || null))
+        .catch((err) => console.error("Failed to load upcoming table reservation:", err));
+    }
+  }, [tableNumber, branchId]);
 
   // Load public menu
   useEffect(() => {
@@ -911,6 +922,23 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
       {/* Main Content Layout */}
       <main className="flex-1 max-w-md w-full mx-auto px-4 py-4 flex flex-col gap-5">
         
+        {/* Table Reservation Conflict Warning */}
+        {upcomingReservation && (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-amber-900 shadow-sm flex items-start gap-3 animate-scale-in text-left">
+            <span className="text-xl shrink-0">⚠️</span>
+            <div className="space-y-1 text-xs">
+              <h4 className="font-bold">
+                {language === "ar" ? "تنبيه طاولة محجوزة" : language === "en" ? "Upcoming Table Reservation" : "Tisch reserviert"}
+              </h4>
+              <p className="text-amber-800 leading-relaxed">
+                {t("smartMenu.tableReservedWarning", {
+                  time: new Date(upcomingReservation.dateTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                })}
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Welcome greeting card */}
         <div className="bg-gradient-to-br from-slate-900 via-slate-850 to-orange-950/40 border border-orange-500/10 rounded-2xl p-5 text-white shadow-lg relative overflow-hidden flex items-center gap-4 animate-scale-in">
           {/* Subtle grid pattern background */}

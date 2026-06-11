@@ -16,6 +16,7 @@ import {
   Building2,
   Users,
   Calculator,
+  Calendar,
 } from "lucide-react";
 import { io, Socket } from "socket.io-client";
 import PhoneSimulator from "./components/PhoneSimulator";
@@ -35,14 +36,16 @@ import MenuBoard from "./components/MenuBoard";
 import MenuBoardSettings from "./components/MenuBoardSettings";
 import BrandWebsite from "./components/BrandWebsite";
 import POSCashier from "./components/POSCashier";
+import ReservationFloorPlan from "./components/ReservationFloorPlan";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { I18nProvider, useI18n, AppLanguage } from "./i18n";
-import { Order, OrderStatus, Conversation, MenuItem, Category, Campaign, Feedback, UserRole } from "./types";
+import { Order, OrderStatus, Conversation, MenuItem, Category, Campaign, Feedback, UserRole, Table, Reservation } from "./types";
 
 type DashboardTab =
   | "overview"
   | "orders"
   | "pos"
+  | "reservations"
   | "chat"
   | "campaigns"
   | "menu"
@@ -54,10 +57,10 @@ type DashboardTab =
   | "users";
 
 const ROLE_TABS: Record<UserRole, DashboardTab[]> = {
-  super_admin: ["overview", "orders", "pos", "chat", "campaigns", "menu", "menuBoard", "hardware", "whatsapp", "settings", "restaurant", "users"],
-  restaurant_admin: ["overview", "orders", "pos", "chat", "campaigns", "menu", "menuBoard", "hardware", "whatsapp", "settings", "restaurant", "users"],
-  branch_manager: ["overview", "orders", "pos", "chat", "menu", "menuBoard", "hardware", "settings"],
-  staff: ["orders", "pos", "hardware"],
+  super_admin: ["overview", "orders", "pos", "reservations", "chat", "campaigns", "menu", "menuBoard", "hardware", "whatsapp", "settings", "restaurant", "users"],
+  restaurant_admin: ["overview", "orders", "pos", "reservations", "chat", "campaigns", "menu", "menuBoard", "hardware", "whatsapp", "settings", "restaurant", "users"],
+  branch_manager: ["overview", "orders", "pos", "reservations", "chat", "menu", "menuBoard", "hardware", "settings"],
+  staff: ["orders", "pos", "reservations", "hardware"],
   support_agent: ["chat"],
 };
 
@@ -69,6 +72,7 @@ const TAB_CONFIG: {
   { id: "overview", labelKey: "nav.overview", Icon: TrendingUp },
   { id: "orders", labelKey: "nav.orders", Icon: ShoppingBag },
   { id: "pos", labelKey: "nav.pos", Icon: Calculator },
+  { id: "reservations", labelKey: "nav.reservations", Icon: Calendar },
   { id: "chat", labelKey: "nav.chat", Icon: MessageSquare },
   { id: "campaigns", labelKey: "nav.campaigns", Icon: Megaphone },
   { id: "menu", labelKey: "nav.menu", Icon: Settings },
@@ -142,6 +146,8 @@ function Dashboard() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
+  const [tables, setTables] = useState<Table[]>([]);
+  const [reservations, setReservations] = useState<Reservation[]>([]);
   const [currencySymbol, setCurrencySymbol] = useState("€");
   const [geminiStatus, setGeminiStatus] = useState(false);
   const [socketConnected, setSocketConnected] = useState(false);
@@ -192,6 +198,8 @@ function Dashboard() {
         setConversations(normalizeConversations(data.conversations));
         setCampaigns(data.campaigns);
         setFeedbacks(data.feedbacks);
+        setTables(data.tables || []);
+        setReservations(data.reservations || []);
         setGeminiStatus(data.geminiStatus);
       }
     } catch (err) {
@@ -251,6 +259,32 @@ function Dashboard() {
 
     socket.on("menu:updated", () => {
       fetchSystemState();
+    });
+
+    socket.on("table:update", (table: Table) => {
+      setTables((prev) => [
+        table,
+        ...prev.filter((t) => t.id !== table.id && t._id !== table._id),
+      ]);
+    });
+
+    socket.on("table:delete", ({ id }: { id: string }) => {
+      setTables((prev) => prev.filter((t) => t.id !== id && t._id !== id));
+    });
+
+    socket.on("reservation:new", (resv: Reservation) => {
+      setReservations((prev) => [
+        resv,
+        ...prev.filter((r) => r.id !== resv.id && r._id !== resv._id),
+      ].sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime()));
+    });
+
+    socket.on("reservation:update", (resv: Reservation) => {
+      setReservations((prev) =>
+        prev
+          .map((r) => (r.id === resv.id || r._id === resv._id ? resv : r))
+          .sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime())
+      );
     });
 
     // Fallback polling every 10s if socket is disconnected
@@ -651,6 +685,9 @@ function Dashboard() {
                     branches={branches}
                     currencySymbol={currencySymbol}
                     token={token}
+                    tables={tables}
+                    reservations={reservations}
+                    orders={orders}
                     onOrderPlaced={() => {
                       fetchSystemState();
                       setActiveTab("orders");
@@ -701,6 +738,17 @@ function Dashboard() {
                 )}
 
                 {activeTab === "whatsapp" && <WhatsAppSessions />}
+
+                {activeTab === "reservations" && (
+                  <ReservationFloorPlan
+                    branchId={branchInfo?._id}
+                    tables={tables}
+                    reservations={reservations}
+                    orders={orders}
+                    authHeaders={authHeaders}
+                    branch={branchInfo}
+                  />
+                )}
 
                 {activeTab === "settings" && <BranchSettings />}
 

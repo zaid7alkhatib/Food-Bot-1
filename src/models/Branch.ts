@@ -61,6 +61,7 @@ export interface IBranch extends Document {
   whatsappSessionId?: string;
   openingHours: string;
   closedDays: number[];
+  reservationEnabled: boolean;
   pickupEnabled: boolean;
   deliveryEnabled: boolean;
   deliveryRadiusKm: number;
@@ -111,6 +112,7 @@ const BranchSchema = new Schema<IBranch>(
     whatsappSessionId: String,
     openingHours: { type: String, default: "12:00 - 22:30" },
     closedDays: { type: [Number], default: [] },
+    reservationEnabled: { type: Boolean, default: false },
     pickupEnabled: { type: Boolean, default: true },
     deliveryEnabled: { type: Boolean, default: true },
     deliveryRadiusKm: { type: Number, default: 4 },

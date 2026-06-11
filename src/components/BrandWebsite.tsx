@@ -190,6 +190,72 @@ export default function BrandWebsite() {
   const [placedOrder, setPlacedOrder] = useState<any>(null);
   const [paymentError, setPaymentError] = useState<string | null>(null);
 
+  // Table Booking States
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const [bookingName, setBookingName] = useState("");
+  const [bookingPhone, setBookingPhone] = useState("");
+  const [bookingGuests, setBookingGuests] = useState(2);
+  const [bookingDateTime, setBookingDateTime] = useState("");
+  const [bookingNotes, setBookingNotes] = useState("");
+  const [bookingTables, setBookingTables] = useState<any[]>([]);
+  const [bookingSelectedTableId, setBookingSelectedTableId] = useState("");
+  const [bookingSuccess, setBookingSuccess] = useState(false);
+  const [bookingError, setBookingError] = useState("");
+  const [isBookingLoading, setIsBookingLoading] = useState(false);
+
+  useEffect(() => {
+    if (branch && (branch._id || branch.id)) {
+      const bId = branch._id || branch.id;
+      fetch(`/api/public/tables?branchId=${bId}`)
+        .then((res) => res.json())
+        .then((data) => setBookingTables(data || []))
+        .catch((err) => console.error("Failed to load tables for booking:", err));
+    }
+  }, [branch]);
+
+  const handleBookingSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bookingName.trim() || !bookingPhone.trim() || !bookingDateTime) {
+      setBookingError(language === "ar" ? "الاسم والهاتف والتاريخ مطلوبين" : "Name, phone, and date/time are required");
+      return;
+    }
+    setIsBookingLoading(true);
+    setBookingError("");
+    try {
+      const bId = branch._id || branch.id;
+      const res = await fetch("/api/public/reservations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          branchId: bId,
+          customerName: bookingName,
+          whatsAppPhone: bookingPhone,
+          guestCount: bookingGuests,
+          dateTime: bookingDateTime,
+          tableId: bookingSelectedTableId || undefined,
+          notes: bookingNotes,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setBookingSuccess(true);
+        setBookingName("");
+        setBookingPhone("");
+        setBookingGuests(2);
+        setBookingDateTime("");
+        setBookingNotes("");
+        setBookingSelectedTableId("");
+      } else {
+        setBookingError(data.error || "Failed to submit reservation request");
+      }
+    } catch (err: any) {
+      setBookingError(err.message || "Network error");
+    } finally {
+      setIsBookingLoading(false);
+    }
+  };
+
   useEffect(() => {
     try {
       localStorage.setItem("brand_cart", JSON.stringify(cart));
@@ -761,6 +827,14 @@ export default function BrandWebsite() {
             <button onClick={() => scrollToSection("location")} className="hover:text-brand-primary transition">
               {localized.contactTitle}
             </button>
+            {branch?.reservationEnabled && (
+              <button 
+                onClick={() => setIsBookingModalOpen(true)} 
+                className="hover:text-brand-primary transition text-brand-primary font-bold border border-brand-primary/20 bg-brand-primary/5 py-1 px-3 rounded-lg"
+              >
+                {language === "ar" ? "حجز طاولة" : language === "en" ? "Book Table" : "Tisch reservieren"}
+              </button>
+            )}
           </nav>
 
           {/* Header Action CTAs */}
@@ -822,6 +896,14 @@ export default function BrandWebsite() {
             <button onClick={() => scrollToSection("location")} className="text-left py-2 hover:text-brand-primary">
               {localized.contactTitle}
             </button>
+            {branch?.reservationEnabled && (
+              <button 
+                onClick={() => { setIsBookingModalOpen(true); setIsMobileMenuOpen(false); }} 
+                className="text-left py-2 text-brand-primary font-bold"
+              >
+                {language === "ar" ? "حجز طاولة" : language === "en" ? "Book Table" : "Tisch reservieren"}
+              </button>
+            )}
           </div>
         )}
       </header>
@@ -1691,6 +1773,176 @@ export default function BrandWebsite() {
         </div>
       </footer>
 
+    {/* Table Booking Modal Overlay */}
+      {isBookingModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 transition duration-300">
+          <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl p-6 relative animate-scale-in text-left border border-slate-100 max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => {
+                setIsBookingModalOpen(false);
+                setBookingSuccess(false);
+                setBookingError("");
+              }}
+              className="absolute top-4 right-4 p-1 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition cursor-pointer"
+            >
+              <X size={20} />
+            </button>
+
+            <h3 className="text-xl font-serif font-bold text-slate-900 mb-2 flex items-center gap-2">
+              <span>📅</span>
+              {language === "ar" ? "حجز طاولة" : language === "en" ? "Book a Table" : "Tisch reservieren"}
+            </h3>
+            
+            <p className="text-xs text-slate-500 mb-6">
+              {language === "ar" 
+                ? "احجز طاولتك مجاناً في ثوانٍ. سنرسل لك رسالة تأكيد عبر واتساب فوراً." 
+                : language === "en" 
+                ? "Reserve your dining table online. Receive instant status updates on WhatsApp." 
+                : "Reservieren Sie Ihren Tisch online. Sie erhalten den Status direkt per WhatsApp."}
+            </p>
+
+            {bookingSuccess ? (
+              <div className="space-y-4 text-center py-6">
+                <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-2xl">
+                  ✓
+                </div>
+                <h4 className="text-sm font-bold text-slate-900">
+                  {language === "ar" ? "تم استلام طلب الحجز!" : language === "en" ? "Booking Request Sent!" : "Reservierungsanfrage gesendet!"}
+                </h4>
+                <p className="text-xs text-slate-500 max-w-xs mx-auto">
+                  {language === "ar" 
+                    ? "لقد استلمنا طلب الحجز الخاص بك. سنقوم بمراجعة الطلب وإرسال تأكيد الحجز لك عبر واتساب." 
+                    : language === "en" 
+                    ? "We have received your table request. Please check WhatsApp for confirmation shortly." 
+                    : "Wir haben Ihre Reservierungsanfrage erhalten. Eine Bestätigung wird Ihnen in Kürze per WhatsApp zugesandt."}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsBookingModalOpen(false);
+                    setBookingSuccess(false);
+                  }}
+                  className="w-full mt-4 bg-brand-primary text-white font-bold py-2.5 rounded-xl text-xs hover:bg-brand-primary/95 transition cursor-pointer"
+                >
+                  {language === "ar" ? "إغلاق" : language === "en" ? "Close" : "Schließen"}
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleBookingSubmit} className="space-y-4">
+                {bookingError && (
+                  <div className="p-3 bg-red-50 border border-red-100 text-red-700 text-xs font-semibold rounded-xl flex items-center gap-1.5">
+                    <span>⚠️</span>
+                    {bookingError}
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                    {language === "ar" ? "الاسم الكامل" : language === "en" ? "Full Name" : "Vollständiger Name"} *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. John Doe"
+                    value={bookingName}
+                    onChange={(e) => setBookingName(e.target.value)}
+                    className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:border-brand-primary text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                    {language === "ar" ? "رقم هاتف واتساب" : language === "en" ? "WhatsApp Number" : "WhatsApp-Nummer"} *
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    placeholder="e.g. +491761234567"
+                    value={bookingPhone}
+                    onChange={(e) => setBookingPhone(e.target.value)}
+                    className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:border-brand-primary text-xs"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                      {language === "ar" ? "عدد الضيوف" : language === "en" ? "Guest Count" : "Personenanzahl"}
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={25}
+                      required
+                      value={bookingGuests}
+                      onChange={(e) => setBookingGuests(Number(e.target.value))}
+                      className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:border-brand-primary text-xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                      {language === "ar" ? "التاريخ والوقت" : language === "en" ? "Date & Time" : "Datum & Uhrzeit"} *
+                    </label>
+                    <input
+                      type="datetime-local"
+                      required
+                      value={bookingDateTime}
+                      onChange={(e) => setBookingDateTime(e.target.value)}
+                      className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:border-brand-primary text-xs"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                    {language === "ar" ? "اختيار الطاولة (اختياري)" : language === "en" ? "Select Preferred Table (Optional)" : "Bevorzugten Tisch wählen (Optional)"}
+                  </label>
+                  <select
+                    value={bookingSelectedTableId}
+                    onChange={(e) => setBookingSelectedTableId(e.target.value)}
+                    className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:border-brand-primary text-xs"
+                  >
+                    <option value="">
+                      {language === "ar" ? "أي طاولة متاحة" : language === "en" ? "Any available table" : "Jeder freie Tisch"}
+                    </option>
+                    {bookingTables.map((t) => (
+                      <option key={t.id || t._id} value={t.id || t._id}>
+                        {language === "ar" 
+                          ? `طاولة ${t.number} (${t.capacity} أشخاص)` 
+                          : language === "en" 
+                          ? `Table ${t.number} (${t.capacity} guests)` 
+                          : `Tisch ${t.number} (${t.capacity} Personen)`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                    {language === "ar" ? "ملاحظات إضافية" : language === "en" ? "Additional Notes" : "Zusätzliche Wünsche"}
+                  </label>
+                  <textarea
+                    placeholder="e.g. Baby seat, allergy notes..."
+                    value={bookingNotes}
+                    onChange={(e) => setBookingNotes(e.target.value)}
+                    className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:border-brand-primary text-xs h-16 resize-none"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isBookingLoading}
+                  className="w-full bg-brand-primary text-white font-bold py-3 rounded-xl text-xs hover:bg-brand-primary/95 transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 font-serif"
+                >
+                  {isBookingLoading && <span className="animate-spin text-xs">🌀</span>}
+                  {language === "ar" ? "إرسال طلب الحجز" : language === "en" ? "Request Reservation" : "Tisch anfragen"}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
