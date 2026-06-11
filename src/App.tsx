@@ -553,7 +553,7 @@ function Dashboard() {
             </div>
 
             <div className="flex items-center gap-1 bg-slate-800 border border-slate-700 rounded-xl p-1" title={t("app.language")}>
-              {(["de", "ar", "en"] as AppLanguage[]).map((lang) => (
+              {(["de", "ar", "en", "tr"] as AppLanguage[]).map((lang) => (
                 <button
                   key={lang}
                   type="button"

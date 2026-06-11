@@ -20,11 +20,11 @@ interface Restaurant {
   googleMapsReviewLink?: string;
   taxVatRate?: number;
   orderPrefix?: string;
-  heroTagline?: { ar: string; de: string; en: string };
+  heroTagline?: { ar: string; de: string; en: string; tr?: string };
   heroBannerImage?: string;
   heroOpacity?: number;
-  aboutSubtitle?: { ar: string; de: string; en: string };
-  aboutText?: { ar: string; de: string; en: string };
+  aboutSubtitle?: { ar: string; de: string; en: string; tr?: string };
+  aboutText?: { ar: string; de: string; en: string; tr?: string };
   aboutImage?: string;
   aboutFeatures?: string[];
   socialInstagram?: string;
@@ -97,9 +97,9 @@ export default function RestaurantSettings() {
     setRestaurant({ ...restaurant, [field]: value });
   };
 
-  const updateNestedField = (field: "heroTagline" | "aboutText" | "aboutSubtitle", lang: "ar" | "de" | "en", value: string) => {
+  const updateNestedField = (field: "heroTagline" | "aboutText" | "aboutSubtitle", lang: "ar" | "de" | "en" | "tr", value: string) => {
     if (!restaurant) return;
-    const current = restaurant[field] || { ar: "", de: "", en: "" };
+    const current = restaurant[field] || { ar: "", de: "", en: "", tr: "" };
     setRestaurant({
       ...restaurant,
       [field]: {
@@ -317,7 +317,7 @@ export default function RestaurantSettings() {
           <div>
             <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">{t("restaurant.supportedLanguages")}</label>
             <div className="flex gap-2">
-              {["ar", "de", "en"].map((lang) => (
+              {["ar", "de", "en", "tr"].map((lang) => (
                 <button
                   key={lang}
                   onClick={() => toggleLanguage(lang)}
@@ -572,6 +572,16 @@ export default function RestaurantSettings() {
                     className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-orange-500 mt-1"
                   />
                 </div>
+                <div>
+                  <span className="text-[10px] font-bold text-gray-400 uppercase">Turkish (TR)</span>
+                  <input
+                    type="text"
+                    value={restaurant.heroTagline?.tr || ""}
+                    onChange={(e) => updateNestedField("heroTagline", "tr", e.target.value)}
+                    placeholder="Enfes Suriye Mutfağı"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-orange-500 mt-1"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-3 gap-3">
@@ -667,6 +677,16 @@ export default function RestaurantSettings() {
                     className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-orange-500 mt-1"
                   />
                 </div>
+                <div>
+                  <span className="text-[10px] font-bold text-gray-400 uppercase">Turkish (TR)</span>
+                  <input
+                    type="text"
+                    value={restaurant.aboutSubtitle?.tr || ""}
+                    onChange={(e) => updateNestedField("aboutSubtitle", "tr", e.target.value)}
+                    placeholder="Tutkuyla hazırlanan otantik lezzetler"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-orange-500 mt-1"
+                  />
+                </div>
               </div>
 
               <div className="border-t border-gray-100 pt-4 mt-2">
@@ -699,6 +719,16 @@ export default function RestaurantSettings() {
                   value={restaurant.aboutText?.en || ""}
                   onChange={(e) => updateNestedField("aboutText", "en", e.target.value)}
                   placeholder="We bring you..."
+                  rows={3}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-orange-500 mt-1 resize-y"
+                />
+              </div>
+              <div>
+                <span className="text-[10px] font-bold text-gray-400 uppercase">Turkish (TR)</span>
+                <textarea
+                  value={restaurant.aboutText?.tr || ""}
+                  onChange={(e) => updateNestedField("aboutText", "tr", e.target.value)}
+                  placeholder="Size sunuyoruz..."
                   rows={3}
                   className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-orange-500 mt-1 resize-y"
                 />

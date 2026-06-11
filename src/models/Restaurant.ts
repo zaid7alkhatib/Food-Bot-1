@@ -18,11 +18,11 @@ export interface IRestaurant extends Document {
   googleMapsReviewLink?: string;
   taxVatRate?: number;
   orderPrefix?: string;
-  heroTagline?: { ar: string; de: string; en: string };
+  heroTagline?: { ar: string; de: string; en: string; tr?: string };
   heroBannerImage?: string;
   heroOpacity?: number;
-  aboutSubtitle?: { ar: string; de: string; en: string };
-  aboutText?: { ar: string; de: string; en: string };
+  aboutSubtitle?: { ar: string; de: string; en: string; tr?: string };
+  aboutText?: { ar: string; de: string; en: string; tr?: string };
   aboutImage?: string;
   aboutFeatures?: string[];
   socialInstagram?: string;
@@ -49,7 +49,7 @@ const RestaurantSchema = new Schema<IRestaurant>(
     email: String,
     address: String,
     defaultLanguage: { type: String, default: "de" },
-    supportedLanguages: { type: [String], default: ["ar", "de", "en"] },
+    supportedLanguages: { type: [String], default: ["ar", "de", "en", "tr"] },
     defaultCurrency: { type: String, default: "EUR" },
     timezone: { type: String, default: "Europe/Berlin" },
     isActive: { type: Boolean, default: true },
@@ -59,19 +59,22 @@ const RestaurantSchema = new Schema<IRestaurant>(
     heroTagline: {
       ar: { type: String, default: "أشهى المأكولات الشامية" },
       de: { type: String, default: "Feine syrische Küche" },
-      en: { type: String, default: "Delicious Syrian Cuisine" }
+      en: { type: String, default: "Delicious Syrian Cuisine" },
+      tr: { type: String, default: "Nefis Suriye Mutfağı" }
     },
     heroBannerImage: { type: String, default: "https://images.unsplash.com/photo-1544025162-d76694265947?w=1600&auto=format&fit=crop&q=80" },
     heroOpacity: { type: Number, default: 35 },
     aboutSubtitle: {
       ar: { type: String, default: "مأكولات أصيلة حضرت بشغف" },
       de: { type: String, default: "Authentische Küche mit Leidenschaft zubereitet" },
-      en: { type: String, default: "Authentic cuisine made with passion" }
+      en: { type: String, default: "Authentic cuisine made with passion" },
+      tr: { type: String, default: "Aşkla hazırlanan otantik yemekler" }
     },
     aboutText: {
       ar: { type: String, default: "نقدم لكم عراقة الطعم الشامي الأصيل بمكونات طازجة وجودة عالية." },
       de: { type: String, default: "Wir bringen Ihnen den traditionellen Geschmack Syriens mit frischen Zutaten." },
-      en: { type: String, default: "We bring you the authentic taste of Syrian cuisine crafted with fresh ingredients." }
+      en: { type: String, default: "We bring you the authentic taste of Syrian cuisine crafted with fresh ingredients." },
+      tr: { type: String, default: "Taze malzemelerle hazırlanan otantik Suriye lezzetlerini sizlere sunuyoruz." }
     },
     aboutImage: { type: String, default: "https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=800&auto=format&fit=crop&q=80" },
     aboutFeatures: { type: [String], default: ["100% Halal", "Fresh Ingredients", "Charcoal Smoked"] },

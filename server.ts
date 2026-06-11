@@ -164,7 +164,7 @@ async function geocodeAddress(addressText: string): Promise<{ latitude: number; 
   return null;
 }
 
-type CustomerLanguage = "ar" | "de" | "en";
+type CustomerLanguage = "ar" | "de" | "en" | "tr";
 
 type BranchFulfillmentConfig = {
   branchId?: string;
@@ -206,12 +206,13 @@ const DEFAULT_BRANCH_CONFIG: BranchFulfillmentConfig = {
 };
 
 function isCustomerLanguage(value: unknown): value is CustomerLanguage {
-  return value === "ar" || value === "de" || value === "en";
+  return value === "ar" || value === "de" || value === "en" || value === "tr";
 }
 
 function detectCustomerLanguage(message: string): CustomerLanguage | null {
   const text = message.toLowerCase().trim();
   if (!text) return null;
+  if (/\b(merhaba|selam|türkçe|turkce|sipariş|siparis|teşekkür|tesekkur|evet|hayır|hayir)\b/i.test(text)) return "tr";
   if (/[\u0600-\u06FF]/.test(message)) return "ar";
   if (/\b(deutsch|german|hallo|guten|bestellen|lieferung|abholung|speisekarte|menü|ja|nein|danke)\b/i.test(text)) return "de";
   if (/\b(english|hello|hi|order|delivery|pickup|menu|yes|no|thanks)\b/i.test(text)) return "en";
@@ -223,14 +224,16 @@ function parseLanguageSelection(message: string): CustomerLanguage | null {
   if (/^(1|de|deutsch|german|alemani|allemand)$/.test(text) || text.includes("deutsch")) return "de";
   if (/^(2|ar|arabic|arabisch|عربي|العربية|عربية)$/.test(text) || text.includes("عرب")) return "ar";
   if (/^(3|en|english|englisch|انجليزي|إنجليزي)$/.test(text) || text.includes("english")) return "en";
+  if (/^(4|tr|turkish|türkçe|turkce|türk|turk)$/.test(text) || text.includes("türk") || text.includes("turk")) return "tr";
   return null;
 }
 
 function detectExplicitLanguageRequest(message: string): CustomerLanguage | null {
   const text = message.toLowerCase().trim();
   if (/(english|englisch|انجليزي|إنجليزي|بالانجليزي|بالإنجليزي)/i.test(text)) return "en";
-  if (/(deutsch|german|alemani|allemand|بالألماني|بالالماني)/i.test(text)) return "de";
+  if (/(deutsch|german|alemani|allemand|بالألماني|بالالمانi)/i.test(text)) return "de";
   if (/(arabic|arabisch|عربي|العربية|بالعربي)/i.test(text)) return "ar";
+  if (/(turkish|türkçe|turkce|türkçe|türkçe|türkçe)/i.test(text)) return "tr";
   return null;
 }
 
@@ -240,19 +243,22 @@ function getLanguageSelectionPrompt(branchConfig: BranchFulfillmentConfig = DEFA
     `Willkommen bei ${name}! 🌯`,
     `أهلاً بك في ${name}! 🌯`,
     `Welcome to ${name}! 🌯`,
+    `Merhaba, ${name}'ye hoş geldiniz! 🌯`,
     "",
-    "Bitte wählen Sie Ihre Sprache / الرجاء اختيار اللغة / Please choose your language:",
+    "Bitte wählen Sie Ihre Sprache / الرجاء اختيار اللغة / Please choose your language / Lütfen dilinizi seçin:",
     "*1* Deutsch",
     "*2* العربية",
     "*3* English",
+    "*4* Türkçe",
     "",
-    "Shortcut / اختصار / Kurzbefehl: *00* Help / Hilfe / مساعدة",
+    "Shortcut / اختصار / Kurzbefehl / Kısayol: *00* Help / Hilfe / مساعدة / Yardım",
   ].join("\n");
 }
 
 function getShortHelpLine(lang: CustomerLanguage): string {
   if (lang === "ar") return "\n\nاختصارات: *00* مساعدة، *0* رجوع، *8* اللغة، *9* إلغاء، *99* طلب جديد.";
   if (lang === "en") return "\n\nShortcuts: *00* help, *0* back, *8* language, *9* cancel, *99* new order.";
+  if (lang === "tr") return "\n\nKısayollar: *00* yardım, *0* geri, *8* dil seçimi, *9* iptal, *99* yeni sipariş.";
   return "\n\nKurzbefehle: *00* Hilfe, *0* zurück, *8* Sprache, *9* abbrechen, *99* neu starten.";
 }
 
@@ -293,6 +299,24 @@ function getHelpReply(lang: CustomerLanguage): string {
     ].join("\n");
   }
 
+  if (lang === "tr") {
+    return [
+      "İstediğiniz zaman bu kısayolları kullanabilirsiniz:",
+      "",
+      "*00* - yardım",
+      "*0* - bir adım geri git",
+      "*8* - başka bir dil seçin",
+      "*9* - mevcut sipariş taslağını iptal et",
+      "*99* - yeni bir sipariş başlat",
+      "",
+      "Detaylı metin komutları da çalışır:",
+      "*adresi değiştir* - teslimat adresini düzenle",
+      "*saati değiştir* - teslim alma saatini düzenle",
+      "*türü değiştir* - teslimat/teslim alma olarak değiştir",
+      "*siparişi değiştir* - yiyecekleri tekrar seç",
+    ].join("\n");
+  }
+
   return [
     "Sie können diese Kurzbefehle jederzeit verwenden:",
     "",
@@ -313,6 +337,7 @@ function getHelpReply(lang: CustomerLanguage): string {
 function getLanguageSwitchReply(lang: CustomerLanguage): string {
   if (lang === "ar") return "تم تغيير اللغة إلى العربية. تابع طلبك من فضلك، وسأرد عليك بالعربية. ✅";
   if (lang === "en") return "Language switched to English. Please continue your order and I will reply in English. ✅";
+  if (lang === "tr") return "Dil Türkçe olarak değiştirildi. Lütfen siparişinize devam edin, Türkçe olarak cevap vereceğim. ✅";
   return "Sprache auf Deutsch geändert. Bitte fahren Sie mit Ihrer Bestellung fort, ich antworte jetzt auf Deutsch. ✅";
 }
 
@@ -329,6 +354,8 @@ function getWelcomeReply(
       ? `*1* للتوصيل المنزلي (+${fee}€، ضمن ${radius} كم، الحد الأدنى ${min}€)`
       : lang === "en"
       ? `*1* for Home Delivery (+€${fee}, within ${radius} km, min. €${min})`
+      : lang === "tr"
+      ? `*1* eve teslimat için (+${fee} €, ${radius} km içinde, min. ${min} €)`
       : `*1* für Hauslieferung (+${fee} €, innerhalb ${radius} km, Mindestbestellwert ${min} €)`
     : null;
   const pickupLine = branchConfig.pickupEnabled
@@ -336,6 +363,8 @@ function getWelcomeReply(
       ? "*2* للاستلام من المطعم (تيك أواي)"
       : lang === "en"
       ? "*2* for Self Pickup"
+      : lang === "tr"
+      ? "*2* kendin teslim al"
       : "*2* für Abholung (Pickup)"
     : null;
   const choices = [deliveryLine, pickupLine].filter(Boolean).join("\n");
@@ -343,6 +372,7 @@ function getWelcomeReply(
   if (!choices) {
     if (lang === "ar") return "نعتذر، التوصيل والاستلام غير متاحين حالياً. يرجى المحاولة لاحقاً.";
     if (lang === "en") return "Sorry, delivery and pickup are currently unavailable. Please try again later.";
+    if (lang === "tr") return "Üzgünüz, eve teslimat ve teslim alma şu anda mevcut değil. Lütfen daha sonra tekrar deneyin.";
     return "Entschuldigung, Lieferung und Abholung sind aktuell nicht verfügbar. Bitte versuchen Sie es später erneut.";
   }
 
@@ -358,6 +388,8 @@ function getWelcomeReply(
       linkPrompt = `\n\n🔗 أو يمكنك اختيار وجباتك بشكل مرئي وسهل من هنا أولاً:\n${url}`;
     } else if (lang === "en") {
       linkPrompt = `\n\n🔗 Or select your items visually using our Smart Menu here first:\n${url}`;
+    } else if (lang === "tr") {
+      linkPrompt = `\n\n🔗 Veya önce buradan Akıllı Menümüzü kullanarak ürünlerinizi görsel olarak seçin:\n${url}`;
     } else {
       linkPrompt = `\n\n🔗 Oder wählen Sie Ihre Gerichte hier zuerst visuell über unser Smart Menu aus:\n${url}`;
     }
@@ -369,6 +401,9 @@ function getWelcomeReply(
   if (lang === "en") {
     return `Welcome to ${restaurantName}! 🌯 Finest Damascus Shawarma in ${branchCity}.\n\nHow would you like to receive your food?\nReply with:\n` + choices + linkPrompt + getShortHelpLine(lang);
   }
+  if (lang === "tr") {
+    return `Welcome to ${restaurantName}! 🌯 ${branchCity}'deki en lezzetli Şam Şavurması.\n\nYemeğinizi nasıl teslim almak istersiniz?\nŞununla yanıtlayın:\n` + choices + linkPrompt + getShortHelpLine(lang);
+  }
   return `Willkommen bei ${restaurantName}! 🌯 Feinstes syrisches Shawarma in ${branchCity}.\n\nWie möchten Sie Ihre Bestellung erhalten?\nAntworten Sie mit:\n` + choices + linkPrompt + getShortHelpLine(lang);
 }
 
@@ -378,12 +413,14 @@ function getAddressPrompt(lang: CustomerLanguage, branchConfig: BranchFulfillmen
   const branchCity = branchConfig.branchCity;
   if (lang === "ar") return `رائع! خدمة التوصيل متوفرة ضمن ${radius} كم وبحد أدنى ${min}€. يرجى إرسال عنوان التوصيل بالتفصيل في ${branchCity}:` + getShortHelpLine(lang);
   if (lang === "en") return `Great! Home delivery is available within ${radius} km with a minimum order of €${min}. Please type your detailed delivery address in ${branchCity}:` + getShortHelpLine(lang);
+  if (lang === "tr") return `Harika! ${radius} km içinde minimum €${min} tutarında eve teslimat mevcuttur. Lütfen ${branchCity}'deki ayrıntılı teslimat adresinizi yazın:` + getShortHelpLine(lang);
   return `Super! Der Lieferservice ist innerhalb von ${radius} km verfügbar. Mindestbestellwert: ${min} €. Bitte senden Sie uns Ihre Lieferadresse in ${branchCity}:` + getShortHelpLine(lang);
 }
 
 function getPickupTimePrompt(lang: CustomerLanguage, branchConfig: BranchFulfillmentConfig = DEFAULT_BRANCH_CONFIG): string {
   if (lang === "ar") return `ممتاز! تفضل بالاستلام من المطعم بـ ${branchConfig.branchAddress}.\nما هو وقت الاستلام المناسب لك؟ (مثال: 19:30)` + getShortHelpLine(lang);
   if (lang === "en") return `Great choice! Pickup is ready at ${branchConfig.branchAddress}.\nWhat time would you like to pick up your order? (e.g., 20:15)` + getShortHelpLine(lang);
+  if (lang === "tr") return `Harika seçim! ${branchConfig.branchAddress} adresinden teslim alabilirsiniz.\nSiparişinizi saat kaçta teslim almak istersiniz? (örn. 20:15)` + getShortHelpLine(lang);
   return `Alles klar! Sie können Ihre Bestellung in der ${branchConfig.branchAddress} abholen.\nUm wie viel Uhr möchten Sie Ihr Essen abholen? (z.B., 19:45)` + getShortHelpLine(lang);
 }
 
@@ -473,6 +510,7 @@ function getMenuPrompt(
   if (entries.length === 0) {
     if (lang === "ar") return "القائمة غير متاحة حالياً لهذا الفرع أو طريقة الاستلام. يرجى التواصل مع الموظف للمساعدة." + getShortHelpLine(lang);
     if (lang === "en") return "The menu is currently unavailable for this branch or fulfillment type. Please contact support for help." + getShortHelpLine(lang);
+    if (lang === "tr") return "Menü şu anda bu şube veya teslimat türü için mevcut değil. Lütfen yardım için destekle iletişime geçin." + getShortHelpLine(lang);
     return "Die Speisekarte ist für diese Filiale oder Bestellart aktuell nicht verfügbar. Bitte wenden Sie sich an den Support." + getShortHelpLine(lang);
   }
 
@@ -480,7 +518,7 @@ function getMenuPrompt(
   let currentCategory = "";
   entries.forEach(({ item, category }, index) => {
     const categoryName = translatedText(category?.name, lang) || (
-      lang === "ar" ? "أصناف أخرى" : lang === "en" ? "Other items" : "Weitere Gerichte"
+      lang === "ar" ? "أصناف أخرى" : lang === "en" ? "Other items" : lang === "tr" ? "Diğer ürünler" : "Weitere Gerichte"
     );
     if (categoryName !== currentCategory) {
       if (body.length > 0) body.push("");
@@ -498,11 +536,15 @@ function getMenuPrompt(
     ? "إليك قائمة الطعام المتوفرة لدينا:"
     : lang === "en"
     ? "Here is our current menu:"
+    : lang === "tr"
+    ? "İşte güncel menümüz:"
     : "Hier ist unsere aktuelle Speisekarte:";
   const instruction = lang === "ar"
     ? "اكتب رمز الصنف مثل *01* أو اسم الوجبة للطلب:"
     : lang === "en"
     ? "Reply with the item code, e.g. *01*, or type the item name:"
+    : lang === "tr"
+    ? "Sipariş vermek için *01* gibi ürün kodunu girin veya ürün adını yazın:"
     : "Antworten Sie mit dem Artikelcode, z.B. *01*, oder dem Namen:";
 
   let linkPrompt = "";
@@ -515,6 +557,8 @@ function getMenuPrompt(
       linkPrompt = `🔗 أو يمكنك تصفح القائمة واختيار الأصناف بشكل مرئي وبسيط من هنا:\n${url}\n`;
     } else if (lang === "en") {
       linkPrompt = `🔗 Or browse our menu and add items visually here:\n${url}\n`;
+    } else if (lang === "tr") {
+      linkPrompt = `🔗 Veya menümüze göz atıp ürünleri buradan görsel olarak ekleyin:\n${url}\n`;
     } else {
       linkPrompt = `🔗 Oder stöbern Sie in unserer Speisekarte und wählen Sie die Artikel hier visuell aus:\n${url}\n`;
     }
@@ -526,12 +570,14 @@ function getMenuPrompt(
 function getCancelReply(lang: CustomerLanguage): string {
   if (lang === "ar") return "تم إلغاء مسودة الطلب الحالية. إذا أردت البدء من جديد، اكتب أهلاً أو طلب جديد. ✅";
   if (lang === "en") return "Your current draft order has been cancelled. Type hello or new order whenever you want to start again. ✅";
+  if (lang === "tr") return "Mevcut sipariş taslağınız iptal edildi. Yeniden başlamak istediğinizde merhaba veya yeni sipariş yazın. ✅";
   return "Ihre aktuelle Bestellskizze wurde abgebrochen. Schreiben Sie Hallo oder neue Bestellung, wenn Sie neu starten möchten. ✅";
 }
 
 function getBackUnavailableReply(lang: CustomerLanguage): string {
   if (lang === "ar") return "لا توجد خطوة سابقة واضحة حالياً. يمكنني بدء طلب جديد إذا كتبت طلب جديد.";
   if (lang === "en") return "There is no clear previous step right now. Type new order if you want to start over.";
+  if (lang === "tr") return "Şu anda net bir önceki adım yok. Baştan başlamak isterseniz yeni sipariş yazın.";
   return "Es gibt aktuell keinen klaren vorherigen Schritt. Schreiben Sie neue Bestellung, wenn Sie neu starten möchten.";
 }
 
@@ -556,15 +602,15 @@ function detectFlowCommand(message: string): FlowCommand | null {
   if (text === "9") return "cancel";
   if (text === "99") return "restart";
 
-  if (/^(help|hilfe|مساعدة|ساعدني|الاوامر|الأوامر)$/i.test(text)) return "help";
-  if (/(change|switch).*(language)|sprache.*(ändern|wechseln)|تغيير.*(اللغة|اللغه)|بدل.*(اللغة|اللغه)/i.test(text)) return "change_language";
-  if (/^(restart|start over|new order|reset order|neu starten|von vorne|neue bestellung|ابدأ من جديد|ابدا من جديد|طلب جديد|إعادة الطلب|اعادة الطلب)$/i.test(text)) return "restart";
-  if (/^(cancel|cancel order|abort|abbrechen|stornieren|إلغاء|الغاء|ألغي|الغي)$/i.test(text)) return "cancel";
-  if (/^(back|go back|previous|zurück|zurueck|رجوع|ارجع|للخلف)$/i.test(text)) return "back";
-  if (/(change|edit).*(address)|address.*(change|edit)|adresse.*(ändern|wechseln)|lieferadresse.*(ändern|wechseln)|تغيير.*(العنوان|عنوان)|غير.*(العنوان|عنوان)/i.test(text)) return "change_address";
-  if (/(change|edit).*(pickup time|time)|pickup time.*(change|edit)|abholzeit.*(ändern|wechseln)|تغيير.*(الوقت|وقت الاستلام)|غير.*(الوقت|وقت الاستلام)/i.test(text)) return "change_pickup_time";
-  if (/(change|edit).*(delivery|pickup|type)|lieferung.*(ändern|wechseln)|abholung.*(ändern|wechseln)|تغيير.*(التوصيل|الاستلام|طريقة الاستلام)|غير.*(التوصيل|الاستلام)/i.test(text)) return "change_type";
-  if (/(change|edit).*(order|item|meal|food)|bestellung.*(ändern|wechseln)|gericht.*(ändern|wechseln)|تغيير.*(الطلب|الوجبة|الصنف)|غير.*(الطلب|الوجبة|الصنف)/i.test(text)) return "change_order";
+  if (/^(help|hilfe|مساعدة|ساعدني|الاوامر|الأوامر|yardım|yardim|destek)$/i.test(text)) return "help";
+  if (/(change|switch).*(language)|sprache.*(ändern|wechseln)|تغيير.*(اللغة|اللغه)|بدل.*(اللغة|اللغه)|dil.*(değiştir|degistir)/i.test(text)) return "change_language";
+  if (/^(restart|start over|new order|reset order|neu starten|von vorne|neue bestellung|ابدأ من جديد|ابدا من جديد|طلب جديد|إعادة الطلب|اعادة الطلب|yeni sipariş|yeni siparis|yeniden başla|yeniden basla)$/i.test(text)) return "restart";
+  if (/^(cancel|cancel order|abort|abbrechen|stornieren|إلغاء|الغاء|ألغي|الغي|iptal)$/i.test(text)) return "cancel";
+  if (/^(back|go back|previous|zurück|zurueck|رجوع|ارجع|للخلف|geri)$/i.test(text)) return "back";
+  if (/(change|edit).*(address)|address.*(change|edit)|adresse.*(ändern|wechseln)|lieferadresse.*(ändern|wechseln)|تغيير.*(العنوان|عنوان)|غير.*(العنوان|عنوان)|adres.*(değiştir|degistir)/i.test(text)) return "change_address";
+  if (/(change|edit).*(pickup time|time)|pickup time.*(change|edit)|abholzeit.*(ändern|wechseln)|تغيير.*(الوقت|وقت الاستلام)|غير.*(الوقت|وقت الاستلام)|saat.*(değiştir|degistir)|zaman.*(değiştir|degistir)/i.test(text)) return "change_pickup_time";
+  if (/(change|edit).*(delivery|pickup|type)|lieferung.*(ändern|wechseln)|abholung.*(ändern|wechseln)|تغيير.*(التوصيل|الاستلام|طريقة الاستلام)|غير.*(التوصيل|الاستلام)|tür.*(değiştir|degistir)|tur.*(değiştir|degistir)/i.test(text)) return "change_type";
+  if (/(change|edit).*(order|item|meal|food)|bestellung.*(ändern|wechseln)|gericht.*(ändern|wechseln)|تغيير.*(الطلب|الوجبة|الصنف)|غير.*(الطلب|الوجبة|الصنف)|sipariş.*(değiştir|degistir)|siparis.*(değiştir|degistir)/i.test(text)) return "change_order";
 
   return null;
 }
@@ -592,6 +638,9 @@ function getUpsellPrompt(lang: CustomerLanguage, upsell: any): string {
   }
   if (lang === "en") {
     return `⚡ Would you like to add *${translatedText(upsell.name, "en")}* for +€${price}?\nReply:\n*YES* to add it\n*NO* to proceed with checkout` + getShortHelpLine(lang);
+  }
+  if (lang === "tr") {
+    return `⚡ Ek ücret +${price}€ karşılığında *${translatedText(upsell.name, "tr") || translatedText(upsell.name, "de")}* eklemek ister misiniz?\nYazın:\n*EVET* eklemek için\n*HAYIR* doğrudan ödemeye geçmek için` + getShortHelpLine(lang);
   }
   return `⚡ Möchten Sie *${translatedText(upsell.name, "de")}* für +${price} € hinzufügen?\nAntworten Sie:\n*JA* zum Hinzufügen\n*NEIN* um die Bestellung direkt abzuschließen` + getShortHelpLine(lang);
 }
@@ -702,6 +751,26 @@ function buildConfirmationSummary(convo: any, lang: CustomerLanguage, branchConf
     billSummary += belowMinimum
       ? `\n⚠️ Minimum delivery order is €${formatMoney(branchConfig.minOrderAmount)} before delivery fee. Please change the order before confirming.`
       : `\nReply with *1* or *CONFIRM* to submit your order to the kitchen!`;
+    return billSummary + getShortHelpLine(lang);
+  }
+
+  if (lang === "tr") {
+    let billSummary = `📋 *${branchConfig.restaurantName} Sipariş Özeti*\n--------------\n`;
+    (convo.unsubmittedOrder?.items || []).forEach((i: any) => {
+      billSummary += `▪️ ${i.quantity}x ${translatedText(i.name, "tr") || translatedText(i.name, "de")} (${formatMoney(i.basePrice)}€)\n`;
+      if (hasPricedUpsell(i.selectedUpsell)) billSummary += ` └ ➕ ${translatedText(i.selectedUpsell.name, "tr") || translatedText(i.selectedUpsell.name, "de")} (+${formatMoney(i.selectedUpsell.price)}€)\n`;
+    });
+    billSummary += `--------------\n`;
+    billSummary += `Ara Toplam: ${formatMoney(sub)}€\n`;
+    if (fee > 0) billSummary += `Teslimat Ücreti: ${formatMoney(fee)}€\n`;
+    billSummary += `*Genel Toplam: ${formatMoney(total)}€*\n\n`;
+    billSummary += convo.unsubmittedOrder?.orderType === "delivery"
+      ? `📍 Teslimat Adresi: _${convo.unsubmittedOrder?.deliveryAddress}_\n`
+      : `⏰ Teslim Alma Saati: _${convo.unsubmittedOrder?.pickupTime}_\n`;
+    billSummary += `💶 Ödeme: *Teslimatta NAKİT*\n`;
+    billSummary += belowMinimum
+      ? `\n⚠️ Teslimat için minimum sipariş tutarı teslimat ücreti hariç ${formatMoney(branchConfig.minOrderAmount)}€'dir. Lütfen onaylamadan önce siparişi değiştirin.`
+      : `\nSiparişi mutfağa göndermek için *1* veya *ONayla* yazarak yanıt verin!`;
     return billSummary + getShortHelpLine(lang);
   }
 
@@ -835,6 +904,7 @@ function getClosedDaysString(lang: string, closedDays: number[]): string {
   const daysDE = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
   const daysEN = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   const daysAR = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+  const daysTR = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
 
   if (lang === "ar") {
     const names = closedDays.map(d => daysAR[d]).join("، ");
@@ -842,6 +912,9 @@ function getClosedDaysString(lang: string, closedDays: number[]): string {
   } else if (lang === "en") {
     const names = closedDays.map(d => daysEN[d]).join(", ");
     return `Closed on: ${names}.`;
+  } else if (lang === "tr") {
+    const names = closedDays.map(d => daysTR[d]).join(", ");
+    return `Kapalı günler: ${names}.`;
   } else {
     const names = closedDays.map(d => daysDE[d]).join(", ");
     return `Ruhetage: ${names}.`;
@@ -1039,6 +1112,9 @@ function getMinimumOrderReply(lang: CustomerLanguage, subtotal: number, branchCo
   if (lang === "en") {
     return `Minimum delivery order is €${formatMoney(branchConfig.minOrderAmount)} before the delivery fee. Your current subtotal is €${formatMoney(subtotal)}, so €${formatMoney(missing)} is still missing. Please choose a larger item or change the order.`;
   }
+  if (lang === "tr") {
+    return `Teslimat için minimum sipariş tutarı teslimat ücreti hariç ${formatMoney(branchConfig.minOrderAmount)}€'dir. Mevcut ara toplamınız ${formatMoney(subtotal)}€, bu nedenle hâlâ ${formatMoney(missing)}€ eksik. Lütfen daha büyük bir ürün seçin veya siparişi değiştirin.`;
+  }
   return `Der Mindestbestellwert für Lieferung beträgt ${formatMoney(branchConfig.minOrderAmount)} € vor Liefergebühr. Ihr aktueller Warenwert ist ${formatMoney(subtotal)} €, es fehlen noch ${formatMoney(missing)} €. Bitte wählen Sie einen größeren Artikel oder ändern Sie die Bestellung.`;
 }
 
@@ -1046,10 +1122,12 @@ function getDeliveryUnavailableReply(lang: CustomerLanguage, branchConfig: Branc
   if (branchConfig.pickupEnabled) {
     if (lang === "ar") return "التوصيل غير متاح حالياً. يمكنك اختيار الاستلام من المطعم بكتابة *2*.";
     if (lang === "en") return "Delivery is currently unavailable. Please choose pickup by replying with *2*.";
+    if (lang === "tr") return "Eve teslimat şu anda mevcut değil. Lütfen *2* yazarak teslim almayı seçin.";
     return "Lieferung ist aktuell nicht verfügbar. Bitte wählen Sie Abholung mit *2*.";
   }
   if (lang === "ar") return "التوصيل غير متاح حالياً.";
   if (lang === "en") return "Delivery is currently unavailable.";
+  if (lang === "tr") return "Eve teslimat şu anda mevcut değil.";
   return "Lieferung ist aktuell nicht verfügbar.";
 }
 
@@ -1057,10 +1135,12 @@ function getPickupUnavailableReply(lang: CustomerLanguage, branchConfig: BranchF
   if (branchConfig.deliveryEnabled) {
     if (lang === "ar") return "الاستلام من المطعم غير متاح حالياً. يمكنك اختيار التوصيل بكتابة *1*.";
     if (lang === "en") return "Pickup is currently unavailable. Please choose delivery by replying with *1*.";
+    if (lang === "tr") return "Teslim alma şu anda mevcut değil. Lütfen *1* yazarak eve teslimatı seçin.";
     return "Abholung ist aktuell nicht verfügbar. Bitte wählen Sie Lieferung mit *1*.";
   }
   if (lang === "ar") return "الاستلام من المطعم غير متاح حالياً.";
   if (lang === "en") return "Pickup is currently unavailable.";
+  if (lang === "tr") return "Teslim alma şu anda mevcut değil.";
   return "Abholung ist aktuell nicht verfügbar.";
 }
 
@@ -1395,7 +1475,7 @@ app.get("/api/public/menu-board", async (req, res) => {
     const branchId = req.query.branchId as string;
     const screen = (req.query.screen as string) || "1";
     const requestedLang = (req.query.lang as string) || "de";
-    const lang: "ar" | "de" | "en" = requestedLang === "ar" || requestedLang === "en" ? requestedLang : "de";
+    const lang: CustomerLanguage = requestedLang === "ar" || requestedLang === "en" || requestedLang === "tr" ? (requestedLang as CustomerLanguage) : "de";
 
     const branch = (branchId && mongoose.isValidObjectId(branchId))
       ? await Branch.findById(branchId).lean()
@@ -2007,9 +2087,9 @@ app.post("/api/public/reservations", async (req, res) => {
 
     // Send direct WhatsApp confirmation to customer if whatsapp service is linked
     try {
-      const lang = (language === "ar" || language === "en" || language === "de") ? language : "de";
+      const lang = (language === "ar" || language === "en" || language === "de" || language === "tr") ? language : "de";
       const formattedDate = requestedTime.toLocaleString(
-        lang === "ar" ? "ar-EG" : lang === "en" ? "en-US" : "de-DE",
+        lang === "ar" ? "ar-EG" : lang === "en" ? "en-US" : lang === "tr" ? "tr-TR" : "de-DE",
         { timeZone: timezone }
       );
       let confirmationMsg = "";
@@ -2017,6 +2097,8 @@ app.post("/api/public/reservations", async (req, res) => {
         confirmationMsg = `*تم استلام طلب حجز الطاولة*\n\nمرحباً ${customerName.trim()}،\nلقد تلقينا طلب الحجز الخاص بك لـ *${guestCount} أشخاص* في *${formattedDate}*.\n\nالحالة: *قيد الانتظار* (سنقوم بالرد عليك قريباً!)\n\nشكراً لاختيارك،\n${branch.name}`;
       } else if (lang === "en") {
         confirmationMsg = `*Table Reservation Request Received*\n\nHello ${customerName.trim()},\nwe have received your reservation request for *${guestCount} guests* on *${formattedDate}*.\n\nStatus: *Pending* (We will confirm shortly!)\n\nThank you for choosing us,\n${branch.name}`;
+      } else if (lang === "tr") {
+        confirmationMsg = `*Masa Rezervasyonu Talebi Alındı*\n\nMerhaba ${customerName.trim()},\n*${guestCount} kişi* için *${formattedDate}* tarihindeki rezervasyon talebinizi aldık.\n\nDurum: *Beklemede* (Yakında onaylayacağız!)\n\nBizi tercih ettiğiniz için teşekkür ederiz,\n${branch.name}`;
       } else {
         confirmationMsg = `*Tischreservierung erhalten*\n\nHallo ${customerName.trim()},\nwir haben Ihre Reservierung für *${guestCount} Personen* am *${formattedDate}* erhalten.\n\nStatus: *Ausstehend* (Wir melden uns in Kürze!)\n\nDanke für Ihre Wahl,\n${branch.name}`;
       }
@@ -2144,6 +2226,8 @@ app.post("/api/public/whatsapp-cart", async (req, res) => {
         ? "لقد قمت بتحميل سلة طلباتك! 🛒\n\n"
         : lang === "en"
         ? "I have loaded your cart! 🛒\n\n"
+        : lang === "tr"
+        ? "Sepetinizi yükledim! 🛒\n\n"
         : "Ich habe Ihren Warenkorb geladen! 🛒\n\n";
       summaryText = cartLoadedText + getWelcomeReply(lang, branchConfig, convo._id?.toString() || convo.id);
     }
@@ -2671,12 +2755,16 @@ app.post("/api/bot-reply", async (req, res) => {
             ? `شكراً جزيلاً لتقييمك الرائع بـ 5 نجوم! ⭐⭐⭐⭐⭐\nإذا كان لديك دقيقة، يسعدنا دعمك لنا بتقييم مباشر على Google: ${googleMapsReviewLink} ❤️`
             : lang === "en"
             ? `Thank you so much for your wonderful 5-star review! ⭐⭐⭐⭐⭐\nIf you have a minute, please support us on Google: ${googleMapsReviewLink} ❤️`
+            : lang === "tr"
+            ? `Harika 5 yıldızlı yorumunuz için çok teşekkür ederiz! ⭐⭐⭐⭐⭐\nBir dakikanız varsa, lütfen bizi Google'da destekleyin: ${googleMapsReviewLink} ❤️`
             : `Vielen Dank für Ihre tolle 5-Sterne-Bewertung! ⭐⭐⭐⭐⭐\nWenn Sie eine Minute Zeit haben, unterstützen Sie uns bitte mit einer Bewertung auf Google: ${googleMapsReviewLink} ❤️`;
         } else {
           botReplyText = lang === "ar"
             ? `شكراً جزيلاً لمشاركتنا تقييمك! سنعمل دائماً على تقديم الأفضل لك. 🌹`
             : lang === "en"
             ? `Thank you for sharing your feedback! We will continue working hard to serve you. 🌹`
+            : lang === "tr"
+            ? `Geri bildiriminizi paylaştığınız için teşekkür ederiz! Size hizmet etmek için çok çalışmaya devam edeceğiz. 🌹`
             : `Vielen Dank für Ihr Feedback! Wir arbeiten stets daran, unseren Service zu verbessern. 🌹`;
         }
         nextStep = "welcome";
@@ -2688,6 +2776,8 @@ app.post("/api/bot-reply", async (req, res) => {
           ? "يمكنك دائماً تقييمنا لاحقاً! 🌟 لنبدأ طلبك الجديد:\n\n"
           : lang === "en"
           ? "You can always rate us later! 🌟 Let's start your new order:\n\n"
+          : lang === "tr"
+          ? "Bizi her zaman daha sonra değerlendirebilirsiniz! 🌟 Yeni siparişinizi başlatalım:\n\n"
           : "Sie können uns jederzeit später bewerten! 🌟 Starten wir Ihre neue Bestellung:\n\n";
         botReplyText = skipNote + getWelcomeReply(lang, branchConfig);
       } else {
@@ -2697,6 +2787,8 @@ app.post("/api/bot-reply", async (req, res) => {
           ? `يرجى الرد برقم من 1 إلى 5 لتقييم تجربتك معنا 🌟\nأو اكتب *طلب* أو *99* لبدء طلب جديد.${googleMapsReviewLink ? "\nأو تفضل بزيارة رابط تقييم Google: " + googleMapsReviewLink : ""}`
           : lang === "en"
           ? `Please reply with a number from 1 to 5 to rate your experience 🌟\nOr type *order* or *99* to start a new order.${googleMapsReviewLink ? "\nOr visit our Google review page: " + googleMapsReviewLink : ""}`
+          : lang === "tr"
+          ? `Deneyiminizi değerlendirmek için lütfen 1 ile 5 arasında bir sayıyla yanıt verin 🌟\nVeya yeni bir sipariş başlatmak için *sipariş* veya *99* yazın.${googleMapsReviewLink ? "\nGoogle yorum sayfamızı ziyaret edin: " + googleMapsReviewLink : ""}`
           : `Bitte antworten Sie mit einer Zahl von 1 bis 5 🌟\nOder schreiben Sie *bestellen* oder *99* für eine neue Bestellung.${googleMapsReviewLink ? "\nOder besuchen Sie Google: " + googleMapsReviewLink : ""}`;
       }
     } else if (nextStep === "language_selection") {
@@ -2933,6 +3025,8 @@ You MUST reply with a JSON object in this exact schema structure:
           ? `شكراً لتواصلك معنا! المطعم مغلق حالياً. ساعات العمل لدينا هي: ${branchConfig.openingHours}.`
           : lang === "en"
           ? `Thank you for contacting us! The restaurant is currently closed. Our business hours are: ${branchConfig.openingHours}.`
+          : lang === "tr"
+          ? `Bizimle iletişime geçtiğiniz için teşekkür ederiz! Restoran şu anda kapalıdır. Çalışma saatlerimiz: ${branchConfig.openingHours}.`
           : `Vielen Dank für Ihre Nachricht! Das Restaurant ist derzeit geschlossen. Unsere Öffnungszeiten sind: ${branchConfig.openingHours}.`;
         if (branchConfig.closedDays && branchConfig.closedDays.length > 0) {
           botReplyText += " " + getClosedDaysString(lang, branchConfig.closedDays);
@@ -2943,6 +3037,7 @@ You MUST reply with a JSON object in this exact schema structure:
     if (!botReplyText) {
       const isAr = lang === "ar";
       const isEn = lang === "en";
+      const isTr = lang === "tr";
 
       const step = convo.currentStep || "welcome";
 
@@ -3018,6 +3113,8 @@ You MUST reply with a JSON object in this exact schema structure:
               ? `عذراً، العنوان المدخل (على بعد ${distance.toFixed(2)} كم) خارج نطاق التوصيل الخاص بنا (${maxRadius} كم).\nيرجى إرسال موقع آخر أو كتابة عنوانك يدوياً داخل ${branchCity}، أو اكتب "استلام" لتغيير الطلب إلى استلام من الفرع.`
               : isEn
               ? `Sorry, the address provided (distance: ${distance.toFixed(2)} km) is outside our delivery radius of ${maxRadius} km.\nPlease send another address, or type "pickup" to collect it yourself.`
+              : isTr
+              ? `Üzgünüz, girilen adres (mesafe: ${distance.toFixed(2)} km) ${maxRadius} km olan teslimat yarıçapımızın dışındadır.\nLütfen başka bir adres gönderin veya kendiniz almak için "teslim alma" yazın.`
               : `Es tut uns leid, die angegebene Adresse (Entfernung: ${distance.toFixed(2)} km) liegt außerhalb unseres Lieferradius von ${maxRadius} km.\nBitte geben Sie eine andere Adresse ein oder schreiben Sie "abholung", um die Bestellung selbst abzuholen.`;
             nextStep = "address";
           } else {
@@ -3039,6 +3136,8 @@ You MUST reply with a JSON object in this exact schema structure:
                 ? `تم التحقق من العنوان بنجاح! موقعك على بعد ${distance.toFixed(2)} كم وهو ضمن نطاق التوصيل. 📍`
                 : isEn
                 ? `Address verified successfully! You are ${distance.toFixed(2)} km away, which is within our delivery zone. 📍`
+                : isTr
+                ? `Adres başarıyla doğrulandı! ${distance.toFixed(2)} km uzaklıktasınız, bu mesafe teslimat bölgemiz dahilindedir. 📍`
                 : `Adresse erfolgreich verifiziert! Sie sind ${distance.toFixed(2)} km entfernt, was innerhalb unseres Liefergebiets liegt. 📍`;
               
               botReplyText = `${addressVerified}\n\n${buildConfirmationSummary(convo, lang, branchConfig)}`;
@@ -3049,6 +3148,8 @@ You MUST reply with a JSON object in this exact schema structure:
                 ? `تم التحقق من العنوان بنجاح! موقعك على بعد ${distance.toFixed(2)} كم وهو ضمن نطاق التوصيل. 📍\n\n${menuPrompt}`
                 : isEn
                 ? `Address verified successfully! You are ${distance.toFixed(2)} km away, which is within our delivery zone. 📍\n\n${menuPrompt}`
+                : isTr
+                ? `Adres başarıyla doğrulandı! ${distance.toFixed(2)} km uzaklıktasınız, bu mesafe teslimat bölgemiz dahilindedir. 📍\n\n${menuPrompt}`
                 : `Adresse erfolgreich verifiziert! Sie sind ${distance.toFixed(2)} km entfernt, was innerhalb unseres Liefergebiets liegt. 📍\n\n${menuPrompt}`;
               nextStep = "menu";
             }
@@ -3066,6 +3167,8 @@ You MUST reply with a JSON object in this exact schema structure:
               ? `حفظنا العنوان: *${message}*. (ملاحظة: لم نتمكن من تحديد موقعك بدقة على الخارطة، يرجى التأكد من كتابة الشارع والرقم بشكل صحيح). 📍`
               : isEn
               ? `Address saved: *${message}*. (Note: We couldn't verify this address on the map, please make sure the street and number are correct). 📍`
+              : isTr
+              ? `Adres kaydedildi: *${message}*. (Not: Bu adresi haritada doğrulayamadık, lütfen sokak ve numaranın doğru olduğundan emin olun). 📍`
               : `Lieferadresse gespeichert: *${message}*. (Hinweis: Adresse konnte nicht kartiert werden, bitte prüfen Sie Straße und Hausnummer). 📍`;
               
             botReplyText = `${addressSaved}\n\n${buildConfirmationSummary(convo, lang, branchConfig)}`;
@@ -3076,6 +3179,8 @@ You MUST reply with a JSON object in this exact schema structure:
               ? `حفظنا العنوان: *${message}*. (ملاحظة: لم نتمكن من تحديد موقعك بدقة على الخارطة، يرجى التأكد من كتابة الشارع والرقم بشكل صحيح). 📍\n\n${menuPrompt}`
               : isEn
               ? `Address saved: *${message}*. (Note: We couldn't verify this address on the map, please make sure the street and number are correct). 📍\n\n${menuPrompt}`
+              : isTr
+              ? `Adres kaydedildi: *${message}*. (Not: Bu adresi haritada doğrulayamadık, lütfen sokak ve numaranın doğru olduğundan emin olun). 📍\n\n${menuPrompt}`
               : `Lieferadresse gespeichert: *${message}*. (Hinweis: Adresse konnte nicht kartiert werden, bitte prüfen Sie Straße und Hausnummer). 📍\n\n${menuPrompt}`;
             nextStep = "menu";
           }
@@ -3089,6 +3194,8 @@ You MUST reply with a JSON object in this exact schema structure:
             ? `تم تأكيد وقت الاستلام! ⏰`
             : isEn
             ? `Pickup time confirmed! ⏰`
+            : isTr
+            ? `Teslim alma saati onaylandı! ⏰`
             : `Abholzeit vermerkt! ⏰`;
             
           botReplyText = `${pickupConfirmed}\n\n${buildConfirmationSummary(convo, lang, branchConfig)}`;
@@ -3099,6 +3206,8 @@ You MUST reply with a JSON object in this exact schema structure:
             ? `تم تأكيد وقت الاستلام! ⏰\n${menuPrompt}`
             : isEn
             ? `Pickup time confirmed! ⏰\n${menuPrompt}`
+            : isTr
+            ? `Teslim alma saati onaylandı! ⏰\n${menuPrompt}`
             : `Abholzeit vermerkt! ⏰\n${menuPrompt}`;
           nextStep = "menu";
         }
@@ -3137,6 +3246,8 @@ You MUST reply with a JSON object in this exact schema structure:
             ? `📝 تمت إضافة *${selectedName}* لطلبك بسعر ${formatMoney(selectedItem.basePrice)}€.`
             : isEn
             ? `📝 Added *${selectedName}* to your order for €${formatMoney(selectedItem.basePrice)}.`
+            : isTr
+            ? `📝 *${selectedName}* siparişinize ${formatMoney(selectedItem.basePrice)}€ karşılığında eklendi.`
             : `📝 *${selectedName}* wurde für ${formatMoney(selectedItem.basePrice)} € hinzugefügt.`;
 
           if (pendingUpsell) {
@@ -3152,6 +3263,8 @@ You MUST reply with a JSON object in this exact schema structure:
             ? `نعتذر منك، لم نفهم اختيارك بشكل دقيق. يرجى اختيار رمز من القائمة مثل *01* أو كتابة اسم الوجبة:\n\n${menuPrompt}`
             : isEn
             ? `Sorry, I could not match that to a menu item. Please choose an item code like *01* or type the dish name:\n\n${menuPrompt}`
+            : isTr
+            ? `Üzgünüz, bunu bir menü öğesiyle eşleştiremedik. Lütfen *01* gibi bir ürün kodu seçin veya yemeğin adını yazın:\n\n${menuPrompt}`
             : `Entschuldigung, wir haben die Auswahl nicht verstanden. Bitte wählen Sie einen Artikelcode wie *01* oder nennen Sie den Namen:\n\n${menuPrompt}`;
         }
       } else if (step === "customizing") {
@@ -3216,17 +3329,27 @@ You MUST reply with a JSON object in this exact schema structure:
               ? `🎉 رائع! تم إرسال طلبك رقم *${ordNum}* بنجاح للمطبخ وسينتهي تحضيره قريباً.\nسوف نرسل لك تحديثاً فور البدء بالتحضير. شكراً لطلبك من ${branchConfig.restaurantName}! ❤️`
               : isEn
               ? `🎉 Wonderful! Your order *${ordNum}* has been submitted to our kitchen. We will start preparing it shortly.\nYou will receive automatic status alerts here. Thank you! ❤️`
+              : isTr
+              ? `🎉 Harika! *${ordNum}* numaralı siparişiniz mutfağımıza iletildi. Yakında hazırlamaya başlayacağız.\nDurum güncellemelerini buradan otomatik olarak alacaksınız. Teşekkürler! ❤️`
               : `🎉 Super! Ihre Bestellung *${ordNum}* wurde an das Küchenteam übermittelt und wird zubereitet.\nWir benachrichtigen Sie gleich über den Status. Vielen Dank! ❤️`;
             nextStep = "completed";
           }
         } else {
           botReplyText = isAr
             ? "لم يتم تأكيد طلبك بشكل صحيح. لتأكيده، اكتب *1* أو *تأكيد*."
+            : isEn
+            ? "Your order was not confirmed correctly. Reply with *1* or *CONFIRM* to submit."
+            : isTr
+            ? "Siparişiniz doğru şekilde onaylanmadı. Göndermek için *1* veya *ONAYLA* ile yanıt verin."
             : "Bestellung nicht bestätigt. Schreiben Sie *1* oder *JA* zur Bestätigung.";
         }
       } else {
         botReplyText = isAr
           ? `أهلاً بك مجدداً في ${branchConfig.restaurantName}! اطلب أي وقت بكتابة 'أهلاً' أو 'طلب' لمشاهدة القائمة.`
+          : isEn
+          ? `Welcome back to ${branchConfig.restaurantName}! Order anytime by typing 'hello' or 'order' to see the menu.`
+          : isTr
+          ? `${branchConfig.restaurantName}'ye tekrar hoş geldiniz! Menüyü görmek için istediğiniz zaman 'merhaba' veya 'sipariş' yazarak sipariş verin.`
           : "Hallo! Schreiben Sie 'Hallo' oder 'Menü', um eine neue Bestellung zu starten.";
         nextStep = "welcome";
       }
@@ -3516,7 +3639,7 @@ You MUST reply with a JSON object in this exact schema structure:
         const restaurant = await Restaurant.findById(convo.restaurantId);
         const timezone = restaurant?.timezone || "Europe/Berlin";
         const formattedDate = resvDate.toLocaleString(
-          lang === "ar" ? "ar-EG" : lang === "en" ? "en-US" : "de-DE",
+          lang === "ar" ? "ar-EG" : lang === "en" ? "en-US" : lang === "tr" ? "tr-TR" : "de-DE",
           { timeZone: timezone }
         );
         let confirmationMsg = "";
@@ -3524,6 +3647,8 @@ You MUST reply with a JSON object in this exact schema structure:
           confirmationMsg = `*تم استلام طلب حجز الطاولة*\n\nمرحباً ${resv.customerName.trim()}،\nلقد تلقينا طلب الحجز الخاص بك لـ *${resv.guestCount} أشخاص* في *${formattedDate}*.\n\nالحالة: *قيد الانتظار* (سنقوم بالرد عليك قريباً!)\n\nشكراً لاختيارك،\n${branchConfig.restaurantName}`;
         } else if (lang === "en") {
           confirmationMsg = `*Table Reservation Request Received*\n\nHello ${resv.customerName.trim()},\nwe have received your reservation request for *${resv.guestCount} guests* on *${formattedDate}*.\n\nStatus: *Pending* (We will confirm shortly!)\n\nThank you for choosing us,\n${branchConfig.restaurantName}`;
+        } else if (lang === "tr") {
+          confirmationMsg = `*Masa Rezervasyonu Talebi Alındı*\n\nMerhaba ${resv.customerName.trim()},\n*${resv.guestCount} kişi* için *${formattedDate}* tarihindeki rezervasyon talebinizi aldık.\n\nDurum: *Beklemede* (Yakında onaylayacağız!)\n\nBizi tercih ettiğiniz için teşekkür ederiz,\n${branchConfig.restaurantName}`;
         } else {
           confirmationMsg = `*Tischreservierung erhalten*\n\nHallo ${resv.customerName.trim()},\nwir haben Ihre Reservierung für *${resv.guestCount} Personen* am *${formattedDate}* erhalten.\n\nStatus: *Ausstehend* (Wir melden uns in Kürze!)\n\nDanke für Ihre Wahl,\n${branchConfig.restaurantName}`;
         }

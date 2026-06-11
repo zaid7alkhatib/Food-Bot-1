@@ -5,6 +5,7 @@ const TranslationSchema = new Schema(
     ar: { type: String, default: "" },
     de: { type: String, default: "" },
     en: { type: String, default: "" },
+    tr: { type: String, default: "" },
   },
   { _id: false }
 );
@@ -38,7 +39,7 @@ const MenuBoardSettingsSchema = new Schema(
   {
     enabled: { type: Boolean, default: false },
     languageMode: { type: String, enum: ["fixed", "rotate", "bilingual"], default: "rotate" },
-    fixedLanguage: { type: String, enum: ["ar", "de", "en"], default: "de" },
+    fixedLanguage: { type: String, enum: ["ar", "de", "en", "tr"], default: "de" },
     rotationSeconds: { type: Number, default: 15 },
     tickerEnabled: { type: Boolean, default: false },
     tickerText: { type: TranslationSchema, default: () => ({ ar: "", de: "", en: "" }) },
@@ -71,10 +72,10 @@ export interface IBranch extends Document {
   menuBoardSettings?: {
     enabled?: boolean;
     languageMode?: "fixed" | "rotate" | "bilingual";
-    fixedLanguage?: "ar" | "de" | "en";
+    fixedLanguage?: "ar" | "de" | "en" | "tr";
     rotationSeconds?: number;
     tickerEnabled?: boolean;
-    tickerText?: { ar: string; de: string; en: string };
+    tickerText?: { ar: string; de: string; en: string; tr?: string };
     layouts?: {
       screenId: string;
       name?: string;
@@ -85,9 +86,9 @@ export interface IBranch extends Document {
     }[];
     promoSlides?: {
       id: string;
-      title?: { ar: string; de: string; en: string };
+      title?: { ar: string; de: string; en: string; tr?: string };
       imageUrl?: string;
-      priceText?: { ar: string; de: string; en: string };
+      priceText?: { ar: string; de: string; en: string; tr?: string };
       isActive?: boolean;
       sortOrder?: number;
       screenIds?: string[];
