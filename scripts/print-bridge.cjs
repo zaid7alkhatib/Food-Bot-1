@@ -1,6 +1,24 @@
 #!/usr/bin/env node
 
 const { io } = require("socket.io-client");
+
+// Polyfill usb module Event Emitter before escpos is loaded
+try {
+  const usb = require("usb");
+  if (usb && usb.usb && typeof usb.usb.on === "function" && typeof usb.on !== "function") {
+    usb.on = function(event, cb) {
+      usb.usb.on(event, cb);
+      return usb;
+    };
+    usb.removeListener = function(event, cb) {
+      usb.usb.removeListener(event, cb);
+      return usb;
+    };
+  }
+} catch (e) {
+  // If native usb library fails to load, ignore and hope it compiles fine or fallback to network
+}
+
 const escpos = require("escpos");
 escpos.Network = require("escpos-network");
 escpos.USB = require("escpos-usb");

@@ -1402,9 +1402,21 @@ app.get("/api/public/feedbacks", async (req, res) => {
 // POST /api/orders
 app.post("/api/orders", authMiddleware as any, requireRole(...ORDER_ROLES) as any, async (req, res) => {
   try {
+    const { branchId } = req.body;
+    if (!branchId) {
+      res.status(400).json({ error: "Branch ID is required" });
+      return;
+    }
+    const branch = await Branch.findById(branchId);
+    if (!branch) {
+      res.status(400).json({ error: "Branch not found" });
+      return;
+    }
+
     const orderNumber = req.body.orderNumber || await generateOrderNumber();
     const newOrder = new Order({
       orderNumber,
+      restaurantId: branch.restaurantId,
       ...req.body,
     });
     await newOrder.save();
