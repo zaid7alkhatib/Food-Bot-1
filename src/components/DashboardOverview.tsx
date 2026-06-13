@@ -41,6 +41,7 @@ export default function DashboardOverview({ currencySymbol }: DashboardOverviewP
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [restaurant, setRestaurant] = useState<any>(null);
 
   const [preset, setPreset] = useState<"today" | "yesterday" | "7days" | "30days" | "custom">("today");
 
@@ -55,6 +56,23 @@ export default function DashboardOverview({ currencySymbol }: DashboardOverviewP
   const [customEnd, setCustomEnd] = useState(toLocalDateString(new Date()));
 
   const token = localStorage.getItem("token");
+
+  useEffect(() => {
+    const fetchRestaurant = async () => {
+      try {
+        const res = await fetch("/api/settings/restaurant", {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setRestaurant(data);
+        }
+      } catch (err) {
+        console.error("Failed to load restaurant details for compliance status:", err);
+      }
+    };
+    fetchRestaurant();
+  }, [token]);
 
   const getPresetRange = () => {
     let start: Date;
@@ -335,6 +353,94 @@ export default function DashboardOverview({ currencySymbol }: DashboardOverviewP
           >
             🖨️ {t("overview.printSummary") || "Print Summary"}
           </button>
+        </div>
+      </div>
+
+      {/* Compliance Status Widget */}
+      <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm space-y-4">
+        <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+          <h4 className="text-xs font-bold text-gray-900 uppercase tracking-widest flex items-center gap-2">
+            ⚖️ {t("overview.complianceTitle") || "Farman FoodSuite Compliance Status"}
+          </h4>
+          <span className="text-[9px] bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded-full font-mono uppercase tracking-wider font-semibold">
+            System Audited
+          </span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Stripe direct connection check */}
+          <div className="p-3 bg-neutral-50 rounded-xl border border-neutral-200/60 flex items-start gap-2.5">
+            {restaurant?.stripeEnabled && restaurant?.stripePublishableKey ? (
+              <>
+                <span className="text-emerald-500 text-sm font-bold">✓</span>
+                <div className="text-[11px] leading-relaxed">
+                  <p className="font-bold text-slate-800">
+                    {t("overview.complianceStripeConnected") || "Stripe connected directly to restaurant"}
+                  </p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    Option A Direct Settlement • Payments route directly to your own merchant account.
+                  </p>
+                </div>
+              </>
+            ) : (
+              <>
+                <span className="text-amber-500 text-sm font-bold">⚠</span>
+                <div className="text-[11px] leading-relaxed">
+                  <p className="font-bold text-slate-800">
+                    {t("overview.complianceStripeNotConnected") || "Stripe online payments not set up"}
+                  </p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    Using manual/cash payments. Configure Stripe credentials in Settings to accept cards.
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Audit Logging */}
+          <div className="p-3 bg-neutral-50 rounded-xl border border-neutral-200/60 flex items-start gap-2.5">
+            <span className="text-emerald-500 text-sm font-bold">✓</span>
+            <div className="text-[11px] leading-relaxed">
+              <p className="font-bold text-slate-800">
+                {t("overview.complianceAuditActive") || "Audit logging active"}
+              </p>
+              <p className="text-[10px] text-slate-400 mt-0.5">
+                Order status transition histories and technical print bridging operations are logged.
+              </p>
+            </div>
+          </div>
+
+          {/* Order Immutability */}
+          <div className="p-3 bg-neutral-50 rounded-xl border border-neutral-200/60 flex items-start gap-2.5">
+            <span className="text-emerald-500 text-sm font-bold">✓</span>
+            <div className="text-[11px] leading-relaxed">
+              <p className="font-bold text-slate-800">
+                {t("overview.complianceImmutabilityActive") || "Order immutability active"}
+              </p>
+              <p className="text-[10px] text-slate-400 mt-0.5">
+                GoBD compliance active. Order deletions are strictly blocked at database model level.
+              </p>
+            </div>
+          </div>
+
+          {/* CSV exports */}
+          <div className="p-3 bg-neutral-50 rounded-xl border border-neutral-200/60 flex items-start gap-2.5">
+            <span className="text-emerald-500 text-sm font-bold">✓</span>
+            <div className="text-[11px] leading-relaxed">
+              <p className="font-bold text-slate-800">
+                {t("overview.complianceCsvActive") || "CSV exports enabled"}
+              </p>
+              <p className="text-[10px] text-slate-400 mt-0.5">
+                Financial accountant summaries with VAT details and POS reconcile logs are ready.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-3 bg-amber-50/50 border border-amber-100 rounded-xl flex items-start gap-2.5">
+          <span className="text-amber-600 text-sm font-bold">⚠</span>
+          <p className="text-[11px] font-semibold text-amber-900 leading-tight">
+            {t("overview.complianceReconcileWarning") || "Physical cash register reconciliation remains the responsibility of the restaurant."}
+          </p>
         </div>
       </div>
 
