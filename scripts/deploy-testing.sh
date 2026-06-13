@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+# Check if first argument is a configuration profile file
+if [[ $# -gt 0 && -f "$1" ]]; then
+  echo "==> Loading deployment profile: $1"
+  source "$1"
+  shift
+fi
+
 SSH_HOST="${SSH_HOST:-myvps}"
 SERVER_IP="${SERVER_IP:-84.247.160.6}"
 DEPLOY_DIR="${DEPLOY_DIR:-/var/www/mr-tabboush-whatsapp-ordering-system}"
@@ -10,6 +17,13 @@ MONGODB_URI="${MONGODB_URI:-mongodb://localhost:27017/mr_tabboush_testing}"
 APP_URL="${APP_URL:-https://moinauto.work}"
 RUN_SEED="0"
 SKIP_LOCAL_CHECKS="${SKIP_LOCAL_CHECKS:-0}"
+
+# Dynamic seed defaults
+RESTAURANT_NAME="${RESTAURANT_NAME:-MR. Tabboush}"
+RESTAURANT_LEGAL_NAME="${RESTAURANT_LEGAL_NAME:-Farman GmbH}"
+ORDER_PREFIX="${ORDER_PREFIX:-TAB}"
+ADMIN_EMAIL="${ADMIN_EMAIL:-admin@mrtabboush.de}"
+ADMIN_PASSWORD="${ADMIN_PASSWORD:-tabboush2024}"
 
 usage() {
   cat <<EOF
@@ -94,7 +108,7 @@ ssh "$SSH_HOST" \
   "cd '$DEPLOY_DIR' && npm ci && npm run build"
 
 echo "==> Ensuring remote .env exists"
-ssh "$SSH_HOST" "DEPLOY_DIR='$DEPLOY_DIR' PORT='$PORT' MONGODB_URI='$MONGODB_URI' SERVER_IP='$SERVER_IP' APP_URL='$APP_URL' bash -s" <<'REMOTE_ENV'
+ssh "$SSH_HOST" "DEPLOY_DIR='$DEPLOY_DIR' PORT='$PORT' MONGODB_URI='$MONGODB_URI' SERVER_IP='$SERVER_IP' APP_URL='$APP_URL' RESTAURANT_NAME='$RESTAURANT_NAME' RESTAURANT_LEGAL_NAME='$RESTAURANT_LEGAL_NAME' ORDER_PREFIX='$ORDER_PREFIX' ADMIN_EMAIL='$ADMIN_EMAIL' ADMIN_PASSWORD='$ADMIN_PASSWORD' bash -s" <<'REMOTE_ENV'
 set -Eeuo pipefail
 cd "$DEPLOY_DIR"
 
@@ -114,6 +128,11 @@ JWT_EXPIRES_IN="7d"
 PORT=${PORT}
 NODE_ENV="production"
 DISABLE_HMR="true"
+RESTAURANT_NAME="${RESTAURANT_NAME}"
+RESTAURANT_LEGAL_NAME="${RESTAURANT_LEGAL_NAME}"
+ORDER_PREFIX="${ORDER_PREFIX}"
+ADMIN_EMAIL="${ADMIN_EMAIL}"
+ADMIN_PASSWORD="${ADMIN_PASSWORD}"
 EOF
   chmod 600 .env
   echo "Created $DEPLOY_DIR/.env. Edit GEMINI_API_KEY later if AI mode is needed."
@@ -124,7 +143,7 @@ REMOTE_ENV
 
 if [[ "$RUN_SEED" == "1" ]]; then
   echo "==> Seeding database on VPS"
-  ssh "$SSH_HOST" "cd '$DEPLOY_DIR' && npm run seed"
+  ssh "$SSH_HOST" "cd '$DEPLOY_DIR' && RESTAURANT_NAME='$RESTAURANT_NAME' RESTAURANT_LEGAL_NAME='$RESTAURANT_LEGAL_NAME' ORDER_PREFIX='$ORDER_PREFIX' ADMIN_EMAIL='$ADMIN_EMAIL' ADMIN_PASSWORD='$ADMIN_PASSWORD' npm run seed"
 else
   echo "==> Skipping seed. Run with --seed for a fresh testing dataset."
 fi
