@@ -16,6 +16,7 @@ This software subscription agreement (the **"Agreement"**) is entered into by an
    - Technical connection to online payment processors (e.g. Stripe) and local kitchen printers.
 2. The Platform is strictly a digital facilitator of sales communication, ordering logistics, and marketing campaigns.
 3. The platform **is NOT** a POS cash register system, fiscal system, TSE provider, payment institution, or tax software provider.
+4. **Service Availability:** The Provider does not guarantee uninterrupted, 100% error-free availability of the Platform. The software is dependent on third-party services, including but not limited to public telecommunication networks, VPS server hosting providers, Stripe APIs, and Meta/WhatsApp connectivity protocols, which may experience temporary service interruptions.
 
 ---
 
@@ -35,19 +36,21 @@ This software subscription agreement (the **"Agreement"**) is entered into by an
 
 ### § 4 Data Processing (GDPR / DSGVO)
 1. In providing the platform, the Provider will process personal data of the restaurant's customers (names, phone numbers, delivery addresses, order items) on behalf of the Customer as a processor (Auftragsverarbeiter) under **Art. 28 DSGVO**.
-2. The parties agree to execute a separate **Data Processing Agreement (DPA / Auftragsverarbeitungsvertrag - AVV)** concurrently with this contract.
-3. The Customer is responsible for ensuring a legal basis for processing (e.g. contract performance under Art. 6 Abs. 1 lit. b DSGVO) and maintaining adequate WhatsApp double opt-ins for any bulk marketing campaigns initiated via the dashboard.
+2. **Data Ownership:** The Customer is and remains the sole owner of all customer, order, reservation, and menu data processed through the platform. The Provider processes this data solely for service delivery and platform operation under the Customer's instructions, and acquires no ownership rights over it.
+3. The parties agree to execute a separate **Data Processing Agreement (DPA / Auftragsverarbeitungsvertrag - AVV)** concurrently with this contract.
+4. The Customer is responsible for ensuring a legal basis for processing (e.g. contract performance under Art. 6 Abs. 1 lit. b DSGVO) and maintaining adequate WhatsApp double opt-ins for any bulk marketing campaigns initiated via the dashboard.
 
 ---
 
 ### § 5 Duration, Fees & Payment
 1. The contract duration, monthly subscription fees, and setup costs are governed by the custom Order Form signed by the Customer.
 2. Invoice amounts are due within 14 days of receipt. In case of payment delays exceeding 30 days, the Provider reserves the right to temporarily suspend the SaaS VPS environment.
+3. **Termination Clause:** This Agreement may be terminated by either party with a written notice of thirty (30) days prior to the end of the current billing cycle or contract period.
 
 ---
 
 ### § 6 Limitation of Liability
-1. The Provider is liable for damages caused by intent or gross negligence. Liability for simple negligence is limited to breaches of essential contractual duties (Kardinalpflichten) and capped at the amount of subscription fees paid by the Customer in the 12 months preceding the claim.
+1. The Provider is liable for damages caused by intent or gross negligence. The maximum cumulative liability of the Provider (Farman GmbH) for any claims arising out of or related to this Agreement (whether in contract, tort, or otherwise) is strictly limited to the subscription fees paid by the Customer during the preceding twelve (12) months.
 2. The Provider is not liable for business interruptions, loss of profit, or damages resulting from compliance audits, tax penalties, or fines incurred by the Customer due to missing or inadequate physical cash registers (TSE).
 
 ---

@@ -47,6 +47,7 @@ const dictionaries: Record<AppLanguage, TranslationMap> = {
     "nav.whatsapp": "WhatsApp",
     "nav.branch": "Filiale",
     "nav.restaurant": "Restaurant",
+    "nav.systemInfo": "System-Info",
     "nav.users": "Benutzer",
 
     "login.subtitle": "WhatsApp-Bestellsystem",
@@ -517,6 +518,7 @@ const dictionaries: Record<AppLanguage, TranslationMap> = {
     "nav.whatsapp": "واتساب",
     "nav.branch": "الفرع",
     "nav.restaurant": "المطعم",
+    "nav.systemInfo": "معلومات النظام",
     "nav.users": "المستخدمون",
 
     "login.subtitle": "نظام طلبات واتساب",
@@ -987,6 +989,7 @@ const dictionaries: Record<AppLanguage, TranslationMap> = {
     "nav.whatsapp": "WhatsApp",
     "nav.branch": "Branch",
     "nav.restaurant": "Restaurant",
+    "nav.systemInfo": "System Info",
     "nav.users": "Users",
 
     "login.subtitle": "WhatsApp Ordering System",
@@ -1457,6 +1460,7 @@ const dictionaries: Record<AppLanguage, TranslationMap> = {
     "nav.whatsapp": "WhatsApp",
     "nav.branch": "Şube",
     "nav.restaurant": "Restoran",
+    "nav.systemInfo": "Sistem Bilgisi",
     "nav.users": "Kullanıcılar",
 
     "login.subtitle": "WhatsApp Sipariş Sistemi",

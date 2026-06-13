@@ -49,10 +49,13 @@ The Processor shall implement appropriate technical and organizational measures 
 ---
 
 ### § 5 Sub-processors (Unterauftragsverarbeiter)
-1. The Controller hereby consents to the engagement of the following sub-processors for infrastructure operations:
-   - VPS Hosting Provider (e.g., Host Europe / Contabo / Hetzner)
-   - Stripe Inc. (if payment features are active)
-   - OpenAI / Google Gemini (if NLP chatbot integration is active)
+1. The Controller hereby consents to the engagement of the following sub-processors for infrastructure operations and service delivery:
+   - **VPS Hosting Infrastructure:** Host Europe GmbH / Contabo GmbH / Hetzner Online GmbH (Server hosting in German/EU data centers).
+   - **Payment Services:** Stripe Payments Europe Ltd. / Stripe Inc. (Online card and digital wallet processing).
+   - **Communications Gateway:** Meta Platforms Ireland Ltd. / WhatsApp Ireland Ltd. (WhatsApp API protocols and messaging routing).
+   - **Database Cloud Services:** MongoDB Inc. (Atlas data storage services, if cloud clustering is enabled).
+   - **Email Dispatch Service:** Mailgun Technologies Inc. / Twilio SendGrid (Administrative notification emails).
+   - **AI Chatbot Service:** Google Ireland Ltd. / OpenAI LLC (Gemini/GPT NLP models for chat parsing and automated responses).
 2. The Processor shall inform the Controller of any intended changes concerning the addition or replacement of sub-processors, giving the Controller the opportunity to object.
 
 ---

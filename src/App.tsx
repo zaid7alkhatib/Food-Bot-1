@@ -17,6 +17,7 @@ import {
   Users,
   Calculator,
   Calendar,
+  Info,
 } from "lucide-react";
 import { io, Socket } from "socket.io-client";
 import PhoneSimulator from "./components/PhoneSimulator";
@@ -31,6 +32,7 @@ import BranchSettings from "./components/BranchSettings";
 import RestaurantSettings from "./components/RestaurantSettings";
 import UserManagement from "./components/UserManagement";
 import LoginPage from "./components/LoginPage";
+import SystemInfo from "./components/SystemInfo";
 import SmartMenu from "./components/SmartMenu";
 import MenuBoard from "./components/MenuBoard";
 import MenuBoardSettings from "./components/MenuBoardSettings";
@@ -54,11 +56,12 @@ type DashboardTab =
   | "whatsapp"
   | "settings"
   | "restaurant"
-  | "users";
+  | "users"
+  | "systemInfo";
 
 const ROLE_TABS: Record<UserRole, DashboardTab[]> = {
-  super_admin: ["overview", "orders", "pos", "reservations", "chat", "campaigns", "menu", "menuBoard", "hardware", "whatsapp", "settings", "restaurant", "users"],
-  restaurant_admin: ["overview", "orders", "pos", "reservations", "chat", "campaigns", "menu", "menuBoard", "hardware", "whatsapp", "settings", "restaurant", "users"],
+  super_admin: ["overview", "orders", "pos", "reservations", "chat", "campaigns", "menu", "menuBoard", "hardware", "whatsapp", "settings", "restaurant", "users", "systemInfo"],
+  restaurant_admin: ["overview", "orders", "pos", "reservations", "chat", "campaigns", "menu", "menuBoard", "hardware", "whatsapp", "settings", "restaurant", "users", "systemInfo"],
   branch_manager: ["overview", "orders", "pos", "reservations", "chat", "menu", "menuBoard", "hardware", "settings"],
   staff: ["orders", "pos", "reservations", "hardware"],
   support_agent: ["chat"],
@@ -82,6 +85,7 @@ const TAB_CONFIG: {
   { id: "settings", labelKey: "nav.branch", Icon: Settings },
   { id: "restaurant", labelKey: "nav.restaurant", Icon: Building2 },
   { id: "users", labelKey: "nav.users", Icon: Users },
+  { id: "systemInfo", labelKey: "nav.systemInfo", Icon: Info },
 ];
 
 function normalizeConversation(conversation: any): Conversation {
@@ -782,6 +786,8 @@ function Dashboard() {
                 {activeTab === "restaurant" && <RestaurantSettings />}
 
                 {activeTab === "users" && <UserManagement />}
+
+                {activeTab === "systemInfo" && <SystemInfo />}
               </>
             )}
           </div>
