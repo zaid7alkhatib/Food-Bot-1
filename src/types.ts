@@ -296,6 +296,7 @@ export interface Customer {
     tableNumber?: string;
     status: string;
     numPeople?: number;
+    guestCount?: number;
   }[];
 }
 

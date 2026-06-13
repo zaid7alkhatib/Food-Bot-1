@@ -136,7 +136,7 @@ export default function CampaignTab({ campaigns, onCreateCampaign, onUpdateCampa
               {/* Action buttons triggers */}
               {c.status === "draft" && (
                 <button
-                  onClick={() => onDispatchCampaign(c.id)}
+                  onClick={() => onDispatchCampaign(c.id, filterOptIn)}
                   className="w-full mt-2.5 bg-orange-500 hover:bg-orange-600 text-white font-bold text-[10px] uppercase py-1.5 rounded flex items-center justify-center gap-1.5 transition leading-none shadow-sm active:scale-95"
                 >
                   <Send size={10} />

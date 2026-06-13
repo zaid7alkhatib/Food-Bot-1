@@ -411,6 +411,24 @@ function Dashboard() {
     }
   };
 
+  const handleToggleConsent = async (phone: string, consent: boolean) => {
+    try {
+      const response = await fetch(`/api/conversations/${phone}/consent`, {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({ consent }),
+      });
+      if (response.ok) {
+        setCustomers((prev) =>
+          prev.map((c) => (c.phone === phone ? { ...c, marketingOptIn: consent } : c))
+        );
+        await fetchCustomers();
+      }
+    } catch (err) {
+      console.error("Failed to update consent status:", err);
+    }
+  };
+
   const handleDispatchCampaign = async (id: string, filterOptIn?: boolean) => {
     try {
       const response = await fetch(`/api/campaigns/${id}/send`, {
@@ -828,6 +846,7 @@ function Dashboard() {
                     onStartChat={(phone) => {
                       setActiveTab("chat");
                     }}
+                    onToggleConsent={handleToggleConsent}
                   />
                 )}
 
