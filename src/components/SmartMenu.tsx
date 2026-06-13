@@ -266,15 +266,33 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
     };
 
     setCart((prev) => {
-      const nextCart = [...prev, cartItem];
+      const duplicateIdx = prev.findIndex((i) => {
+        if (i.itemId !== cartItem.itemId) return false;
+        if (i.selectedModifiers?.length !== cartItem.selectedModifiers?.length) return false;
+        
+        const m1 = i.selectedModifiers || [];
+        const m2 = cartItem.selectedModifiers || [];
+        return m1.every((mod) => m2.some((m) => m.option.id === mod.option.id));
+      });
+
+      let nextCart;
+      if (duplicateIdx >= 0) {
+        nextCart = [...prev];
+        nextCart[duplicateIdx].quantity += cartItem.quantity;
+        const modAdj = nextCart[duplicateIdx].selectedModifiers.reduce((sum, m) => sum + (m.option.priceAdjustment || 0), 0);
+        nextCart[duplicateIdx].totalPrice = (nextCart[duplicateIdx].basePrice + modAdj) * nextCart[duplicateIdx].quantity;
+      } else {
+        nextCart = [...prev, cartItem];
+      }
       
       // Look for active upsells
       const activeUpsell = selectedItemForMod.upsellSuggestions.find((u) => u.isActive !== false);
       if (activeUpsell) {
         // Intercept checkout after closing modal
+        const targetIndex = duplicateIdx >= 0 ? duplicateIdx : nextCart.length - 1;
         setTimeout(() => {
           setPendingUpsellItem({
-            cartIndex: nextCart.length - 1,
+            cartIndex: targetIndex,
             itemId: selectedItemForMod.id,
             upsell: {
               id: activeUpsell.id,
@@ -306,11 +324,29 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
       };
       
       setCart((prev) => {
-        const nextCart = [...prev, cartItem];
+        const duplicateIdx = prev.findIndex((i) => {
+          if (i.itemId !== cartItem.itemId) return false;
+          if (i.selectedModifiers?.length !== cartItem.selectedModifiers?.length) return false;
+          
+          const m1 = i.selectedModifiers || [];
+          const m2 = cartItem.selectedModifiers || [];
+          return m1.every((mod) => m2.some((m) => m.option.id === mod.option.id));
+        });
+
+        let nextCart;
+        if (duplicateIdx >= 0) {
+          nextCart = [...prev];
+          nextCart[duplicateIdx].quantity += cartItem.quantity;
+          nextCart[duplicateIdx].totalPrice = nextCart[duplicateIdx].basePrice * nextCart[duplicateIdx].quantity;
+        } else {
+          nextCart = [...prev, cartItem];
+        }
+
         const activeUpsell = item.upsellSuggestions.find((u) => u.isActive !== false);
         if (activeUpsell) {
+          const targetIndex = duplicateIdx >= 0 ? duplicateIdx : nextCart.length - 1;
           setPendingUpsellItem({
-            cartIndex: nextCart.length - 1,
+            cartIndex: targetIndex,
             itemId: item.id,
             upsell: {
               id: activeUpsell.id,

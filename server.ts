@@ -2231,10 +2231,6 @@ app.post("/api/public/whatsapp-cart", async (req, res) => {
     } else {
       convo.currentStep = "type";
     }
-    convo.updatedAt = new Date();
-    await convo.save();
-
-    emitGlobal("conversation:updated", serializeDoc(convo));
 
     const lang = convo.customerLanguage || "de";
     let summaryText = "";
@@ -2250,6 +2246,20 @@ app.post("/api/public/whatsapp-cart", async (req, res) => {
         : "Ich habe Ihren Warenkorb geladen! 🛒\n\n";
       summaryText = cartLoadedText + getWelcomeReply(lang, branchConfig, convo._id?.toString() || convo.id);
     }
+
+    // Append to messages history so the chatbot logs are visually complete on the admin dashboard
+    const resumeMsgId = "resume-msg-" + Math.random().toString(36).substr(2, 9);
+    convo.messages.push({
+      id: resumeMsgId,
+      sender: "bot" as const,
+      text: summaryText,
+      timestamp: new Date().toISOString(),
+    });
+
+    convo.updatedAt = new Date();
+    await convo.save();
+
+    emitGlobal("conversation:updated", serializeDoc(convo));
     
     try {
       await sendConversationWhatsAppMessage(convo, summaryText);
