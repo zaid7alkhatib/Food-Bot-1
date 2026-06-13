@@ -72,9 +72,34 @@ A centralized control room for owners and managers.
 A desktop-optimized, fast cashier interface designed for phone-in, walk-in, and table orders.
 *   **Menu Catalog Grid & Search**: Easily filter items by category or search by name/SKU to select items.
 *   **Customization Drawer**: Configure required and optional modifiers, customize quantities, and add suggested upsell items to order slips.
-*   **Fulfillment Flexibility**: Select Dine-In (requires table number), Pickup, or Delivery, dynamically calculating fees.
+*   **Fulfillment Flexibility**: Select Dine-In, Pickup, or Delivery, dynamically calculating fees.
+*   **Conflict-Free Table Selector**: Displays configured physical tables with real-time occupancy status (Green for Available, Red for Occupied, Amber for Reserved soon) to prevent seating clashes.
 *   **Cashier Discounts**: Cashiers can apply manual flat-rate discounts directly on the checkout summary.
+*   **Automatic Kitchen Printing**: Connects with network/LAN IP or USB thermal printers to trigger instant order receipts via a local Socket.io print-bridge client.
 *   **Role-Based Security**: Restricts cashier operations to the user's branch context, while allowing global switching for restaurant administrators.
+
+### 6. Interactive Table Reservation & Visual Floor Plan System
+A visual table manager and reservation engine that automates bookings.
+*   **Visual Layout Canvas**: Interactive drag-and-drop builder allowing administrators to position tables representing the actual branch floor plan responsively.
+*   **Real-time Occupancy Synchronization**: Color-coded table indicators (Green = Available, Red = Seated/Occupied, Amber = Reserved soon) updated live by POS dine-in checkouts, reservations, or table QR scans.
+*   **Smart Menu QR Alerts**: Warns dine-in customers scanning table QR codes if a confirmed booking is scheduled on that table in the next 45 minutes, without blocking quick orders.
+*   **AI Conversational Booking**: Enables customers to book tables by messaging the WhatsApp bot in natural language (Gemini AI extracts, validates, and logs the booking).
+
+### 7. Online Payment Integration & Direct Settlement
+A secure online checkout option for delivery, pickup, and dine-in.
+*   **Direct Merchant Settlement (Option A)**: Funds settle directly to the restaurant's merchant account; Farman FoodSuite acts strictly as a technical facilitator and handles no transaction capital.
+*   **Multiple payment options**: Fully supports Credit/Debit cards, Apple Pay, Google Pay, and PayPal via Stripe integration.
+*   **Real-time Webhook Synchronization**: Triggers status transitions and logs payment logs automatically in response to Stripe Payment Intent webhooks.
+
+### 8. Legal Compliance & Audit Trail Safeguards (GoBD & GDPR)
+Platform-wide parameters designed to meet rigorous EU and German regulatory guidelines.
+*   **GoBD Order Immutability**: Throw validation errors at the database model level if delete actions or status reversion attempts are requested on finalized orders (`paid`, `refunded`, `delivered`, `cancelled`).
+*   **Status History Logging**: Tracks a comprehensive audit trail of every order status transition showing original status, target status, trigger source, and timestamp.
+*   **Accountant & Reconciliation CSVs**: Export accountant-ready spreadsheets with auto-calculated Net/Gross/VAT breakdowns based on configurable restaurant tax rates, and POS logs for cash register reconciliation.
+*   **Dashboard Compliance Widget**: Highlights active compliance parameters (immutability, audit logging, direct Stripe integration) in the admin console.
+*   **Clean GDPR Privacy Boundaries**: Separates DSGVO Datenschutz (GDPR privacy policy) modals from tax and GoBD compliance disclaimers.
+*   **SaaS Customer Agreements & AVV Templates**: Includes pre-formatted subscriber contracts with liability caps and DPA (Auftragsverarbeitungsvertrag) templates detailing sub-processors in the repository.
+*   **System Information Page**: Prominently shows hosting details (Germany), data retention policies (10 years), and platform configurations.
 
 ---
 
@@ -82,7 +107,7 @@ A desktop-optimized, fast cashier interface designed for phone-in, walk-in, and 
 
 The platform is engineered to support multiple tenants on individual VPS deployments. A restaurant owner can fully brand the experience from the admin settings screen:
 *   **Brand Customization**: Upload logos and set brand primary/secondary colors. The entire interface (brand website, smart menu, login portals, and dynamic footer) styles itself.
-*   **Multilingual Settings**: Select default and supported languages (German, Arabic, English).
+*   **Multilingual Settings**: Select default and supported languages (German, Arabic, English, Turkish).
 *   **Custom Order Prefixes**: Choose unique order prefix codes (e.g., `TAB-1051`, `BURG-2003`) to differentiate branches.
 *   **Flexible Currency**: Full support for Euro (€), US Dollars ($), British Pounds (£), or Saudi Riyals (﷼).
 *   **Configurable Integration Links**: Update Google Maps direction coordinates and feedback landing pages instantly.
@@ -97,3 +122,4 @@ The platform is engineered to support multiple tenants on individual VPS deploym
 *   **Unified POS Entry**: Centralizes table, walk-in, and phone orders directly into the same live database, kitchen boards, and printer queues used for digital checkouts.
 *   **Operational Efficiency**: Automate routine order tasks to free up staff. Table-QR scans reduce waiter overhead during peak hours.
 *   **Premium Visual Experience**: Modern visual assets, glassmorphism UI components, fluid hover micro-animations, and fast page load times leave customers with a premium impression of the brand.
+
