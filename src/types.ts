@@ -210,6 +210,7 @@ export interface Conversation {
   messages: Message[];
   currentStep?: "welcome" | "language_selection" | "type" | "menu" | "customizing" | "address" | "pickup_time" | "confirming" | "completed";
   unsubmittedOrder?: Partial<Order>;
+  marketingOptIn?: boolean;
 }
 
 export interface Campaign {
@@ -280,6 +281,7 @@ export interface Customer {
   lastInteractionDate: string;
   preferredLanguage?: string;
   segment: "active" | "dormant";
+  marketingOptIn?: boolean;
   recentOrders: {
     id: string;
     orderNumber: string;

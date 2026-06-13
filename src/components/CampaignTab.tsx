@@ -7,7 +7,7 @@ interface CampaignTabProps {
   campaigns: Campaign[];
   onCreateCampaign: (campaign: Omit<Campaign, "id" | "status">) => void;
   onUpdateCampaign: (id: string, campaign: Omit<Campaign, "id" | "status">) => void;
-  onDispatchCampaign: (id: string) => void;
+  onDispatchCampaign: (id: string, filterOptIn: boolean) => void;
   onSendTestCampaign: (id: string, phone: string) => Promise<boolean>;
 }
 
@@ -28,6 +28,7 @@ export default function CampaignTab({ campaigns, onCreateCampaign, onUpdateCampa
   const [msgEn, setMsgEn] = useState("");
   const [msgTr, setMsgTr] = useState("");
   const [testPhone, setTestPhone] = useState("");
+  const [filterOptIn, setFilterOptIn] = useState(true);
   const [isTestingSend, setIsTestingSend] = useState(false);
   const [testSendResult, setTestSendResult] = useState<{ success: boolean; msg: string } | null>(null);
 
@@ -336,7 +337,7 @@ export default function CampaignTab({ campaigns, onCreateCampaign, onUpdateCampa
                       {t("common.edit")}
                     </button>
                     <button
-                      onClick={() => onDispatchCampaign(selectedCampaign.id)}
+                      onClick={() => onDispatchCampaign(selectedCampaign.id, filterOptIn)}
                       className="p-1.5 px-3 bg-orange-600 hover:bg-orange-700 text-white text-[10px] font-bold rounded flex items-center gap-1 transition uppercase leading-none font-sans"
                     >
                       <Send size={10} />
@@ -346,6 +347,27 @@ export default function CampaignTab({ campaigns, onCreateCampaign, onUpdateCampa
                 )}
               </div>
             </div>
+
+            {/* GDPR & UWG compliance warning banner */}
+            {selectedCampaign.status === "draft" && (
+              <div className="p-3.5 bg-rose-50/5 border border-rose-250 rounded-lg flex flex-col gap-2.5">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[10px] font-bold text-rose-700 uppercase">{t("campaign.complianceWarningTitle")}</span>
+                  <p className="text-[11px] text-gray-500 leading-relaxed">
+                    {t("campaign.complianceWarningText")}
+                  </p>
+                </div>
+                <label className="flex items-center gap-2 text-[11px] font-semibold text-gray-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={filterOptIn}
+                    onChange={(e) => setFilterOptIn(e.target.checked)}
+                    className="rounded border-gray-300 text-orange-600 focus:ring-orange-500 font-sans"
+                  />
+                  <span>{t("campaign.complianceFilterOptIn")}</span>
+                </label>
+              </div>
+            )}
 
             {/* Test Send Input - only show for Drafts */}
             {selectedCampaign.status === "draft" && (

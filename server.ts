@@ -2595,6 +2595,7 @@ app.put("/api/campaigns/:id", authMiddleware as any, requireRole(...ADMIN_ROLES)
 app.post("/api/campaigns/:id/send", authMiddleware as any, requireRole(...ADMIN_ROLES) as any, async (req, res) => {
   try {
     const { id } = req.params;
+    const { filterOptIn } = req.body;
 
     const tempCampaign = await Campaign.findById(id);
     if (!tempCampaign) {
@@ -2634,6 +2635,11 @@ app.post("/api/campaigns/:id/send", authMiddleware as any, requireRole(...ADMIN_
         const isActive = activeCustomerPhones.has(phone);
         return tempCampaign.segment === "active" ? isActive : !isActive;
       });
+    }
+
+    // Consent-based compliance filtering
+    if (filterOptIn !== false) {
+      targets = targets.filter((convo: any) => convo.marketingOptIn === true);
     }
 
     const campaign = await Campaign.findByIdAndUpdate(
@@ -2800,6 +2806,7 @@ app.get("/api/customers", authMiddleware as any, requireRole(...MANAGER_ROLES) a
       lastInteractionDate: string;
       preferredLanguage?: string;
       segment: "active" | "dormant";
+      marketingOptIn: boolean;
       recentOrders: any[];
       recentReservations: any[];
     }>();
@@ -2820,6 +2827,7 @@ app.get("/api/customers", authMiddleware as any, requireRole(...MANAGER_ROLES) a
           totalSpend: 0,
           lastInteractionDate: new Date(0).toISOString(),
           segment: "dormant",
+          marketingOptIn: false,
           recentOrders: [],
           recentReservations: [],
         });
@@ -2838,6 +2846,9 @@ app.get("/api/customers", authMiddleware as any, requireRole(...MANAGER_ROLES) a
       }
       if (convo.customerName && convo.customerName !== "Test Contact" && convo.customerName !== "Guest Customer") {
         customer.name = convo.customerName;
+      }
+      if (convo.marketingOptIn !== undefined) {
+        customer.marketingOptIn = convo.marketingOptIn;
       }
       
       const convoDate = convo.updatedAt ? new Date(convo.updatedAt).toISOString() : new Date(convo.createdAt || 0).toISOString();
@@ -2939,6 +2950,51 @@ app.get("/api/customers", authMiddleware as any, requireRole(...MANAGER_ROLES) a
   } catch (err) {
     console.error("[API] GET /api/customers error:", err);
     res.status(500).json({ error: "Failed to fetch aggregated customer list" });
+  }
+});
+
+// POST /api/conversations/:phone/consent - Update marketing consent status
+app.post("/api/conversations/:phone/consent", authMiddleware as any, requireRole(...MANAGER_ROLES) as any, async (req, res) => {
+  try {
+    const { phone } = req.params;
+    const { consent } = req.body;
+
+    if (typeof consent !== "boolean") {
+      res.status(400).json({ error: "Consent status must be a boolean" });
+      return;
+    }
+
+    const normalizedPhone = phone.trim().replace(/\D/g, "");
+    
+    let convo = await Conversation.findOne({
+      $or: [
+        { whatsAppPhone: phone },
+        { whatsAppPhone: normalizedPhone },
+        { whatsAppPhone: phone.replace("+", "") }
+      ]
+    });
+
+    if (!convo) {
+      convo = new Conversation({
+        customerName: req.body.customerName || "Guest Customer",
+        whatsAppPhone: phone,
+        botEnabled: true,
+        marketingOptIn: consent,
+        messages: [],
+      });
+    } else {
+      convo.marketingOptIn = consent;
+    }
+
+    await convo.save();
+
+    const serializedConvo = serializeDoc(convo);
+    emitGlobal("conversation:updated", serializedConvo);
+
+    res.json({ success: true, marketingOptIn: convo.marketingOptIn });
+  } catch (err) {
+    console.error("[API] POST /api/conversations/:phone/consent error:", err);
+    res.status(500).json({ error: "Failed to update consent status" });
   }
 });
 

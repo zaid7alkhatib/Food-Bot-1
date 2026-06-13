@@ -20,10 +20,11 @@ import { useI18n } from "../i18n";
 interface CustomersTabProps {
   customers: Customer[];
   onStartChat?: (phone: string) => void;
+  onToggleConsent?: (phone: string, consent: boolean) => Promise<void>;
   currencySymbol: string;
 }
 
-export default function CustomersTab({ customers, onStartChat, currencySymbol }: CustomersTabProps) {
+export default function CustomersTab({ customers, onStartChat, onToggleConsent, currencySymbol }: CustomersTabProps) {
   const { t } = useI18n();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSegment, setSelectedSegment] = useState<"all" | "active" | "dormant">("all");
@@ -245,6 +246,7 @@ export default function CustomersTab({ customers, onStartChat, currencySymbol }:
                   <th className="p-3 pl-4">{t("customers.name")}</th>
                   <th className="p-3">{t("customers.phone")}</th>
                   <th className="p-3">{t("customers.sources")}</th>
+                  <th className="p-3 text-center">{t("customers.consent")}</th>
                   <th className="p-3 text-center">{t("customers.orders")}</th>
                   <th className="p-3 text-right">{t("customers.spend")}</th>
                   <th className="p-3 text-right pr-4">{t("customers.lastSeen")}</th>
@@ -280,6 +282,17 @@ export default function CustomersTab({ customers, onStartChat, currencySymbol }:
                             </span>
                           ))}
                         </div>
+                      </td>
+                      <td className="p-3 text-center">
+                        {c.marketingOptIn ? (
+                          <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full text-[9px] font-bold whitespace-nowrap">
+                            Opt-In
+                          </span>
+                        ) : (
+                          <span className="bg-gray-50 border border-gray-200 text-gray-500 px-2 py-0.5 rounded-full text-[9px] font-bold whitespace-nowrap">
+                            None
+                          </span>
+                        )}
                       </td>
                       <td className="p-3 text-center font-bold text-gray-900">{c.ordersCount}</td>
                       <td className="p-3 text-right font-extrabold text-orange-600">{currencySymbol}{c.totalSpend.toFixed(2)}</td>
@@ -323,6 +336,35 @@ export default function CustomersTab({ customers, onStartChat, currencySymbol }:
                   <Globe size={11} />
                   <span>{t("customers.language")}: <strong className="uppercase">{selectedCustomer.preferredLanguage}</strong></span>
                 </div>
+              )}
+            </div>
+
+            {/* Consent status toggle section */}
+            <div className="bg-neutral-50 p-3 rounded-lg border border-gray-150 flex flex-col gap-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-gray-500 font-bold uppercase">{t("customers.consent")}:</span>
+                <span className={`text-[8px] font-bold border px-2 py-0.5 rounded uppercase ${
+                  selectedCustomer.marketingOptIn
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                    : "bg-gray-50 text-gray-500 border-gray-200"
+                }`}>
+                  {selectedCustomer.marketingOptIn ? t("customers.optedIn") : t("customers.noConsent")}
+                </span>
+              </div>
+              
+              {onToggleConsent && selectedCustomer.phone && (
+                <button
+                  onClick={async () => {
+                    await onToggleConsent(selectedCustomer.phone, !selectedCustomer.marketingOptIn);
+                  }}
+                  className={`w-full font-bold text-[10px] uppercase py-1.5 rounded flex items-center justify-center gap-1 transition leading-none border shadow-sm ${
+                    selectedCustomer.marketingOptIn
+                      ? "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100"
+                      : "bg-emerald-600 hover:bg-emerald-700 text-white border-transparent"
+                  }`}
+                >
+                  {selectedCustomer.marketingOptIn ? t("customers.revokeConsent") : t("customers.grantConsent")}
+                </button>
               )}
             </div>
 

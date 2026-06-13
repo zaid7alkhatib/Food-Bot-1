@@ -411,9 +411,16 @@ function Dashboard() {
     }
   };
 
-  const handleDispatchCampaign = async (id: string) => {
+  const handleDispatchCampaign = async (id: string, filterOptIn?: boolean) => {
     try {
-      const response = await fetch(`/api/campaigns/${id}/send`, { method: "POST", headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      const response = await fetch(`/api/campaigns/${id}/send`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ filterOptIn }),
+      });
       if (response.ok) {
         const data = await response.json();
         setConversations(normalizeConversations(data.conversations));

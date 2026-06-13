@@ -60,6 +60,7 @@ export interface IConversation extends Document {
   messages: any[];
   currentStep?: string;
   unsubmittedOrder?: any;
+  marketingOptIn?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -75,6 +76,7 @@ const ConversationSchema = new Schema<IConversation>(
     restaurantId: { type: Schema.Types.ObjectId, ref: "Restaurant" },
     branchId: { type: Schema.Types.ObjectId, ref: "Branch" },
     botEnabled: { type: Boolean, default: true },
+    marketingOptIn: { type: Boolean, default: false },
     assignedTo: String,
     takeoverReason: String,
     takeoverStartedAt: Date,
