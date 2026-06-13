@@ -3606,6 +3606,28 @@ You MUST reply with a JSON object in this exact schema structure:
           }
           convo.unsubmittedOrder = payload.updatedUnsubmittedOrder;
         }
+
+        if (nextStep === "menu") {
+          const convoIdStr = convo._id?.toString() || convo.id;
+          if (convoIdStr && !botReplyText.includes("/?convo=")) {
+            const appUrl = process.env.APP_URL || `https://moinauto.work`;
+            const branchQuery = branchConfig.branchId ? `&branch=${branchConfig.branchId}` : "";
+            const url = `${appUrl}/?convo=${convoIdStr}${branchQuery}`;
+            
+            let linkPrompt = "";
+            if (lang === "ar") {
+              linkPrompt = `\n\n🔗 أو يمكنك تصفح القائمة واختيار الأصناف بشكل مرئي وبسيط من هنا:\n${url}`;
+            } else if (lang === "en") {
+              linkPrompt = `\n\n🔗 Or browse our menu and add items visually here:\n${url}`;
+            } else if (lang === "tr") {
+              linkPrompt = `\n\n🔗 Veya menümüze göz atıp ürünleri buradan görsel olarak ekleyin:\n${url}`;
+            } else {
+              linkPrompt = `\n\n🔗 Oder stöbern Sie in unserer Speisekarte und wählen Sie die Artikel hier visuell aus:\n${url}`;
+            }
+            botReplyText += linkPrompt;
+          }
+        }
+
         if (payload.placedOrderPayload) {
           finalPlacedOrder = payload.placedOrderPayload;
         }
