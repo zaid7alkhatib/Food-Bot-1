@@ -3382,6 +3382,66 @@ app.post("/api/bot-reply", async (req, res) => {
       nextStep = "menu";
     }
 
+    // Validate delivery address distance restrictions before calling Gemini or fallback rule-based bot
+    if (!botReplyText && nextStep === "address") {
+      const latitude = req.body.latitude;
+      const longitude = req.body.longitude;
+      
+      let targetLat: number | undefined = undefined;
+      let targetLon: number | undefined = undefined;
+      let isGps = false;
+      
+      const branchCity = branchConfig.branchCity || "Wuppertal";
+
+      if (latitude !== undefined && longitude !== undefined) {
+        targetLat = Number(latitude);
+        targetLon = Number(longitude);
+        isGps = true;
+      } else {
+        // Geocode typed address text if not a control command
+        const isControl = detectFlowCommand(message) !== null;
+        if (!isControl) {
+          const searchQuery = message.toLowerCase().includes(branchCity.toLowerCase())
+            ? message
+            : `${message}, ${branchCity}`;
+            
+          const coords = await geocodeAddress(searchQuery);
+          if (coords) {
+            targetLat = coords.latitude;
+            targetLon = coords.longitude;
+          }
+        }
+      }
+      
+      if (targetLat !== undefined && targetLon !== undefined && Number.isFinite(targetLat) && Number.isFinite(targetLon)) {
+        const branchLat = branchConfig.branchLatitude || 51.2667;
+        const branchLon = branchConfig.branchLongitude || 7.1833;
+        
+        const distance = calculateDistance(targetLat, targetLon, branchLat, branchLon);
+        const maxRadius = branchConfig.deliveryRadiusKm || 4;
+        
+        if (distance > maxRadius) {
+          botReplyText = lang === "ar"
+            ? `عذراً، العنوان المدخل (على بعد ${distance.toFixed(2)} كم) خارج نطاق التوصيل الخاص بنا (${maxRadius} كم).\nيرجى إرسال موقع آخر أو كتابة عنوانك يدوياً داخل ${branchCity}، أو اكتب "استلام" لتغيير الطلب إلى استلام من الفرع.`
+            : lang === "en"
+            ? `Sorry, the address provided (distance: ${distance.toFixed(2)} km) is outside our delivery radius of ${maxRadius} km.\nPlease send another address, or type "pickup" to collect it yourself.`
+            : lang === "tr"
+            ? `Üzgünüz, girilen adres (mesafe: ${distance.toFixed(2)} km) ${maxRadius} km olan teslimat yarıçapımızın dışındadır.\nLütfen başka bir adres gönderin veya kendiniz almak için "teslim alma" yazın.`
+            : `Es tut uns leid, die angegebene Adresse (Entfernung: ${distance.toFixed(2)} km) liegt außerhalb unseres Lieferradius von ${maxRadius} km.\nBitte geben Sie eine andere Adresse ein oder schreiben Sie "abholung", um die Bestellung selbst abzuholen.`;
+          nextStep = "address";
+        } else {
+          const addressString = isGps
+            ? `WhatsApp Shared Location (Lat: ${targetLat.toFixed(5)}, Lon: ${targetLon.toFixed(5)}, Distance: ${distance.toFixed(2)} km)`
+            : `${message} (Verified Distance: ${distance.toFixed(2)} km)`;
+            
+          convo.unsubmittedOrder = {
+            ...convo.unsubmittedOrder,
+            deliveryAddress: addressString
+          };
+        }
+      }
+    }
+
     if (aiClient && !botReplyText) {
       try {
         const parsedMenu = buildVisibleMenuEntries(
@@ -3489,6 +3549,61 @@ You MUST reply with a JSON object in this exact schema structure:
         botReplyText = payload.botReply || "I have received your message.";
         nextStep = payload.nextStep || nextStep;
         if (payload.updatedUnsubmittedOrder) {
+          // If Gemini returned a delivery address that hasn't been verified yet
+          let addressToVerify = payload.updatedUnsubmittedOrder.deliveryAddress;
+          if (addressToVerify && !addressToVerify.includes("Verified Distance") && !addressToVerify.includes("WhatsApp Shared Location")) {
+            const branchCity = branchConfig.branchCity || "Wuppertal";
+            const searchQuery = addressToVerify.toLowerCase().includes(branchCity.toLowerCase())
+              ? addressToVerify
+              : `${addressToVerify}, ${branchCity}`;
+              
+            const coords = await geocodeAddress(searchQuery);
+            if (coords) {
+              const branchLat = branchConfig.branchLatitude || 51.2667;
+              const branchLon = branchConfig.branchLongitude || 7.1833;
+              const distance = calculateDistance(coords.latitude, coords.longitude, branchLat, branchLon);
+              const maxRadius = branchConfig.deliveryRadiusKm || 4;
+              
+              if (distance > maxRadius) {
+                // Reject! It is too far!
+                const isAr = lang === "ar";
+                const isEn = lang === "en";
+                const isTr = lang === "tr";
+                
+                botReplyText = isAr
+                  ? `عذراً، العنوان المدخل (على بعد ${distance.toFixed(2)} كم) خارج نطاق التوصيل الخاص بنا (${maxRadius} كم).\nيرجى إرسال موقع آخر أو كتابة عنوانك يدوياً داخل ${branchCity}، أو اكتب "استلام" لتغيير الطلب إلى استلام من الفرع.`
+                  : isEn
+                  ? `Sorry, the address provided (distance: ${distance.toFixed(2)} km) is outside our delivery radius of ${maxRadius} km.\nPlease send another address, or type "pickup" to collect it yourself.`
+                  : isTr
+                  ? `Üzgünüz, girilen adres (mesafe: ${distance.toFixed(2)} km) ${maxRadius} km olan teslimat yarıçapımızın dışındadır.\nLütfen başka bir adres gönderin veya kendiniz almak için "teslim alma" yazın.`
+                  : `Es tut uns leid, die angegebene Adresse (Entfernung: ${distance.toFixed(2)} km) liegt außerhalb unseres Lieferradius von ${maxRadius} km.\nBitte geben Sie eine andere Adresse ein oder schreiben Sie "abholung", um die Bestellung selbst abzuholen.`;
+                
+                payload.updatedUnsubmittedOrder.deliveryAddress = undefined;
+                payload.updatedUnsubmittedOrder.deliveryFee = undefined;
+                payload.updatedUnsubmittedOrder.total = payload.updatedUnsubmittedOrder.subtotal || 0;
+                nextStep = "address";
+              } else {
+                // Within radius! Annotate with distance
+                payload.updatedUnsubmittedOrder.deliveryAddress = `${addressToVerify} (Verified Distance: ${distance.toFixed(2)} km)`;
+                payload.updatedUnsubmittedOrder.deliveryFee = branchConfig.deliveryFee;
+                payload.updatedUnsubmittedOrder.total = (payload.updatedUnsubmittedOrder.subtotal || 0) + branchConfig.deliveryFee;
+              }
+            } else {
+              // Geocoding failed, but let's keep the typed address as is (fallback) with a warn note
+              const isAr = lang === "ar";
+              const isEn = lang === "en";
+              const isTr = lang === "tr";
+              const warnNote = isAr
+                ? ` (ملاحظة: لم نتمكن من التحقق من هذا العنوان على الخارطة)`
+                : isEn
+                ? ` (Note: Could not verify on map)`
+                : isTr
+                ? ` (Not: Haritada doğrulanamadı)`
+                : ` (Hinweis: Konnte nicht kartiert werden)`;
+              
+              payload.updatedUnsubmittedOrder.deliveryAddress = `${addressToVerify}${warnNote}`;
+            }
+          }
           convo.unsubmittedOrder = payload.updatedUnsubmittedOrder;
         }
         if (payload.placedOrderPayload) {
