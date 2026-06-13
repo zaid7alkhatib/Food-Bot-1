@@ -2775,6 +2775,167 @@ app.post("/api/campaigns/:id/test", authMiddleware as any, requireRole(...ADMIN_
   }
 });
 
+// GET /api/customers - Unified customer directory aggregated from conversations, orders, and reservations
+app.get("/api/customers", authMiddleware as any, requireRole(...MANAGER_ROLES) as any, async (req, res) => {
+  try {
+    const [conversations, orders, reservations] = await Promise.all([
+      Conversation.find().lean(),
+      Order.find().lean(),
+      Reservation.find().lean(),
+    ]);
+
+    // Grouping structure to track unique aggregated client records
+    const customerMap = new Map<string, {
+      name: string;
+      phone: string;
+      sources: Set<string>;
+      ordersCount: number;
+      totalSpend: number;
+      lastOrderDate?: string;
+      lastInteractionDate: string;
+      preferredLanguage?: string;
+      segment: "active" | "dormant";
+      recentOrders: any[];
+      recentReservations: any[];
+    }>();
+
+    const normalizePhone = (p: string | undefined | null) => {
+      if (!p) return "";
+      return p.trim().replace(/\D/g, "");
+    };
+
+    const getOrCreateCustomer = (phone: string, fallbackName: string) => {
+      const key = phone || `name-${fallbackName.trim().toLowerCase()}`;
+      if (!customerMap.has(key)) {
+        customerMap.set(key, {
+          name: fallbackName || "Guest Customer",
+          phone: phone || "",
+          sources: new Set<string>(),
+          ordersCount: 0,
+          totalSpend: 0,
+          lastInteractionDate: new Date(0).toISOString(),
+          segment: "dormant",
+          recentOrders: [],
+          recentReservations: [],
+        });
+      }
+      return customerMap.get(key)!;
+    };
+
+    // 1. WhatsApp conversation records
+    for (const convo of conversations) {
+      const phone = normalizePhone(convo.whatsAppPhone);
+      const customer = getOrCreateCustomer(phone, convo.customerName);
+      
+      customer.sources.add("whatsapp");
+      if (convo.customerLanguage) {
+        customer.preferredLanguage = convo.customerLanguage;
+      }
+      if (convo.customerName && convo.customerName !== "Test Contact" && convo.customerName !== "Guest Customer") {
+        customer.name = convo.customerName;
+      }
+      
+      const convoDate = convo.updatedAt ? new Date(convo.updatedAt).toISOString() : new Date(convo.createdAt || 0).toISOString();
+      if (convoDate > customer.lastInteractionDate) {
+        customer.lastInteractionDate = convoDate;
+      }
+    }
+
+    // 2. Order records across all channels (qr table, POS, whatsapp, web)
+    for (const order of orders) {
+      const phone = normalizePhone(order.whatsAppPhone);
+      const customer = getOrCreateCustomer(phone, order.customerName);
+
+      if (order.source) {
+        customer.sources.add(order.source);
+      } else {
+        customer.sources.add("website");
+      }
+
+      if (order.customerName && order.customerName !== "Guest Customer") {
+        customer.name = order.customerName;
+      }
+
+      const countAsOrder = order.status !== "cancelled";
+      if (countAsOrder) {
+        customer.ordersCount += 1;
+        const isPaid = order.paymentStatus === "paid" || 
+                       ["Cash on Delivery", "Cash", "Manual"].includes(order.paymentMethod);
+        if (isPaid) {
+          customer.totalSpend += Number(order.total) || 0;
+        }
+      }
+
+      const orderDate = new Date(order.createdAt || 0).toISOString();
+      if (orderDate > customer.lastInteractionDate) {
+        customer.lastInteractionDate = orderDate;
+      }
+
+      if (!customer.lastOrderDate || orderDate > customer.lastOrderDate) {
+        customer.lastOrderDate = orderDate;
+      }
+
+      customer.recentOrders.push({
+        id: order._id ? order._id.toString() : order.id,
+        orderNumber: order.orderNumber,
+        total: order.total,
+        status: order.status,
+        source: order.source || "whatsapp",
+        createdAt: order.createdAt,
+      });
+    }
+
+    // 3. Table reservations
+    for (const resv of reservations) {
+      const phone = normalizePhone(resv.whatsAppPhone);
+      const customer = getOrCreateCustomer(phone, resv.customerName);
+
+      customer.sources.add("reservation");
+      if (resv.customerName) {
+        customer.name = resv.customerName;
+      }
+
+      const resvDate = new Date(resv.dateTime || resv.createdAt || 0).toISOString();
+      if (resvDate > customer.lastInteractionDate) {
+        customer.lastInteractionDate = resvDate;
+      }
+
+      customer.recentReservations.push({
+        id: resv._id ? resv._id.toString() : resv.id,
+        dateTime: resv.dateTime,
+        tableNumber: resv.tableNumber,
+        status: resv.status,
+        numPeople: resv.numPeople,
+      });
+    }
+
+    // Map sets to arrays and format data structure
+    const customerList = Array.from(customerMap.values()).map(c => {
+      c.segment = c.ordersCount > 0 ? "active" : "dormant";
+      
+      c.recentOrders.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      c.recentOrders = c.recentOrders.slice(0, 5);
+
+      c.recentReservations.sort((a: any, b: any) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime());
+      c.recentReservations = c.recentReservations.slice(0, 5);
+
+      return {
+        ...c,
+        sources: Array.from(c.sources),
+        totalSpend: Math.round(c.totalSpend * 100) / 100,
+      };
+    });
+
+    // Sort by last active interaction date
+    customerList.sort((a, b) => new Date(b.lastInteractionDate).getTime() - new Date(a.lastInteractionDate).getTime());
+
+    res.json(customerList);
+  } catch (err) {
+    console.error("[API] GET /api/customers error:", err);
+    res.status(500).json({ error: "Failed to fetch aggregated customer list" });
+  }
+});
+
 // POST /api/feedbacks
 app.post("/api/feedbacks", async (req, res) => {
   try {

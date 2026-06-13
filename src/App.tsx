@@ -39,15 +39,17 @@ import MenuBoardSettings from "./components/MenuBoardSettings";
 import BrandWebsite from "./components/BrandWebsite";
 import POSCashier from "./components/POSCashier";
 import ReservationFloorPlan from "./components/ReservationFloorPlan";
+import CustomersTab from "./components/CustomersTab";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { I18nProvider, useI18n, AppLanguage } from "./i18n";
-import { Order, OrderStatus, Conversation, MenuItem, Category, Campaign, Feedback, UserRole, Table, Reservation } from "./types";
+import { Order, OrderStatus, Conversation, MenuItem, Category, Campaign, Feedback, UserRole, Table, Reservation, Customer } from "./types";
 
 type DashboardTab =
   | "overview"
   | "orders"
   | "pos"
   | "reservations"
+  | "customers"
   | "chat"
   | "campaigns"
   | "menu"
@@ -60,9 +62,9 @@ type DashboardTab =
   | "systemInfo";
 
 const ROLE_TABS: Record<UserRole, DashboardTab[]> = {
-  super_admin: ["overview", "orders", "pos", "reservations", "chat", "campaigns", "menu", "menuBoard", "hardware", "whatsapp", "settings", "restaurant", "users", "systemInfo"],
-  restaurant_admin: ["overview", "orders", "pos", "reservations", "chat", "campaigns", "menu", "menuBoard", "hardware", "whatsapp", "settings", "restaurant", "users", "systemInfo"],
-  branch_manager: ["overview", "orders", "pos", "reservations", "chat", "menu", "menuBoard", "hardware", "settings"],
+  super_admin: ["overview", "orders", "pos", "reservations", "customers", "chat", "campaigns", "menu", "menuBoard", "hardware", "whatsapp", "settings", "restaurant", "users", "systemInfo"],
+  restaurant_admin: ["overview", "orders", "pos", "reservations", "customers", "chat", "campaigns", "menu", "menuBoard", "hardware", "whatsapp", "settings", "restaurant", "users", "systemInfo"],
+  branch_manager: ["overview", "orders", "pos", "reservations", "customers", "chat", "menu", "menuBoard", "hardware", "settings"],
   staff: ["orders", "pos", "reservations", "hardware"],
   support_agent: ["chat"],
 };
@@ -76,6 +78,7 @@ const TAB_CONFIG: {
   { id: "orders", labelKey: "nav.orders", Icon: ShoppingBag },
   { id: "pos", labelKey: "nav.pos", Icon: Calculator },
   { id: "reservations", labelKey: "nav.reservations", Icon: Calendar },
+  { id: "customers", labelKey: "nav.customers", Icon: Users },
   { id: "chat", labelKey: "nav.chat", Icon: MessageSquare },
   { id: "campaigns", labelKey: "nav.campaigns", Icon: Megaphone },
   { id: "menu", labelKey: "nav.menu", Icon: Settings },
@@ -160,6 +163,7 @@ function Dashboard() {
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const [tables, setTables] = useState<Table[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [currencySymbol, setCurrencySymbol] = useState("€");
   const [geminiStatus, setGeminiStatus] = useState(false);
   const [socketConnected, setSocketConnected] = useState(false);
@@ -220,6 +224,26 @@ function Dashboard() {
       setIsLoading(false);
     }
   };
+
+  const fetchCustomers = async () => {
+    try {
+      const response = await fetch("/api/customers", {
+        headers: authHeaders(),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setCustomers(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch customers:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "customers" && token) {
+      fetchCustomers();
+    }
+  }, [activeTab, token]);
 
   useEffect(() => {
     // Initial fetch
@@ -787,6 +811,16 @@ function Dashboard() {
                     onUpdateCampaign={handleUpdateCampaign}
                     onDispatchCampaign={handleDispatchCampaign}
                     onSendTestCampaign={handleSendTestCampaign}
+                  />
+                )}
+
+                {activeTab === "customers" && (
+                  <CustomersTab
+                    customers={customers}
+                    currencySymbol={currencySymbol}
+                    onStartChat={(phone) => {
+                      setActiveTab("chat");
+                    }}
                   />
                 )}
 

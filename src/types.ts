@@ -270,3 +270,31 @@ export interface Reservation {
   updatedAt?: string;
 }
 
+export interface Customer {
+  name: string;
+  phone: string;
+  sources: string[];
+  ordersCount: number;
+  totalSpend: number;
+  lastOrderDate?: string;
+  lastInteractionDate: string;
+  preferredLanguage?: string;
+  segment: "active" | "dormant";
+  recentOrders: {
+    id: string;
+    orderNumber: string;
+    total: number;
+    status: string;
+    source: string;
+    createdAt: string;
+  }[];
+  recentReservations: {
+    id: string;
+    dateTime: string;
+    tableNumber?: string;
+    status: string;
+    numPeople?: number;
+  }[];
+}
+
+
