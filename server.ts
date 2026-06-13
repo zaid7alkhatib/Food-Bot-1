@@ -2778,11 +2778,16 @@ app.post("/api/campaigns/:id/test", authMiddleware as any, requireRole(...ADMIN_
 // GET /api/customers - Unified customer directory aggregated from conversations, orders, and reservations
 app.get("/api/customers", authMiddleware as any, requireRole(...MANAGER_ROLES) as any, async (req, res) => {
   try {
-    const [conversations, orders, reservations] = await Promise.all([
+    const [conversations, orders, reservations, tables] = await Promise.all([
       Conversation.find().lean(),
       Order.find().lean(),
       Reservation.find().lean(),
+      Table.find().lean(),
     ]);
+
+    const tableMap = new Map<string, string>(
+      tables.map((t: any) => [t._id ? t._id.toString() : t.id, t.number])
+    );
 
     // Grouping structure to track unique aggregated client records
     const customerMap = new Map<string, {
@@ -2903,9 +2908,10 @@ app.get("/api/customers", authMiddleware as any, requireRole(...MANAGER_ROLES) a
       customer.recentReservations.push({
         id: resv._id ? resv._id.toString() : resv.id,
         dateTime: resv.dateTime,
-        tableNumber: resv.tableNumber,
+        tableNumber: resv.tableId ? tableMap.get(resv.tableId.toString()) : undefined,
         status: resv.status,
-        numPeople: resv.numPeople,
+        guestCount: resv.guestCount,
+        numPeople: resv.guestCount,
       });
     }
 
