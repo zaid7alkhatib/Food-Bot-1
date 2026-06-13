@@ -5,6 +5,7 @@ const TranslationSchema = new Schema(
     ar: { type: String, default: "" },
     de: { type: String, default: "" },
     en: { type: String, default: "" },
+    tr: { type: String, default: "" },
   },
   { _id: false }
 );
@@ -15,14 +16,15 @@ export interface ICampaign extends Document {
   title: string;
   description?: string;
   segment?: "all" | "active" | "dormant";
-  language: "all" | "ar" | "de" | "en";
-  message: { ar: string; de: string; en: string };
+  language: "all" | "ar" | "de" | "en" | "tr";
+  message: { ar: string; de: string; en: string; tr: string };
   mediaUrl?: string;
   scheduledTime?: Date;
   status: "draft" | "sending" | "sent" | "scheduled";
   sentCount: number;
   failedCount: number;
   totalTarget: number;
+  recipients: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -34,7 +36,7 @@ const CampaignSchema = new Schema<ICampaign>(
     title: { type: String, required: true },
     description: String,
     segment: { type: String, enum: ["all", "active", "dormant"], default: "all" },
-    language: { type: String, enum: ["all", "ar", "de", "en"], default: "all" },
+    language: { type: String, enum: ["all", "ar", "de", "en", "tr"], default: "all" },
     message: { type: TranslationSchema, required: true },
     mediaUrl: String,
     scheduledTime: Date,
@@ -42,6 +44,7 @@ const CampaignSchema = new Schema<ICampaign>(
     sentCount: { type: Number, default: 0 },
     failedCount: { type: Number, default: 0 },
     totalTarget: { type: Number, default: 0 },
+    recipients: { type: [String], default: [] },
   },
   { timestamps: true }
 );

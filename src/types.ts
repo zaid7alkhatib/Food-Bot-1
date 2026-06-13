@@ -224,6 +224,7 @@ export interface Campaign {
   sentCount?: number;
   failedCount?: number;
   totalTarget?: number;
+  recipients?: string[];
   createdAt?: string;
 }
 

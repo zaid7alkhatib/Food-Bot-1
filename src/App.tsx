@@ -402,6 +402,52 @@ function Dashboard() {
     }
   };
 
+  const handleCreateCampaign = async (campaign: Omit<Campaign, "id" | "status">) => {
+    try {
+      const response = await fetch("/api/campaigns", {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify(campaign),
+      });
+      if (response.ok) {
+        const newCampaign = await response.json();
+        setCampaigns((prev) => [newCampaign, ...prev]);
+      }
+    } catch (err) {
+      console.error("Campaign creation failed:", err);
+    }
+  };
+
+  const handleUpdateCampaign = async (id: string, campaign: Omit<Campaign, "id" | "status">) => {
+    try {
+      const response = await fetch(`/api/campaigns/${id}`, {
+        method: "PUT",
+        headers: authHeaders(),
+        body: JSON.stringify(campaign),
+      });
+      if (response.ok) {
+        const updatedCampaign = await response.json();
+        setCampaigns((prev) => prev.map((c) => (c.id === id ? updatedCampaign : c)));
+      }
+    } catch (err) {
+      console.error("Campaign update failed:", err);
+    }
+  };
+
+  const handleSendTestCampaign = async (id: string, testPhone: string): Promise<boolean> => {
+    try {
+      const response = await fetch(`/api/campaigns/${id}/test`, {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({ testPhone }),
+      });
+      return response.ok;
+    } catch (err) {
+      console.error("Test campaign send failed:", err);
+      return false;
+    }
+  };
+
   const handleAddMenuItem = async (item: Partial<MenuItem>) => {
     try {
       const response = await fetch("/api/menu/items", {
@@ -737,7 +783,10 @@ function Dashboard() {
                 {activeTab === "campaigns" && (
                   <CampaignTab
                     campaigns={campaigns}
+                    onCreateCampaign={handleCreateCampaign}
+                    onUpdateCampaign={handleUpdateCampaign}
                     onDispatchCampaign={handleDispatchCampaign}
+                    onSendTestCampaign={handleSendTestCampaign}
                   />
                 )}
 

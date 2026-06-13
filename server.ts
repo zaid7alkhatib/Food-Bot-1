@@ -2524,13 +2524,121 @@ app.post("/api/conversations/:convoId/takeover", authMiddleware as any, requireR
   }
 });
 
+// POST /api/campaigns - Create a new campaign draft
+app.post("/api/campaigns", authMiddleware as any, requireRole(...ADMIN_ROLES) as any, async (req, res) => {
+  try {
+    const restaurant = await Restaurant.findOne({ isActive: true });
+    if (!restaurant) {
+      res.status(404).json({ error: "Active restaurant context not found" });
+      return;
+    }
+
+    const { title, description, language, segment, message } = req.body;
+    const campaign = new Campaign({
+      restaurantId: restaurant._id,
+      title,
+      description,
+      language,
+      segment,
+      message,
+      status: "draft",
+    });
+
+    await campaign.save();
+    
+    res.status(201).json({
+      ...campaign.toObject(),
+      id: campaign._id.toString(),
+    });
+  } catch (err) {
+    console.error("[API] POST /api/campaigns error:", err);
+    res.status(500).json({ error: "Failed to create campaign draft" });
+  }
+});
+
+// PUT /api/campaigns/:id - Update an existing campaign draft
+app.put("/api/campaigns/:id", authMiddleware as any, requireRole(...ADMIN_ROLES) as any, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, description, language, segment, message } = req.body;
+
+    const campaign = await Campaign.findById(id);
+    if (!campaign) {
+      res.status(404).json({ error: "Campaign not found" });
+      return;
+    }
+
+    if (campaign.status !== "draft") {
+      res.status(400).json({ error: "Only draft campaigns can be updated" });
+      return;
+    }
+
+    campaign.title = title;
+    campaign.description = description;
+    campaign.language = language;
+    campaign.segment = segment;
+    campaign.message = message;
+    
+    await campaign.save();
+
+    res.json({
+      ...campaign.toObject(),
+      id: campaign._id.toString(),
+    });
+  } catch (err) {
+    console.error("[API] PUT /api/campaigns/:id error:", err);
+    res.status(500).json({ error: "Failed to update campaign draft" });
+  }
+});
+
 // POST /api/campaigns/:id/send
 app.post("/api/campaigns/:id/send", authMiddleware as any, requireRole(...ADMIN_ROLES) as any, async (req, res) => {
   try {
     const { id } = req.params;
+
+    const tempCampaign = await Campaign.findById(id);
+    if (!tempCampaign) {
+      res.status(404).json({ error: "Campaign not found" });
+      return;
+    }
+
+    let query: any = {};
+    if (tempCampaign.language !== "all") {
+      if (tempCampaign.language === "de") {
+        query = {
+          $or: [
+            { customerLanguage: "de" },
+            { customerLanguage: { $exists: false } },
+            { customerLanguage: null }
+          ]
+        };
+      } else {
+        query = { customerLanguage: tempCampaign.language };
+      }
+    }
+
+    let targets = await Conversation.find(query).lean();
+
+    // Segment filtering (Active vs Dormant based on completed order history)
+    if (tempCampaign.segment === "active" || tempCampaign.segment === "dormant") {
+      const completedOrders = await Order.find({
+        status: { $in: ["accepted", "preparing", "ready_for_pickup", "out_for_delivery", "delivered"] }
+      }).lean();
+      
+      const activeCustomerPhones = new Set(
+        completedOrders.map((o: any) => o.whatsAppPhone?.trim().replace(/\D/g, "")).filter(Boolean)
+      );
+
+      targets = targets.filter((convo: any) => {
+        const phone = convo.whatsAppPhone?.trim().replace(/\D/g, "");
+        const isActive = activeCustomerPhones.has(phone);
+        return tempCampaign.segment === "active" ? isActive : !isActive;
+      });
+    }
+
     const campaign = await Campaign.findByIdAndUpdate(
       id,
-      { status: "sending" },
+      { status: "sending", totalTarget: targets.length },
       { new: true }
     );
 
@@ -2539,36 +2647,65 @@ app.post("/api/campaigns/:id/send", authMiddleware as any, requireRole(...ADMIN_
       return;
     }
 
-    // TODO: Real Baileys broadcast with rate limiting
-    const targets = await Conversation.find().lean();
-    campaign.totalTarget = targets.length;
-
     setTimeout(async () => {
-      for (const convo of targets) {
-        const lang = campaign.language === "all" ? "de" : campaign.language;
-        const bodyText = (campaign.message as any)[lang] || campaign.message.de;
+      let sent = 0;
+      let failed = 0;
 
-        await Conversation.findByIdAndUpdate(convo._id, {
-          $push: {
-            messages: {
-              id: "camp-msg-" + Math.random().toString(36).substr(2, 9),
-              sender: "bot",
-              text: `📢 *${campaign.title}*\n\n${bodyText}`,
-              timestamp: new Date().toISOString(),
-            },
-          },
-          updatedAt: new Date(),
-        });
+      for (const convo of targets) {
+        try {
+          // Determine the correct language version for this customer
+          let lang = campaign.language;
+          if (lang === "all") {
+            lang = convo.customerLanguage || "de";
+          }
+          const bodyText = (campaign.message as any)[lang] || campaign.message.de || campaign.message.ar || campaign.message.en || campaign.message.tr;
+          const fullMessageText = `📢 *${campaign.title}*\n\n${bodyText}`;
+
+          // Append to database conversation messages history
+          const messageId = "camp-msg-" + Math.random().toString(36).substr(2, 9);
+          const newMsg = {
+            id: messageId,
+            sender: "bot" as const,
+            text: fullMessageText,
+            timestamp: new Date().toISOString(),
+          };
+
+          await Conversation.findByIdAndUpdate(convo._id, {
+            $push: { messages: newMsg },
+            updatedAt: new Date(),
+          });
+
+          // Send actual WhatsApp message
+          await sendConversationWhatsAppMessage(convo, fullMessageText);
+          sent++;
+
+          // Add to campaign recipients list
+          await Campaign.findByIdAndUpdate(id, {
+            $push: { recipients: convo.whatsAppPhone }
+          });
+
+          // Real-time socket updates for chat logs
+          const updatedConvo = await Conversation.findById(convo._id).lean();
+          if (updatedConvo) {
+            emitGlobal("conversation:updated", serializeDoc(updatedConvo));
+          }
+        } catch (e) {
+          console.error(`[Campaign Broadcast] Failed to send to ${convo.whatsAppPhone}:`, e);
+          failed++;
+        }
+
+        // Safe delay of 2 seconds to prevent WhatsApp spam flags/blocks
+        await new Promise((resolve) => setTimeout(resolve, 2000));
       }
 
       await Campaign.findByIdAndUpdate(id, {
         status: "sent",
-        sentCount: targets.length,
-        failedCount: 0,
+        sentCount: sent,
+        failedCount: failed,
       });
 
       emitGlobal("campaign:sent", { campaignId: id });
-    }, 3000);
+    }, 1000);
 
     const conversations = await Conversation.find().sort({ updatedAt: -1 }).lean();
     res.json({
@@ -2578,6 +2715,63 @@ app.post("/api/campaigns/:id/send", authMiddleware as any, requireRole(...ADMIN_
   } catch (err) {
     console.error("[API] POST /api/campaigns/:id/send error:", err);
     res.status(500).json({ error: "Failed to send campaign" });
+  }
+});
+
+// POST /api/campaigns/:id/test - Send a test message to a single contact
+app.post("/api/campaigns/:id/test", authMiddleware as any, requireRole(...ADMIN_ROLES) as any, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { testPhone } = req.body;
+
+    if (!testPhone || !testPhone.trim()) {
+      res.status(400).json({ error: "Test phone number is required" });
+      return;
+    }
+
+    const campaign = await Campaign.findById(id);
+    if (!campaign) {
+      res.status(404).json({ error: "Campaign not found" });
+      return;
+    }
+
+    // Normalise test phone number
+    const normalizedPhone = testPhone.trim();
+
+    // Look up if we have an existing conversation with this customer
+    let convo = await Conversation.findOne({
+      $or: [
+        { whatsAppPhone: normalizedPhone },
+        { whatsAppPhone: normalizedPhone.replace("+", "") }
+      ]
+    }).lean();
+
+    // If no existing conversation exists, mock a temporary conversation object
+    if (!convo) {
+      convo = {
+        whatsAppPhone: normalizedPhone,
+        customerName: "Test Contact",
+        customerLanguage: campaign.language === "all" ? "de" : campaign.language,
+        botEnabled: false,
+        messages: [],
+      } as any;
+    }
+
+    // Determine the correct language version for the test contact
+    let lang = campaign.language;
+    if (lang === "all") {
+      lang = convo.customerLanguage || "de";
+    }
+    const bodyText = (campaign.message as any)[lang] || campaign.message.de || campaign.message.ar || campaign.message.en || campaign.message.tr;
+    const fullMessageText = `📢 *[TEST] ${campaign.title}*\n\n${bodyText}`;
+
+    // Send the WhatsApp message using the helper
+    await sendConversationWhatsAppMessage(convo, fullMessageText);
+
+    res.json({ success: true, msg: "Test message dispatched successfully" });
+  } catch (err) {
+    console.error("[API] POST /api/campaigns/:id/test error:", err);
+    res.status(500).json({ error: "Failed to dispatch test message" });
   }
 });
 
