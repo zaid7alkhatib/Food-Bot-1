@@ -1518,8 +1518,15 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
                 <p>Umsatzsteuer-Identifikationsnummer gemäß § 27 a Umsatzsteuergesetz: DE318947510 (Muster-ID)</p>
               </div>
 
-              <div className="pt-2 border-t border-slate-100 text-[10px] text-slate-400">
+              <div className="pt-2 border-t border-slate-100 text-[10px] text-slate-400 space-y-1.5">
                 <p>{language === "ar" ? "إخلاء المسؤولية: على الرغم من الرقابة الدقيقة على المحتوى، لا نتحمل أي مسؤولية عن محتوى الروابط الخارجية." : "Haftungsausschluss: Trotz sorgfältiger inhaltlicher Kontrolle übernehmen wir keine Haftung für die Inhalte externer Links. Für den Inhalt der verlinkten Seiten sind ausschließlich deren Betreiber verantwortlich."}</p>
+                <p>
+                  {language === "ar" 
+                    ? "Farman FoodSuite عبارة عن منصة للطلب وجذب العملاء ولا تحل محل الالتزامات القانونية للعميل فيما يتعلق بالتسجيل المالي أو الامتثال لسجل النقد أو التقارير الضريبية أو المحاسبة." 
+                    : language === "en"
+                    ? "Farman FoodSuite is an ordering and customer engagement platform and does not replace the customer's legal obligations regarding fiscal recording, cash register compliance, tax reporting, or accounting."
+                    : "Farman FoodSuite ist eine Bestell- und Kundenbindungsplattform und ersetzt nicht die gesetzlichen Verpflichtungen des Kunden zur steuerlichen Erfassung, Kassenkonformität (TSE), Steuerberichterstattung oder Buchhaltung."}
+                </p>
               </div>
             </div>
 

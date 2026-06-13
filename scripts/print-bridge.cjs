@@ -121,9 +121,8 @@ function printReceipt(job) {
       printer
         .align("ct")
         .size(1.5, 1.5)
-        .text("MR. TABBOUSH")
+        .text((job.restaurantName || "Restaurant").toUpperCase())
         .size(1, 1)
-        .text("AUTHENTIC SYRIAN CUISINE")
         .text("")
         .align("lt");
 
@@ -180,7 +179,10 @@ function printReceipt(job) {
         .text(padLine("GRAND TOTAL:", `${job.total.toFixed(2)} ${job.currency}`))
         .size(1, 1)
         .text("")
-        .text("💰 PAYMENT: CASH ONLY")
+        .text(`💰 PAYMENT: ${(job.paymentMethod || "Cash").toUpperCase()}`)
+        .text("")
+        .text("Dies ist kein Kassenbeleg.")
+        .text("Bestellplattform-Zusammenfassung.")
         .text("Thank you for ordering with us!")
         .text("")
         .cut()

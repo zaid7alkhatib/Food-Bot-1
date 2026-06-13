@@ -459,6 +459,9 @@ export default function RestaurantSettings() {
 
             {restaurant.stripeEnabled && (
               <div className="space-y-3 pt-2 animate-fade-in">
+                <div className="bg-orange-50/50 border border-orange-100 p-3 rounded-lg text-[10px] text-orange-800 leading-normal mb-2">
+                  <strong>⚠️ Direct Settlement (Option A):</strong> Your restaurant must own its dedicated Stripe account. Customer payments flow directly to your merchant balance. Farman FoodSuite acts strictly as a technical software facilitator and does not handle, split, or process transaction funds on your behalf.
+                </div>
                 <div>
                   <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Stripe Publishable Key</label>
                   <input

@@ -1025,6 +1025,9 @@ async function triggerAutoPrint(order: any): Promise<void> {
       return; // disabled
     }
 
+    const restaurant = await Restaurant.findById(order.restaurantId).lean();
+    const restaurantName = restaurant?.name || "Restaurant";
+
     // Format receipt items
     const formattedItems = order.items.map((item: any) => {
       const modifiers = Array.isArray(item.selectedModifiers)
@@ -1054,6 +1057,8 @@ async function triggerAutoPrint(order: any): Promise<void> {
 
     const printJob = {
       orderNumber: order.orderNumber,
+      restaurantName,
+      paymentMethod: order.paymentMethod || "Cash on Delivery",
       orderType: order.orderType,
       customerName: order.customerName,
       whatsAppPhone: order.whatsAppPhone,
