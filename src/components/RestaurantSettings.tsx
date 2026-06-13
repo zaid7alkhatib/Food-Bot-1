@@ -736,6 +736,30 @@ export default function RestaurantSettings() {
             </div>
           </div>
         </div>
+
+        {/* Fiscal & GoBD Compliance Disclaimer Card */}
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 md:col-span-2 space-y-3">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">⚖️</span>
+            <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">
+              {t("restaurant.fiscalTitle") || "GoBD & Fiscal Compliance Disclaimer"}
+            </h4>
+          </div>
+          <div className="text-xs text-gray-600 space-y-2 leading-relaxed bg-amber-50/50 p-4 rounded-xl border border-amber-100">
+            <p className="font-semibold text-amber-800">
+              📌 {t("restaurant.fiscalNotice") || "Important Compliance Notice for German Merchants:"}
+            </p>
+            <p>
+              {t("restaurant.fiscalBody1") || "Farman FoodSuite operates strictly as an ordering, customer relation, and scheduling platform. It does NOT function as a point-of-sale (POS) system or cash register under German law (KassenSichV / Kassengesetz)."}
+            </p>
+            <p>
+              {t("restaurant.fiscalBody2") || "All incoming orders (including Stripe credit card payments and cash pick-ups) must be recorded manually in your physical, TSE-certified register. The reports generated here are for accounting reconciliation purposes only and do not replace legally required tax logs."}
+            </p>
+            <p className="text-[10px] text-gray-400 border-t border-amber-200/60 pt-2 font-mono">
+              System GoBD Status: Active | Order Immutability: Enforced | Audit Logs: Active
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );

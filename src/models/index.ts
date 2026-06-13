@@ -10,3 +10,6 @@ export { default as Feedback } from "./Feedback";
 export { default as WhatsAppSession } from "./WhatsAppSession";
 export { default as Table } from "./Table";
 export { default as Reservation } from "./Reservation";
+export { default as Payment } from "./Payment";
+export { default as PaymentTransaction } from "./PaymentTransaction";
+export { default as FiscalTransaction } from "./FiscalTransaction";

@@ -30,6 +30,8 @@ import {
   WhatsAppSession,
   Table,
   Reservation,
+  Payment,
+  PaymentTransaction,
 } from "./src/models/index.js";
 import { defaultCurrency, orderStatusMessages } from "./src/mockData.js";
 
@@ -2295,8 +2297,47 @@ app.post("/api/public/payments/webhook", async (req: any, res) => {
       if (orderId && mongoose.isValidObjectId(orderId)) {
         const order = await Order.findById(orderId);
         if (order && order.paymentStatus !== "paid") {
+          const oldPaymentStatus = order.paymentStatus;
           order.paymentStatus = "paid";
+          order.paymentAudit = {
+            paymentProvider: "Stripe",
+            paymentIntentId: session.payment_intent || session.id,
+            amount: (session.amount_total || 0) / 100,
+            currency: (session.currency || "eur").toUpperCase(),
+            status: "succeeded",
+            paidAt: new Date(),
+          };
+
+          order.statusHistory.push({
+            from: `payment:${oldPaymentStatus}`,
+            to: `payment:paid`,
+            by: "webhook",
+            timestamp: new Date(),
+          });
+
           await order.save();
+
+          // Save audit records in Payment and PaymentTransaction
+          const payment = await Payment.create({
+            orderId: order._id,
+            restaurantId: order.restaurantId,
+            branchId: order.branchId,
+            amount: (session.amount_total || 0) / 100,
+            currency: (session.currency || "eur").toUpperCase(),
+            provider: "Stripe",
+            status: "completed",
+            transactionId: session.payment_intent || session.id,
+          });
+
+          await PaymentTransaction.create({
+            paymentId: payment._id,
+            orderId: order._id,
+            provider: "Stripe",
+            eventType: event.type,
+            externalId: session.payment_intent || session.id,
+            payload: event,
+            status: "completed",
+          });
 
           // Now notify dashboard and kitchen printing
           emitGlobal("order:new", serializeDoc(order));
@@ -2319,16 +2360,26 @@ app.put("/api/orders/:id/status", authMiddleware as any, requireRole(...ORDER_RO
     const { id } = req.params;
     const { status } = req.body;
 
-    const order = await Order.findByIdAndUpdate(
-      id,
-      { status, updatedAt: new Date() },
-      { new: true }
-    ).lean();
+    const order = await Order.findById(id);
 
     if (!order) {
       res.status(404).json({ error: "Order not found" });
       return;
     }
+
+    const previousStatus = order.status;
+    order.status = status;
+
+    // Log this status transition with user identification
+    const updatedBy = (req as any).user?.email || (req as any).user?._id?.toString() || "admin";
+    order.statusHistory.push({
+      from: previousStatus,
+      to: status,
+      by: updatedBy,
+      timestamp: new Date(),
+    });
+
+    await order.save();
 
     // Push status update message to customer's conversation
     const convo = (order.whatsAppPhone && order.whatsAppPhone.trim())
@@ -2385,7 +2436,7 @@ app.put("/api/orders/:id/status", authMiddleware as any, requireRole(...ORDER_RO
     if (convo) emitGlobal("conversation:updated", serializeDoc(convo));
 
     res.json({
-      order: { ...order, id: order._id?.toString() || order.id },
+      order: { ...order.toObject(), id: order._id?.toString() || order.id },
       orders: orders.map((o: any) => ({ ...o, id: o._id?.toString() || o.id })),
       conversations: serializeDocs(conversations),
     });

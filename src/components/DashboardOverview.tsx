@@ -56,6 +56,122 @@ export default function DashboardOverview({ currencySymbol }: DashboardOverviewP
 
   const token = localStorage.getItem("token");
 
+  const getPresetRange = () => {
+    let start: Date;
+    let end: Date;
+
+    if (preset === "today") {
+      const range = getTodayRange();
+      start = range.start;
+      end = range.end;
+    } else if (preset === "yesterday") {
+      const range = getYesterdayRange();
+      start = range.start;
+      end = range.end;
+    } else if (preset === "7days") {
+      const range = getLast7DaysRange();
+      start = range.start;
+      end = range.end;
+    } else if (preset === "30days") {
+      const range = getLast30DaysRange();
+      start = range.start;
+      end = range.end;
+    } else {
+      const s = new Date(customStart);
+      s.setHours(0, 0, 0, 0);
+      const e = new Date(customEnd);
+      e.setHours(23, 59, 59, 999);
+      start = s;
+      end = e;
+    }
+    return { start, end };
+  };
+
+  const handleExportAccountant = () => {
+    const { start, end } = getPresetRange();
+    window.open(`/api/reports/orders/export?startDate=${start.toISOString()}&endDate=${end.toISOString()}&token=${token || ""}`, "_blank");
+  };
+
+  const handleExportReconciliation = () => {
+    const { start, end } = getPresetRange();
+    window.open(`/api/reports/orders/reconcile?startDate=${start.toISOString()}&endDate=${end.toISOString()}&token=${token || ""}`, "_blank");
+  };
+
+  const handlePrintSummary = () => {
+    const { start, end } = getPresetRange();
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>${t("overview.transactionSummary") || "Transaction Summary"}</title>
+          <style>
+            body { font-family: system-ui, sans-serif; padding: 40px; color: #333; }
+            h1 { font-size: 24px; margin-bottom: 5px; }
+            h2 { font-size: 14px; color: #666; margin-top: 0; font-weight: normal; }
+            table { width: 100%; border-collapse: collapse; margin-top: 30px; }
+            th, td { border-bottom: 1px solid #ddd; padding: 12px; text-align: left; }
+            th { background-color: #f9f9f9; font-weight: bold; font-size: 13px; }
+            td { font-size: 13px; }
+            .totals { margin-top: 40px; float: right; width: 300px; }
+            .totals table { border: none; }
+            .totals td { border: none; padding: 6px 12px; }
+            .totals tr.grand { font-weight: bold; font-size: 16px; border-top: 2px solid #333; }
+            .disclaimer { margin-top: 150px; font-size: 10px; color: #888; border-top: 1px solid #eee; padding-top: 15px; line-height: 1.4; }
+            @media print {
+              .no-print { display: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <button class="no-print" onclick="window.print()" style="padding: 10px 20px; background: #ea580c; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; margin-bottom: 20px;">Print Report</button>
+          <h1>${t("overview.transactionSummary") || "Transaction Summary"}</h1>
+          <h2>Date Range: ${start.toLocaleDateString()} - ${end.toLocaleDateString()}</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>KPI Metrics</th>
+                <th>Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Total Revenue / Gesamtumsatz</td>
+                <td>${revenueToday.toFixed(2)}${currencySymbol}</td>
+              </tr>
+              <tr>
+                <td>Total Orders / Gesamtbestellungen</td>
+                <td>${totalOrders}</td>
+              </tr>
+              <tr>
+                <td>Average Ticket / Average Order Value</td>
+                <td>${avgOrderValue.toFixed(2)}${currencySymbol}</td>
+              </tr>
+              <tr>
+                <td>Delivery / Hauslieferungen Count</td>
+                <td>${deliveryCount}</td>
+              </tr>
+              <tr>
+                <td>Self-Pickup / Abholungen Count</td>
+                <td>${pickupCount}</td>
+              </tr>
+              <tr>
+                <td>Active Bot Conversations Count</td>
+                <td>${totalConversations}</td>
+              </tr>
+            </tbody>
+          </table>
+          
+          <div class="disclaimer">
+            <strong>GoBD Reporting Notice:</strong> This document summarizes sales requested on the digital ordering system. It does not replace the merchant's legal obligation to register these sales on a certified cash register (TSE) under German tax law.
+          </div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
   const getTodayRange = () => {
     const start = new Date();
     start.setHours(0, 0, 0, 0);
@@ -187,6 +303,41 @@ export default function DashboardOverview({ currencySymbol }: DashboardOverviewP
 
   return (
     <div className={`space-y-6 transition duration-200 ${refreshing ? "opacity-60 pointer-events-none" : ""}`}>
+      {/* Reports & Exports Section */}
+      <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div>
+          <h4 className="text-xs font-semibold text-gray-900 uppercase tracking-widest flex items-center gap-2">
+            📊 {t("overview.complianceReports") || "Reports & Compliance Exports"}
+          </h4>
+          <p className="text-[10px] text-gray-400 mt-1">
+            {t("overview.complianceReportsDesc") || "Export accountant reports with automatic VAT breakdowns or POS matching spreadsheets."}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleExportAccountant}
+            className="px-4 py-2 bg-neutral-800 hover:bg-neutral-900 text-white rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1.5 cursor-pointer select-none"
+          >
+            📥 {t("overview.exportAccountant") || "Accountant CSV"}
+          </button>
+          <button
+            type="button"
+            onClick={handleExportReconciliation}
+            className="px-4 py-2 bg-neutral-800 hover:bg-neutral-900 text-white rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1.5 cursor-pointer select-none"
+          >
+            📥 {t("overview.exportReconciliation") || "POS Reconcile"}
+          </button>
+          <button
+            type="button"
+            onClick={handlePrintSummary}
+            className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1.5 cursor-pointer select-none"
+          >
+            🖨️ {t("overview.printSummary") || "Print Summary"}
+          </button>
+        </div>
+      </div>
+
       {/* Date Range Selector Bar */}
       <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-1.5 bg-neutral-100 p-1 rounded-xl">
