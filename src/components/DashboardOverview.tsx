@@ -377,7 +377,7 @@ export default function DashboardOverview({ currencySymbol }: DashboardOverviewP
                     {t("overview.complianceStripeConnected") || "Stripe connected directly to restaurant"}
                   </p>
                   <p className="text-[10px] text-slate-400 mt-0.5">
-                    Option A Direct Settlement • Payments route directly to your own merchant account.
+                    {t("overview.complianceStripeConnectedDesc") || "Option A Direct Settlement • Payments route directly to your own merchant account."}
                   </p>
                 </div>
               </>
@@ -389,7 +389,7 @@ export default function DashboardOverview({ currencySymbol }: DashboardOverviewP
                     {t("overview.complianceStripeNotConnected") || "Stripe online payments not set up"}
                   </p>
                   <p className="text-[10px] text-slate-400 mt-0.5">
-                    Using manual/cash payments. Configure Stripe credentials in Settings to accept cards.
+                    {t("overview.complianceStripeNotConnectedDesc") || "Using manual/cash payments. Configure Stripe credentials in Settings to accept cards."}
                   </p>
                 </div>
               </>
@@ -404,7 +404,7 @@ export default function DashboardOverview({ currencySymbol }: DashboardOverviewP
                 {t("overview.complianceAuditActive") || "Audit logging active"}
               </p>
               <p className="text-[10px] text-slate-400 mt-0.5">
-                Order status transition histories and technical print bridging operations are logged.
+                {t("overview.complianceAuditActiveDesc") || "Order status transition histories and technical print bridging operations are logged."}
               </p>
             </div>
           </div>
@@ -417,7 +417,7 @@ export default function DashboardOverview({ currencySymbol }: DashboardOverviewP
                 {t("overview.complianceImmutabilityActive") || "Order immutability active"}
               </p>
               <p className="text-[10px] text-slate-400 mt-0.5">
-                GoBD compliance active. Order deletions are strictly blocked at database model level.
+                {t("overview.complianceImmutabilityActiveDesc") || "GoBD compliance active. Order deletions are strictly blocked at database model level."}
               </p>
             </div>
           </div>
@@ -430,7 +430,7 @@ export default function DashboardOverview({ currencySymbol }: DashboardOverviewP
                 {t("overview.complianceCsvActive") || "CSV exports enabled"}
               </p>
               <p className="text-[10px] text-slate-400 mt-0.5">
-                Financial accountant summaries with VAT details and POS reconcile logs are ready.
+                {t("overview.complianceCsvActiveDesc") || "Financial accountant summaries with VAT details and POS reconcile logs are ready."}
               </p>
             </div>
           </div>
