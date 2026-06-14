@@ -123,3 +123,34 @@ The platform is engineered to support multiple tenants on individual VPS deploym
 *   **Operational Efficiency**: Automate routine order tasks to free up staff. Table-QR scans reduce waiter overhead during peak hours.
 *   **Premium Visual Experience**: Modern visual assets, glassmorphism UI components, fluid hover micro-animations, and fast page load times leave customers with a premium impression of the brand.
 
+---
+
+## 🔮 Future Expansion & Premium Roadmap Proposals
+To elevate the solution further and make it the ultimate choice for premium gastronomy brands, we propose the following high-impact modules:
+
+### 1. AI WhatsApp Voice Note Ordering (Speech-to-Text Parser)
+*   **The Concept**: Customers can send natural voice notes to the restaurant's WhatsApp number instead of typing.
+*   **How it Works**: The bot utilizes speech-to-text transcription (e.g., Whisper) and leverages Gemini to parse the transcribed text, extract items/modifiers/delivery coordinates, and reply with a structured checkout confirmation.
+*   **Why it Matters**: Zero-friction, hands-free ordering that appeals directly to on-the-go customers.
+
+### 2. Collaborative Group Cart & Shared Checkout (Office/Family Mode)
+*   **The Concept**: Allow group hosts to create a shared web cart link from the customer website.
+*   **How it Works**: Coworkers or family members scan or open the link, add their items from their own devices in real-time, and the host checks out a single unified order. 
+*   **Why it Matters**: Boosts average order values (AOV) for office catering and large gatherings while easing checkout friction.
+
+### 3. Integrated WhatsApp Gamified Loyalty & Referral Loops
+*   **The Concept**: App-free loyalty stamps and referral bonuses managed entirely within the customer's chat profile.
+*   **How it Works**: The system automatically updates loyalty stamps after each completed order (e.g., "Buy 9, get the 10th free"). Customers can generate unique referral links to share with friends, granting both a voucher discount.
+*   **Why it Matters**: High viral loops that retain customers and lower acquisition costs without requiring downloads.
+
+### 4. Interactive Kitchen Display System (KDS) Tablet Portal
+*   **The Concept**: A paperless, touch-optimized web portal designed specifically for kitchen tablets, serving as a modern replacement or helper for thermal paper printers.
+*   **How it Works**: Prep stations (e.g., Grill, Fryer, Assembly) see real-time card columns for incoming orders. Cooks tap cards to transition them from *Preparing* to *Ready*, which instantly updates the guest's Smart Menu status and triggers delivery SMS/WhatsApp alerts.
+*   **Why it Matters**: Enhances kitchen coordination, reduces paper waste, and gathers precision metrics on preparation times.
+
+### 5. Smart Geofence Load-Balancing & Multi-Branch Auto-Routing
+*   **The Concept**: Intelligent order dispatching for multi-location restaurant chains.
+*   **How it Works**: When an order is placed, the backend resolves the customer's address and auto-assigns the order to the closest branch. If a branch is temporarily overloaded (measured by active ticket volume) or closed, the system safely reroutes the order or prompts the customer with options.
+*   **Why it Matters**: Prevents kitchen bottlenecks, optimizes driver dispatch routes, and maximizes operational uptime.
+
+
