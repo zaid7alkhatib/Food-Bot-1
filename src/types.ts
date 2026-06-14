@@ -28,6 +28,7 @@ export interface Branch {
   country: string;
   phone: string;
   whatsAppNumber: string;
+  whatsappNumber?: string;
   pickupEnabled: boolean;
   deliveryEnabled: boolean;
   deliveryRadiusKm: number;

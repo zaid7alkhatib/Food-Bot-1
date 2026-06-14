@@ -1348,6 +1348,7 @@ app.get("/api/public/config", async (req, res) => {
       supportedLanguages: restaurant.supportedLanguages,
       timezone: restaurant.timezone,
       defaultCurrency: restaurant.defaultCurrency,
+      whatsappNumber: restaurant.whatsappNumber,
       heroTagline: restaurant.heroTagline,
       heroBannerImage: restaurant.heroBannerImage,
       heroOpacity: restaurant.heroOpacity ?? 35,
@@ -1466,18 +1467,22 @@ app.get("/api/public/menu", async (req, res) => {
       return;
     }
 
-    const [restaurant, categories, menuItems] = await Promise.all([
+    const [restaurant, categories, menuItems, whatsAppSession] = await Promise.all([
       Restaurant.findById(branch.restaurantId).lean(),
       Category.find({ isActive: true }).sort({ sortOrder: 1 }).lean(),
       MenuItem.find({ isActive: true }).sort({ sortOrder: 1 }).lean(),
+      WhatsAppSession.findOne({ branchId: branch._id, isActive: true }).lean(),
     ]);
 
     const visibleItems = menuItems.map((item) => serializeDoc(item));
     const visibleCategories = categories.map((cat) => serializeDoc(cat));
 
+    const serializedBranch = serializeDoc(branch);
+    serializedBranch.whatsappNumber = whatsAppSession?.phoneNumber || restaurant?.whatsappNumber || "";
+
     res.json({
       restaurant: restaurant ? serializeDoc(restaurant) : null,
-      branch: serializeDoc(branch),
+      branch: serializedBranch,
       categories: visibleCategories,
       menuItems: visibleItems,
       currency: defaultCurrency,
