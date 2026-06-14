@@ -45,6 +45,7 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
   const [heroTagline, setHeroTagline] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncedSuccess, setIsSyncedSuccess] = useState(false);
+  const [syncedTotal, setSyncedTotal] = useState<number>(0);
   const [restaurant, setRestaurant] = useState<any>(null);
   const [showImprintModal, setShowImprintModal] = useState(false);
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
@@ -437,6 +438,7 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
         });
 
         if (response.ok) {
+          setSyncedTotal(getCheckoutTotal());
           setIsSyncedSuccess(true);
           setCart([]);
           setIsCartOpen(false);
@@ -610,7 +612,7 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
             <div className="mt-5 p-2 px-3.5 bg-stone-50 border border-stone-200/50 rounded-2xl inline-flex items-center gap-2 text-[11px] text-neutral-600 font-semibold shadow-xs">
               <span>{t("common.total")}:</span>
               <span className="text-orange-600 font-bold font-mono text-xs">
-                {getCheckoutTotal().toFixed(2)}{currency.symbol}
+                {syncedTotal.toFixed(2)}{currency.symbol}
               </span>
             </div>
           </div>
@@ -1161,7 +1163,7 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
 
             <button
               onClick={() => setIsCartOpen(true)}
-              className="bg-slate-900 hover:bg-slate-800 text-xs font-bold px-6 py-2.5 rounded-xl flex items-center gap-1.5 transition shadow-md cursor-pointer active:scale-95"
+              className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-6 py-2.5 rounded-xl flex items-center gap-1.5 transition shadow-md cursor-pointer active:scale-95"
             >
               {language === "ar" ? "استعراض السلة" : "Warenkorb ansehen"}
               <ChevronRight size={14} className={dir === "rtl" ? "rotate-180" : ""} />
