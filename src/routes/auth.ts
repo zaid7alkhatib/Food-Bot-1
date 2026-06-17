@@ -1,4 +1,5 @@
 import { Router } from "express";
+import mongoose from "mongoose";
 import { User } from "../models/index.js";
 import {
   AuthenticatedRequest,
@@ -237,6 +238,38 @@ router.put(
       }
       console.error("User update error:", err);
       res.status(500).json({ error: "Failed to update user" });
+    }
+  }
+);
+
+// DELETE /api/auth/users/:id
+router.delete(
+  "/users/:id",
+  authMiddleware as any,
+  requireRole(...ADMIN_ROLES) as any,
+  async (req: AuthenticatedRequest, res) => {
+    try {
+      if (!mongoose.isValidObjectId(req.params.id)) {
+        res.status(400).json({ error: "Invalid user ID" });
+        return;
+      }
+
+      const target = await User.findOne({ _id: req.params.id, ...buildUserFilter(req.user) });
+      if (!target) {
+        res.status(404).json({ error: "User not found" });
+        return;
+      }
+
+      if (req.user?.id === target._id.toString()) {
+        res.status(400).json({ error: "You cannot delete your own account" });
+        return;
+      }
+
+      await target.deleteOne();
+      res.json({ success: true, id: target._id.toString() });
+    } catch (err) {
+      console.error("User delete error:", err);
+      res.status(500).json({ error: "Failed to delete user" });
     }
   }
 );

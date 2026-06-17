@@ -10,6 +10,7 @@ export interface IReservation extends Document {
   durationMinutes: number;
   status: "pending" | "confirmed" | "seated" | "cancelled" | "completed";
   source: "website" | "whatsapp" | "dashboard";
+  customerLanguage?: "ar" | "de" | "en" | "tr";
   notes?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -33,6 +34,11 @@ const ReservationSchema = new Schema<IReservation>(
       type: String,
       enum: ["website", "whatsapp", "dashboard"],
       default: "website",
+    },
+    customerLanguage: {
+      type: String,
+      enum: ["ar", "de", "en", "tr"],
+      default: "de",
     },
     notes: String,
   },

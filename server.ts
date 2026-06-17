@@ -1249,6 +1249,200 @@ async function sendConversationWhatsAppMessage(convo: any, text: string) {
   await sendWhatsAppMessage(session.sessionName, target, text);
 }
 
+const RESERVATION_WHATSAPP_TIMEOUT_MS = 8000;
+const ACTIVE_RESERVATION_STATUSES = ["pending", "confirmed", "seated"] as const;
+type ActiveReservationStatus = (typeof ACTIVE_RESERVATION_STATUSES)[number];
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+  });
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timer) clearTimeout(timer);
+  });
+}
+
+function isValidWebsiteOrderPhone(value: unknown): boolean {
+  const phone = typeof value === "string" ? value.trim() : "";
+  if (!phone) return false;
+
+  const normalized = phone.replace(/[\s().-]/g, "");
+  if (!/^(\+|00)\d{8,15}$/.test(normalized)) return false;
+
+  const digits = normalized.startsWith("+") ? normalized.slice(1) : normalized.slice(2);
+  return digits.length >= 8 && digits.length <= 15;
+}
+
+function isActiveReservationStatus(status: unknown): status is ActiveReservationStatus {
+  return typeof status === "string" && ACTIVE_RESERVATION_STATUSES.includes(status as ActiveReservationStatus);
+}
+
+function reservationTimeRange(dateTime: Date, durationMinutes: number) {
+  const duration = Number(durationMinutes) > 0 ? Number(durationMinutes) : 90;
+  const start = dateTime;
+  const end = new Date(start.getTime() + duration * 60 * 1000);
+  return { start, end, duration };
+}
+
+async function findReservationConflict({
+  branchId,
+  tableId,
+  dateTime,
+  durationMinutes,
+  excludeReservationId,
+}: {
+  branchId: any;
+  tableId: any;
+  dateTime: Date;
+  durationMinutes: number;
+  excludeReservationId?: any;
+}) {
+  const range = reservationTimeRange(dateTime, durationMinutes);
+  const query: any = {
+    branchId,
+    tableId,
+    status: { $in: ACTIVE_RESERVATION_STATUSES },
+    dateTime: { $lt: range.end },
+    $expr: {
+      $gt: [
+        { $add: ["$dateTime", { $multiply: ["$durationMinutes", 60 * 1000] }] },
+        range.start,
+      ],
+    },
+  };
+
+  if (excludeReservationId && mongoose.isValidObjectId(excludeReservationId)) {
+    query._id = { $ne: excludeReservationId };
+  }
+
+  return Reservation.findOne(query).lean();
+}
+
+function buildReservationConflictError(conflict: any) {
+  const when = conflict?.dateTime
+    ? new Date(conflict.dateTime).toLocaleString("de-DE", { timeZone: "Europe/Berlin" })
+    : "the selected time";
+  return `This table already has an active reservation around ${when}.`;
+}
+
+function reservationLocale(lang: CustomerLanguage) {
+  if (lang === "ar") return "ar-EG";
+  if (lang === "en") return "en-US";
+  if (lang === "tr") return "tr-TR";
+  return "de-DE";
+}
+
+function formatReservationDateTime(dateTime: Date, lang: CustomerLanguage, timezone: string) {
+  return dateTime.toLocaleString(reservationLocale(lang), {
+    timeZone: timezone,
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
+
+function buildReservationStatusMessage(
+  reservation: any,
+  branch: any,
+  status: "confirmed" | "cancelled",
+  lang: CustomerLanguage,
+  timezone: string
+) {
+  const name = reservation.customerName || "";
+  const guestCount = Number(reservation.guestCount) || 2;
+  const formattedDate = formatReservationDateTime(new Date(reservation.dateTime), lang, timezone);
+  const branchName = branch?.name || "Restaurant";
+  const tableNumber = reservation.tableNumber ? String(reservation.tableNumber) : "";
+
+  if (lang === "ar") {
+    const tableLine = tableNumber ? `\nالطاولة: *${tableNumber}*` : "";
+    return status === "confirmed"
+      ? `*تم تأكيد حجز الطاولة*\n\nمرحباً ${name}،\nتم تأكيد حجزك لـ *${guestCount} أشخاص* في *${formattedDate}*.${tableLine}\n\nبانتظارك،\n${branchName}`
+      : `*تم رفض حجز الطاولة*\n\nمرحباً ${name}،\nنعتذر، لا يمكننا تأكيد حجزك في *${formattedDate}*.${tableLine}\n\nيرجى اختيار موعد آخر.\n${branchName}`;
+  }
+
+  if (lang === "en") {
+    const tableLine = tableNumber ? `\nTable: *${tableNumber}*` : "";
+    return status === "confirmed"
+      ? `*Table Reservation Confirmed*\n\nHello ${name},\nyour reservation for *${guestCount} guests* on *${formattedDate}* has been confirmed.${tableLine}\n\nWe look forward to seeing you,\n${branchName}`
+      : `*Table Reservation Rejected*\n\nHello ${name},\nwe are sorry, but we cannot confirm your reservation on *${formattedDate}*.${tableLine}\n\nPlease choose another time.\n${branchName}`;
+  }
+
+  if (lang === "tr") {
+    const tableLine = tableNumber ? `\nMasa: *${tableNumber}*` : "";
+    return status === "confirmed"
+      ? `*Masa Rezervasyonu Onaylandı*\n\nMerhaba ${name},\n*${guestCount} kişi* için *${formattedDate}* tarihindeki rezervasyonunuz onaylandı.${tableLine}\n\nSizi bekliyoruz,\n${branchName}`
+      : `*Masa Rezervasyonu Reddedildi*\n\nMerhaba ${name},\nüzgünüz, *${formattedDate}* tarihindeki rezervasyonunuzu onaylayamıyoruz.${tableLine}\n\nLütfen başka bir saat seçin.\n${branchName}`;
+  }
+
+  const tableLine = tableNumber ? `\nTisch: *${tableNumber}*` : "";
+  return status === "confirmed"
+    ? `*Tischreservierung bestätigt*\n\nHallo ${name},\nIhre Reservierung für *${guestCount} Personen* am *${formattedDate}* wurde bestätigt.${tableLine}\n\nWir freuen uns auf Sie,\n${branchName}`
+    : `*Tischreservierung abgelehnt*\n\nHallo ${name},\nleider können wir Ihre Reservierung am *${formattedDate}* nicht bestätigen.${tableLine}\n\nBitte wählen Sie eine andere Zeit.\n${branchName}`;
+}
+
+async function sendReservationWhatsAppMessage(branchId: any, phone: string, text: string) {
+  const session = await WhatsAppSession.findOne({
+    branchId,
+    isActive: true,
+    connected: true,
+  }).sort({ updatedAt: -1 });
+
+  if (!session) {
+    throw new Error("No connected WhatsApp session is available for this branch");
+  }
+
+  await withTimeout(
+    startWhatsAppSession(session.sessionName),
+    RESERVATION_WHATSAPP_TIMEOUT_MS,
+    `Timed out starting WhatsApp session ${session.sessionName}`
+  );
+  await withTimeout(
+    sendWhatsAppMessage(session.sessionName, phone, text),
+    RESERVATION_WHATSAPP_TIMEOUT_MS,
+    `Timed out sending reservation WhatsApp message via ${session.sessionName}`
+  );
+}
+
+async function notifyWebsiteTableReservationStatus(reservation: any, status: "confirmed" | "cancelled") {
+  const reservationData = typeof reservation?.toObject === "function" ? reservation.toObject() : reservation;
+  if (
+    !reservationData ||
+    reservationData.source !== "website" ||
+    !reservationData.tableId ||
+    !reservationData.whatsAppPhone ||
+    (status !== "confirmed" && status !== "cancelled")
+  ) {
+    return;
+  }
+
+  try {
+    const [branch, table] = await Promise.all([
+      Branch.findById(reservationData.branchId).lean(),
+      Table.findById(reservationData.tableId).lean(),
+    ]);
+
+    if (!branch) return;
+
+    const restaurant = await Restaurant.findById((branch as any).restaurantId).lean();
+    const lang: CustomerLanguage = isCustomerLanguage(reservationData.customerLanguage)
+      ? reservationData.customerLanguage
+      : "de";
+    const timezone = (restaurant as any)?.timezone || "Europe/Berlin";
+    const message = buildReservationStatusMessage(
+      { ...reservationData, tableNumber: (table as any)?.number },
+      branch,
+      status,
+      lang,
+      timezone
+    );
+
+    await sendReservationWhatsAppMessage(reservationData.branchId, reservationData.whatsAppPhone, message);
+  } catch (err) {
+    console.warn("[Reservations] Failed to send website reservation status message:", err);
+  }
+}
+
 async function restoreWhatsAppSessions() {
   const sessions = await WhatsAppSession.find({
     isActive: true,
@@ -1573,9 +1767,15 @@ app.post("/api/public/orders", async (req, res) => {
   try {
     const { branchId, customerName, whatsAppPhone, tableNumber, items, notes } = req.body;
     const orderType = req.body.orderType || "dine_in";
+    const cleanWhatsAppPhone = typeof whatsAppPhone === "string" ? whatsAppPhone.trim() : "";
 
     if (orderType === "dine_in" && !tableNumber) {
       res.status(400).json({ error: "Table number is required for smart menu orders" });
+      return;
+    }
+
+    if (orderType !== "dine_in" && !isValidWebsiteOrderPhone(cleanWhatsAppPhone)) {
+      res.status(400).json({ error: "A valid WhatsApp phone number in international format is required" });
       return;
     }
 
@@ -1694,7 +1894,7 @@ app.post("/api/public/orders", async (req, res) => {
       restaurantId: branch.restaurantId,
       branchId: branch._id,
       customerName: customerName ? customerName.trim() : (orderType === "dine_in" ? `Gast Tisch ${tableNumber}` : "Online Gast"),
-      whatsAppPhone: whatsAppPhone ? whatsAppPhone.trim() : "",
+      whatsAppPhone: cleanWhatsAppPhone,
       orderType,
       items: validatedItems,
       subtotal,
@@ -1974,16 +2174,39 @@ app.post("/api/reservations", authMiddleware as any, async (req: AuthenticatedRe
       return;
     }
 
+    const requestedTime = new Date(dateTime);
+    if (Number.isNaN(requestedTime.getTime())) {
+      res.status(400).json({ error: "Valid date and time are required" });
+      return;
+    }
+
+    const reservationTableId = tableId && mongoose.isValidObjectId(tableId) ? tableId : undefined;
+    const reservationDuration = Number(durationMinutes) || 90;
+    const reservationStatus = status || "confirmed";
+
+    if (reservationTableId && isActiveReservationStatus(reservationStatus)) {
+      const conflict = await findReservationConflict({
+        branchId,
+        tableId: reservationTableId,
+        dateTime: requestedTime,
+        durationMinutes: reservationDuration,
+      });
+      if (conflict) {
+        res.status(409).json({ error: buildReservationConflictError(conflict) });
+        return;
+      }
+    }
+
     const reservation = new Reservation({
       branchId,
-      tableId: tableId && mongoose.isValidObjectId(tableId) ? tableId : undefined,
+      tableId: reservationTableId,
       customerName: customerName.trim(),
       whatsAppPhone: whatsAppPhone.trim(),
       guestCount: Number(guestCount) || 2,
-      dateTime: new Date(dateTime),
-      durationMinutes: Number(durationMinutes) || 90,
+      dateTime: requestedTime,
+      durationMinutes: reservationDuration,
       notes: notes || "",
-      status: status || "confirmed",
+      status: reservationStatus,
       source: "dashboard",
     });
 
@@ -2001,7 +2224,7 @@ app.post("/api/reservations", authMiddleware as any, async (req: AuthenticatedRe
 app.put("/api/reservations/:id", authMiddleware as any, async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
-    const { tableId, status, dateTime, guestCount, notes, customerName, whatsAppPhone } = req.body;
+    const { tableId, status, dateTime, guestCount, durationMinutes, notes, customerName, whatsAppPhone } = req.body;
 
     if (!id || !mongoose.isValidObjectId(id)) {
       res.status(400).json({ error: "Invalid reservation ID" });
@@ -2014,32 +2237,75 @@ app.put("/api/reservations/:id", authMiddleware as any, async (req: Authenticate
       return;
     }
 
-    if (tableId !== undefined) {
-      reservation.tableId = (tableId && mongoose.isValidObjectId(tableId)) ? tableId : undefined;
-    }
-    if (status !== undefined) {
-      reservation.status = status;
-    }
-    if (dateTime !== undefined) {
-      reservation.dateTime = new Date(dateTime);
-    }
-    if (guestCount !== undefined) {
-      reservation.guestCount = Number(guestCount) || 2;
-    }
-    if (notes !== undefined) {
-      reservation.notes = notes;
-    }
-    if (customerName !== undefined) {
-      reservation.customerName = customerName.trim();
-    }
-    if (whatsAppPhone !== undefined) {
-      reservation.whatsAppPhone = whatsAppPhone.trim();
+    const statusOnlyUpdate = status !== undefined && Object.keys(req.body).every((key) => key === "status");
+    if (statusOnlyUpdate && status === reservation.status) {
+      res.json(serializeDoc(reservation));
+      return;
     }
 
-    await reservation.save();
+    const nextTableId = tableId !== undefined
+      ? ((tableId && mongoose.isValidObjectId(tableId)) ? tableId : undefined)
+      : reservation.tableId;
+    const nextStatus = status !== undefined ? status : reservation.status;
+    const nextDateTime = dateTime !== undefined ? new Date(dateTime) : reservation.dateTime;
+    const nextDuration = durationMinutes !== undefined ? (Number(durationMinutes) || 90) : reservation.durationMinutes;
 
-    emitGlobal("reservation:update", serializeDoc(reservation));
-    res.json(serializeDoc(reservation));
+    if (Number.isNaN(nextDateTime.getTime())) {
+      res.status(400).json({ error: "Valid date and time are required" });
+      return;
+    }
+
+    if (nextTableId && isActiveReservationStatus(nextStatus)) {
+      const conflict = await findReservationConflict({
+        branchId: reservation.branchId,
+        tableId: nextTableId,
+        dateTime: nextDateTime,
+        durationMinutes: nextDuration,
+        excludeReservationId: id,
+      });
+      if (conflict) {
+        res.status(409).json({ error: buildReservationConflictError(conflict) });
+        return;
+      }
+    }
+
+    const updatePayload: any = {};
+    if (tableId !== undefined) updatePayload.tableId = nextTableId;
+    if (status !== undefined) updatePayload.status = status;
+    if (dateTime !== undefined) updatePayload.dateTime = nextDateTime;
+    if (guestCount !== undefined) updatePayload.guestCount = Number(guestCount) || 2;
+    if (durationMinutes !== undefined) updatePayload.durationMinutes = nextDuration;
+    if (notes !== undefined) updatePayload.notes = notes;
+    if (customerName !== undefined) updatePayload.customerName = customerName.trim();
+    if (whatsAppPhone !== undefined) updatePayload.whatsAppPhone = whatsAppPhone.trim();
+
+    const updateFilter: any = { _id: id };
+    if (statusOnlyUpdate) {
+      updateFilter.status = { $ne: status };
+    }
+
+    const updatedReservation = await Reservation.findOneAndUpdate(updateFilter, updatePayload, {
+      new: true,
+      runValidators: true,
+    });
+
+    if (!updatedReservation) {
+      const latestReservation = await Reservation.findById(id);
+      if (!latestReservation) {
+        res.status(404).json({ error: "Reservation not found" });
+        return;
+      }
+      res.json(serializeDoc(latestReservation));
+      return;
+    }
+
+    emitGlobal("reservation:update", serializeDoc(updatedReservation));
+
+    if (status !== undefined && reservation.status !== updatedReservation.status) {
+      void notifyWebsiteTableReservationStatus(updatedReservation, updatedReservation.status as "confirmed" | "cancelled");
+    }
+
+    res.json(serializeDoc(updatedReservation));
   } catch (err: any) {
     console.error("[API] PUT /api/reservations/:id error:", err);
     res.status(500).json({ error: "Failed to update reservation" });
@@ -2050,6 +2316,8 @@ app.put("/api/reservations/:id", authMiddleware as any, async (req: Authenticate
 app.post("/api/public/reservations", async (req, res) => {
   try {
     const { branchId, tableId, customerName, whatsAppPhone, guestCount, dateTime, notes, language } = req.body;
+    const lang: CustomerLanguage = isCustomerLanguage(language) ? language : "de";
+    const cleanWhatsAppPhone = typeof whatsAppPhone === "string" ? whatsAppPhone.trim() : "";
 
     if (!branchId || !mongoose.isValidObjectId(branchId)) {
       res.status(400).json({ error: "Valid branchId is required" });
@@ -2072,8 +2340,13 @@ app.post("/api/public/reservations", async (req, res) => {
       return;
     }
 
-    if (!whatsAppPhone || !whatsAppPhone.trim()) {
+    if (!cleanWhatsAppPhone) {
       res.status(400).json({ error: "WhatsApp phone number is required" });
+      return;
+    }
+
+    if (!isValidWebsiteOrderPhone(cleanWhatsAppPhone)) {
+      res.status(400).json({ error: "A valid WhatsApp phone number in international format is required" });
       return;
     }
 
@@ -2083,6 +2356,10 @@ app.post("/api/public/reservations", async (req, res) => {
     }
 
     const requestedTime = new Date(dateTime);
+    if (Number.isNaN(requestedTime.getTime())) {
+      res.status(400).json({ error: "Valid date and time are required" });
+      return;
+    }
 
     // Check branch operational hours for requested time
     const restaurant = await Restaurant.findById(branch.restaurantId);
@@ -2092,26 +2369,42 @@ app.post("/api/public/reservations", async (req, res) => {
       return;
     }
 
+    const reservationTableId = tableId && mongoose.isValidObjectId(tableId) ? tableId : undefined;
+    if (reservationTableId) {
+      const conflict = await findReservationConflict({
+        branchId,
+        tableId: reservationTableId,
+        dateTime: requestedTime,
+        durationMinutes: 90,
+      });
+      if (conflict) {
+        res.status(409).json({ error: buildReservationConflictError(conflict) });
+        return;
+      }
+    }
+
     const reservation = new Reservation({
       branchId,
-      tableId: tableId && mongoose.isValidObjectId(tableId) ? tableId : undefined,
+      tableId: reservationTableId,
       customerName: customerName.trim(),
-      whatsAppPhone: whatsAppPhone.trim(),
+      whatsAppPhone: cleanWhatsAppPhone,
       guestCount: Number(guestCount) || 2,
       dateTime: requestedTime,
       durationMinutes: 90,
       notes: notes || "",
       status: "pending",
       source: "website",
+      customerLanguage: lang,
     });
 
     await reservation.save();
 
     emitGlobal("reservation:new", serializeDoc(reservation));
+    res.status(201).json(serializeDoc(reservation));
 
-    // Send direct WhatsApp confirmation to customer if whatsapp service is linked
-    try {
-      const lang = (language === "ar" || language === "en" || language === "de" || language === "tr") ? language : "de";
+    // Send direct WhatsApp confirmation in the background so the website never waits on WhatsApp.
+    void (async () => {
+      try {
       const formattedDate = requestedTime.toLocaleString(
         lang === "ar" ? "ar-EG" : lang === "en" ? "en-US" : lang === "tr" ? "tr-TR" : "de-DE",
         { timeZone: timezone }
@@ -2126,12 +2419,12 @@ app.post("/api/public/reservations", async (req, res) => {
       } else {
         confirmationMsg = `*Tischreservierung erhalten*\n\nHallo ${customerName.trim()},\nwir haben Ihre Reservierung für *${guestCount} Personen* am *${formattedDate}* erhalten.\n\nStatus: *Ausstehend* (Wir melden uns in Kürze!)\n\nDanke für Ihre Wahl,\n${branch.name}`;
       }
-      await sendWhatsAppMessage(branch._id.toString(), whatsAppPhone.trim(), confirmationMsg);
-    } catch (waErr) {
-      console.warn("[Reservations Webhook] Failed to send auto-WhatsApp confirm:", waErr);
-    }
-
-    res.status(201).json(serializeDoc(reservation));
+      await sendReservationWhatsAppMessage(branch._id, cleanWhatsAppPhone, confirmationMsg);
+      } catch (waErr) {
+        console.warn("[Reservations Webhook] Failed to send auto-WhatsApp confirm:", waErr);
+      }
+    })();
+    return;
   } catch (err: any) {
     console.error("[API] POST /api/public/reservations error:", err);
     res.status(500).json({ error: "Failed to request table reservation" });
@@ -2384,6 +2677,23 @@ app.put("/api/orders/:id/status", authMiddleware as any, requireRole(...ORDER_RO
 
     if (!order) {
       res.status(404).json({ error: "Order not found" });
+      return;
+    }
+
+    if (order.status === status) {
+      const orders = await Order.find({
+        $or: [
+          { paymentMethod: { $ne: "Stripe" } },
+          { paymentMethod: "Stripe", paymentStatus: "paid" }
+        ]
+      }).sort({ createdAt: -1 }).lean();
+      const conversations = await Conversation.find().sort({ updatedAt: -1 }).lean();
+
+      res.json({
+        order: { ...order.toObject(), id: order._id?.toString() || order.id },
+        orders: orders.map((o: any) => ({ ...o, id: o._id?.toString() || o.id })),
+        conversations: serializeDocs(conversations),
+      });
       return;
     }
 

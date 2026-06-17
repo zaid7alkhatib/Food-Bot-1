@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { CheckCircle2, Loader2, Save, Shield, UserPlus, Users } from "lucide-react";
+import { CheckCircle2, Loader2, Save, Shield, Trash2, UserPlus, Users } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useI18n } from "../i18n";
 import { UserAccount, UserRole } from "../types";
@@ -95,6 +95,33 @@ export default function UserManagement() {
       setTimeout(() => setSaved(false), 3000);
     } catch (err: any) {
       setError(err.message || "Failed to update user");
+    } finally {
+      setActionUserId(null);
+    }
+  };
+
+  const deleteUser = async (account: UserAccount) => {
+    if (account.id === currentUser?.id) return;
+
+    const label = account.name || account.email;
+    if (!window.confirm(t("users.confirmDelete").replace("{name}", label))) return;
+
+    setActionUserId(account.id);
+    setSaved(false);
+    setError("");
+    try {
+      const res = await fetch(`/api/auth/users/${account.id}`, {
+        method: "DELETE",
+        headers,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || t("users.deleteFailed"));
+      setUsers((prev) => prev.filter((entry) => entry.id !== account.id));
+      if (editingUserId === account.id) setEditingUserId(null);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err: any) {
+      setError(err.message || t("users.deleteFailed"));
     } finally {
       setActionUserId(null);
     }
@@ -289,6 +316,16 @@ export default function UserManagement() {
                         className="px-3 py-2 rounded-lg text-xs font-bold border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 transition disabled:opacity-50"
                       >
                         {isEditing ? t("common.cancel") : t("common.edit")}
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={isSelf || actionUserId === account.id}
+                        onClick={() => deleteUser(account)}
+                        className="px-3 py-2 rounded-lg text-xs font-bold border border-red-100 bg-red-50 hover:bg-red-100 text-red-700 transition disabled:opacity-50 flex items-center gap-1"
+                      >
+                        {actionUserId === account.id ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+                        {t("users.delete")}
                       </button>
                     </div>
                   </div>

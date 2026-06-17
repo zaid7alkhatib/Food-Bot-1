@@ -35,6 +35,261 @@ interface POSCashierProps {
   onOrderPlaced: () => void;
 }
 
+const POS_TEXT = {
+  de: {
+    tableOccupiedOrder: "Warnung: Tisch {table} ist bereits belegt (Bestellung #{orderNumber}).",
+    tableOccupiedReservation: "Warnung: Tisch {table} ist bereits belegt durch Reservierung von {customer}.",
+    tableReservedSoon: "Warnung: Tisch {table} ist bald reserviert für {customer} um {time}.",
+    cartEmpty: "Der Warenkorb ist leer.",
+    customerNameRequired: "Bitte geben Sie den Kundennamen ein.",
+    branchRequired: "Keine Filiale ausgewählt.",
+    tableRequired: "Bitte geben Sie die Tischnummer ein.",
+    deliveryRequired: "Bitte geben Sie die Lieferadresse ein.",
+    orderSuccess: "Bestellung erfolgreich erstellt! Bestellnummer: #{orderNumber}",
+    requiredOptions: "Bitte wählen Sie die erforderlichen Optionen für {group}.",
+    orderBranch: "Bestellfiliale",
+    orderBranchHint: "Wählen Sie die Filiale für die Bestellung",
+    searchPlaceholder: "Artikel nach Name oder SKU suchen...",
+    all: "Alle",
+    noMatchingItems: "Keine passenden Artikel gefunden.",
+    bestseller: "Bestseller",
+    receiptCart: "Beleg-Kasse",
+    clearCart: "Leeren",
+    emptyCart: "Keine Artikel im Warenkorb.",
+    upsellBadge: "Zusatzangebot",
+    dineIn: "Dine-In",
+    pickup: "Pickup",
+    delivery: "Lieferung",
+    tableNumber: "Tischnummer",
+    selectTable: "-- Tisch wählen --",
+    tableLabel: "Tisch {table} ({capacity} Plätze)",
+    occupied: "Belegt",
+    reservedSoonStatus: "Bald reserviert",
+    available: "Frei",
+    tablePlaceholder: "z.B. Tisch 5",
+    pickupTime: "Abholzeit",
+    pickupPlaceholder: "z.B. in 20 min",
+    deliveryAddress: "Lieferadresse",
+    deliveryFeeAdded: "Liefergebühr:",
+    customerName: "Kundenname",
+    phoneLabel: "WhatsApp-Telefonnummer",
+    paymentMethod: "Zahlungsart",
+    cash: "Bar",
+    card: "Karte",
+    paymentLink: "Link",
+    cashierDiscount: "Kassiererrabatt",
+    orderNote: "Bestellnotiz",
+    subtotal: "Zwischensumme",
+    deliveryFee: "Liefergebühr",
+    manualDiscount: "Rabatt",
+    grandTotal: "Gesamtsumme",
+    processing: "Wird verarbeitet...",
+    submitOrder: "Bestellung abschicken",
+    customizeItem: "Artikel anpassen",
+    required: "Pflichtfeld",
+    optional: "Optional",
+    singleChoice: "Einzelwahl",
+    maxSelections: "Max:",
+    multipleChoice: "Mehrfachwahl",
+    upsellTitle: "Zusatzangebote (Upsell)",
+    quantity: "Menge:",
+    itemTotal: "Einzelpreis",
+    addToCart: "Hinzufügen",
+  },
+  ar: {
+    tableOccupiedOrder: "تنبيه: الطاولة {table} مشغولة حالياً بالطلب #{orderNumber}.",
+    tableOccupiedReservation: "تنبيه: الطاولة {table} مشغولة حالياً بحجز العميل {customer}.",
+    tableReservedSoon: "تنبيه: الطاولة {table} محجوزة قريباً للعميل {customer} الساعة {time}.",
+    cartEmpty: "سلة التسوق فارغة.",
+    customerNameRequired: "يرجى إدخال اسم العميل.",
+    branchRequired: "لم يتم تحديد أي فرع.",
+    tableRequired: "يرجى تحديد رقم الطاولة.",
+    deliveryRequired: "يرجى تحديد عنوان التوصيل.",
+    orderSuccess: "تم إنشاء الطلب بنجاح! رقم الطلب: #{orderNumber}",
+    requiredOptions: "يرجى اختيار الخيارات المطلوبة لمجموعة {group}.",
+    orderBranch: "فرع الطلب",
+    orderBranchHint: "اختر الفرع لتسجيل الطلب فيه",
+    searchPlaceholder: "البحث عن صنف بالاسم أو الرمز...",
+    all: "الكل",
+    noMatchingItems: "لم يتم العثور على وجبات مطابقة.",
+    bestseller: "الأكثر مبيعاً",
+    receiptCart: "سلة الفواتير",
+    clearCart: "مسح",
+    emptyCart: "لا توجد أصناف في السلة.",
+    upsellBadge: "توصية إضافية",
+    dineIn: "طاولة",
+    pickup: "سفري",
+    delivery: "توصيل",
+    tableNumber: "رقم الطاولة",
+    selectTable: "-- اختر طاولة --",
+    tableLabel: "طاولة {table} ({capacity} مقاعد)",
+    occupied: "مشغولة",
+    reservedSoonStatus: "محجوزة قريباً",
+    available: "متاحة",
+    tablePlaceholder: "مثال: طاولة 5",
+    pickupTime: "وقت الاستلام",
+    pickupPlaceholder: "مثال: بعد 20 دقيقة",
+    deliveryAddress: "عنوان التوصيل",
+    deliveryFeeAdded: "رسوم التوصيل المضافة:",
+    customerName: "اسم العميل",
+    phoneLabel: "رقم الهاتف / واتساب",
+    paymentMethod: "طريقة الدفع",
+    cash: "نقدي",
+    card: "بطاقة",
+    paymentLink: "رابط دفع",
+    cashierDiscount: "خصم أمين الصندوق",
+    orderNote: "ملاحظات إضافية",
+    subtotal: "المجموع الفرعي",
+    deliveryFee: "رسوم التوصيل",
+    manualDiscount: "خصم يدوي",
+    grandTotal: "المجموع الكلي",
+    processing: "جار معالجة الطلب...",
+    submitOrder: "تأكيد وإرسال الطلب",
+    customizeItem: "تعديل وتخصيص الوجبة",
+    required: "مطلوب",
+    optional: "اختياري",
+    singleChoice: "اختيار واحد",
+    maxSelections: "أقصى حد:",
+    multipleChoice: "اختيارات متعددة",
+    upsellTitle: "وجبات مقترحة إضافية",
+    quantity: "الكمية:",
+    itemTotal: "إجمالي الوجبة",
+    addToCart: "إضافة إلى السلة",
+  },
+  en: {
+    tableOccupiedOrder: "Warning: Table {table} is currently occupied by order #{orderNumber}.",
+    tableOccupiedReservation: "Warning: Table {table} is currently occupied by reservation for {customer}.",
+    tableReservedSoon: "Warning: Table {table} is reserved soon for {customer} at {time}.",
+    cartEmpty: "The cart is empty.",
+    customerNameRequired: "Please enter the customer name.",
+    branchRequired: "No branch selected.",
+    tableRequired: "Please enter the table number.",
+    deliveryRequired: "Please enter the delivery address.",
+    orderSuccess: "Order created successfully! Order number: #{orderNumber}",
+    requiredOptions: "Please select the required options for {group}.",
+    orderBranch: "Order branch",
+    orderBranchHint: "Choose the branch for this order",
+    searchPlaceholder: "Search items by name or SKU...",
+    all: "All",
+    noMatchingItems: "No matching items found.",
+    bestseller: "Bestseller",
+    receiptCart: "Receipt cart",
+    clearCart: "Clear",
+    emptyCart: "No items in the cart.",
+    upsellBadge: "Add-on",
+    dineIn: "Dine-In",
+    pickup: "Pickup",
+    delivery: "Delivery",
+    tableNumber: "Table Number",
+    selectTable: "-- Select Table --",
+    tableLabel: "Table {table} ({capacity} seats)",
+    occupied: "Occupied",
+    reservedSoonStatus: "Reserved soon",
+    available: "Available",
+    tablePlaceholder: "e.g. Table 5",
+    pickupTime: "Pickup Time",
+    pickupPlaceholder: "e.g. in 20 min",
+    deliveryAddress: "Delivery Address",
+    deliveryFeeAdded: "Delivery fee:",
+    customerName: "Customer Name",
+    phoneLabel: "WhatsApp phone number",
+    paymentMethod: "Payment method",
+    cash: "Cash",
+    card: "Card",
+    paymentLink: "Link",
+    cashierDiscount: "Cashier discount",
+    orderNote: "Order note",
+    subtotal: "Subtotal",
+    deliveryFee: "Delivery fee",
+    manualDiscount: "Manual discount",
+    grandTotal: "Grand total",
+    processing: "Processing order...",
+    submitOrder: "Submit order",
+    customizeItem: "Customize item",
+    required: "Required",
+    optional: "Optional",
+    singleChoice: "Single choice",
+    maxSelections: "Max:",
+    multipleChoice: "Multiple choice",
+    upsellTitle: "Add-on offers",
+    quantity: "Quantity:",
+    itemTotal: "Item total",
+    addToCart: "Add to cart",
+  },
+  tr: {
+    tableOccupiedOrder: "Uyarı: Masa {table} şu anda #{orderNumber} numaralı siparişle dolu.",
+    tableOccupiedReservation: "Uyarı: Masa {table}, {customer} rezervasyonu nedeniyle dolu.",
+    tableReservedSoon: "Uyarı: Masa {table}, {customer} için saat {time} civarında rezerve.",
+    cartEmpty: "Sepet boş.",
+    customerNameRequired: "Lütfen müşteri adını girin.",
+    branchRequired: "Şube seçilmedi.",
+    tableRequired: "Lütfen masa numarasını girin.",
+    deliveryRequired: "Lütfen teslimat adresini girin.",
+    orderSuccess: "Sipariş başarıyla oluşturuldu! Sipariş numarası: #{orderNumber}",
+    requiredOptions: "Lütfen {group} için gerekli seçenekleri seçin.",
+    orderBranch: "Sipariş şubesi",
+    orderBranchHint: "Bu sipariş için şubeyi seçin",
+    searchPlaceholder: "Ürünleri ad veya SKU ile ara...",
+    all: "Tümü",
+    noMatchingItems: "Eşleşen ürün bulunamadı.",
+    bestseller: "Çok satan",
+    receiptCart: "Fiş sepeti",
+    clearCart: "Temizle",
+    emptyCart: "Sepette ürün yok.",
+    upsellBadge: "Ek teklif",
+    dineIn: "Masada",
+    pickup: "Gel al",
+    delivery: "Teslimat",
+    tableNumber: "Masa Numarası",
+    selectTable: "-- Masa Seç --",
+    tableLabel: "Masa {table} ({capacity} koltuk)",
+    occupied: "Dolu",
+    reservedSoonStatus: "Yakında rezerve",
+    available: "Müsait",
+    tablePlaceholder: "örn. Masa 5",
+    pickupTime: "Teslim Alma Saati",
+    pickupPlaceholder: "örn. 20 dk içinde",
+    deliveryAddress: "Teslimat Adresi",
+    deliveryFeeAdded: "Teslimat ücreti:",
+    customerName: "Müşteri Adı",
+    phoneLabel: "WhatsApp telefon numarası",
+    paymentMethod: "Ödeme yöntemi",
+    cash: "Nakit",
+    card: "Kart",
+    paymentLink: "Link",
+    cashierDiscount: "Kasiyer indirimi",
+    orderNote: "Sipariş notu",
+    subtotal: "Ara toplam",
+    deliveryFee: "Teslimat ücreti",
+    manualDiscount: "Manuel indirim",
+    grandTotal: "Genel toplam",
+    processing: "Sipariş işleniyor...",
+    submitOrder: "Siparişi gönder",
+    customizeItem: "Ürünü özelleştir",
+    required: "Zorunlu",
+    optional: "İsteğe bağlı",
+    singleChoice: "Tek seçim",
+    maxSelections: "Maks:",
+    multipleChoice: "Çoklu seçim",
+    upsellTitle: "Ek teklifler",
+    quantity: "Adet:",
+    itemTotal: "Ürün toplamı",
+    addToCart: "Sepete ekle",
+  },
+} as const;
+
+type PosTextKey = keyof typeof POS_TEXT.de;
+type PosLanguage = keyof typeof POS_TEXT;
+
+function formatPosText(language: string, key: PosTextKey, values: Record<string, string | number> = {}) {
+  const lang: PosLanguage = language === "ar" || language === "en" || language === "tr" ? language : "de";
+  const template = POS_TEXT[lang][key] || POS_TEXT.de[key];
+  return Object.entries(values).reduce(
+    (text, [name, value]) => text.replace(new RegExp(`\\{${name}\\}`, "g"), String(value)),
+    template
+  );
+}
+
 export default function POSCashier({
   categories,
   menuItems,
@@ -47,8 +302,9 @@ export default function POSCashier({
   orders = [],
   onOrderPlaced
 }: POSCashierProps) {
-  const { language, t, text, dir } = useI18n();
+  const { language, text, dir } = useI18n();
   const { user } = useAuth();
+  const pt = (key: PosTextKey, values?: Record<string, string | number>) => formatPosText(language, key, values);
 
   // Selected branch state
   const [selectedBranchId, setSelectedBranchId] = useState<string>("");
@@ -146,21 +402,13 @@ export default function POSCashier({
       if (activeOrder) {
         return {
           type: "busy",
-          message: language === "ar" 
-            ? `تنبيه: الطاولة ${selectedTableObj.number} مشغولة حالياً بالطلب #${activeOrder.orderNumber}`
-            : language === "en"
-            ? `Warning: Table ${selectedTableObj.number} is currently occupied by order #${activeOrder.orderNumber}`
-            : `Warnung: Tisch ${selectedTableObj.number} ist bereits belegt (Bestellung #${activeOrder.orderNumber}).`
+          message: pt("tableOccupiedOrder", { table: selectedTableObj.number, orderNumber: activeOrder.orderNumber })
         };
       }
       if (seatedResv) {
         return {
           type: "busy",
-          message: language === "ar"
-            ? `تنبيه: الطاولة ${selectedTableObj.number} مشغولة حالياً بحجز العميل ${seatedResv.customerName}`
-            : language === "en"
-            ? `Warning: Table ${selectedTableObj.number} is currently occupied by reservation for ${seatedResv.customerName}`
-            : `Warnung: Tisch ${selectedTableObj.number} ist bereits belegt durch Reservierung von ${seatedResv.customerName}.`
+          message: pt("tableOccupiedReservation", { table: selectedTableObj.number, customer: seatedResv.customerName })
         };
       }
     }
@@ -170,11 +418,7 @@ export default function POSCashier({
         const timeStr = new Date(upcoming.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         return {
           type: "reserved",
-          message: language === "ar"
-            ? `تنبيه: الطاولة ${selectedTableObj.number} محجوزة قريباً للعميل ${upcoming.customerName} الساعة ${timeStr}`
-            : language === "en"
-            ? `Warning: Table ${selectedTableObj.number} is reserved soon for ${upcoming.customerName} at ${timeStr}`
-            : `Warnung: Tisch ${selectedTableObj.number} ist bald reserviert für ${upcoming.customerName} um ${timeStr}.`
+          message: pt("tableReservedSoon", { table: selectedTableObj.number, customer: upcoming.customerName, time: timeStr })
         };
       }
     }
@@ -326,11 +570,7 @@ export default function POSCashier({
       if (group.isRequired) {
         const selections = modSelections[group.id] || [];
         if (selections.length < (group.minSelections || 1)) {
-          alert(
-            language === "ar"
-              ? `يرجى اختيار الخيارات المطلوبة لمجموعة ${text(group.name)}`
-              : `Bitte wählen Sie die erforderlichen Optionen für ${text(group.name)}`
-          );
+          alert(pt("requiredOptions", { group: text(group.name) }));
           return;
         }
       }
@@ -442,24 +682,24 @@ export default function POSCashier({
 
     // Validations
     if (cart.length === 0) {
-      setErrorMsg(language === "ar" ? "سلة التسوق فارغة." : "Der Warenkorb ist leer.");
+      setErrorMsg(pt("cartEmpty"));
       return;
     }
     if (!customerName.trim()) {
-      setErrorMsg(language === "ar" ? "يرجى إدخال اسم العميل." : "Bitte geben Sie den Kundennamen ein.");
+      setErrorMsg(pt("customerNameRequired"));
       return;
     }
     if (!selectedBranchId) {
-      setErrorMsg(language === "ar" ? "لم يتم تحديد أي فرع." : "Keine Filiale ausgewählt.");
+      setErrorMsg(pt("branchRequired"));
       return;
     }
 
     if (orderType === "dine_in" && !tableNumber.trim()) {
-      setErrorMsg(language === "ar" ? "يرجى تحديد رقم الطاولة." : "Bitte geben Sie die Tischnummer ein.");
+      setErrorMsg(pt("tableRequired"));
       return;
     }
     if (orderType === "delivery" && !deliveryAddress.trim()) {
-      setErrorMsg(language === "ar" ? "يرجى تحديد عنوان التوصيل." : "Bitte geben Sie die Lieferadresse ein.");
+      setErrorMsg(pt("deliveryRequired"));
       return;
     }
 
@@ -498,11 +738,7 @@ export default function POSCashier({
         throw new Error(data.error || "Failed to create order on server.");
       }
 
-      setSuccessMsg(
-        language === "ar"
-          ? `تم إنشاء الطلب بنجاح! رقم الطلب: #${data.orderNumber}`
-          : `Bestellung erfolgreich erstellt! Bestellnummer: #${data.orderNumber}`
-      );
+      setSuccessMsg(pt("orderSuccess", { orderNumber: data.orderNumber }));
       
       // Flash success and reset cart
       setCart([]);
@@ -541,10 +777,10 @@ export default function POSCashier({
               </div>
               <div>
                 <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">
-                  {language === "ar" ? "فرع الطلب" : "Bestellfiliale"}
+                  {pt("orderBranch")}
                 </h4>
                 <p className="text-[10px] text-gray-500">
-                  {language === "ar" ? "اختر الفرع لتسجيل الطلب فيه" : "Wählen Sie die Filiale für die Bestellung"}
+                  {pt("orderBranchHint")}
                 </p>
               </div>
             </div>
@@ -569,9 +805,7 @@ export default function POSCashier({
             <input
               type="text"
               placeholder={
-                language === "ar" 
-                  ? "البحث عن صنف بالاسم أو الرمز..." 
-                  : "Artikel nach Name oder SKU suchen..."
+                pt("searchPlaceholder")
               }
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -598,7 +832,7 @@ export default function POSCashier({
                   : "bg-slate-50 text-gray-600 hover:bg-slate-100"
               }`}
             >
-              {language === "ar" ? "الكل" : "Alle"}
+              {pt("all")}
             </button>
             {categories.map((cat) => (
               <button
@@ -621,7 +855,7 @@ export default function POSCashier({
           <div className="bg-white rounded-xl border border-gray-100 p-12 text-center shadow-sm">
             <ShoppingBag size={36} className="text-gray-300 mx-auto mb-3" />
             <p className="text-xs text-gray-500 font-medium">
-              {language === "ar" ? "لم يتم العثور على وجبات مطابقة." : "Keine passenden Artikel gefunden."}
+              {pt("noMatchingItems")}
             </p>
           </div>
         ) : (
@@ -642,7 +876,7 @@ export default function POSCashier({
                     />
                     {item.isBestSeller && (
                       <span className="absolute top-2 left-2 bg-amber-500 text-white text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full tracking-wider shadow">
-                        ★ {language === "ar" ? "الأكثر مبيعاً" : "Beststeller"}
+                        ★ {pt("bestseller")}
                       </span>
                     )}
                   </div>
@@ -651,7 +885,7 @@ export default function POSCashier({
                     <span className="text-3xl">🌯</span>
                     {item.isBestSeller && (
                       <span className="absolute top-2 left-2 bg-amber-500 text-white text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full tracking-wider shadow">
-                        ★ {language === "ar" ? "الأكثر مبيعاً" : "Beststeller"}
+                        ★ {pt("bestseller")}
                       </span>
                     )}
                   </div>
@@ -691,7 +925,7 @@ export default function POSCashier({
             <div className="flex items-center gap-2">
               <Calculator size={18} className="text-orange-500" />
               <h3 className="text-xs font-bold uppercase tracking-wider">
-                {language === "ar" ? "سلة الفواتير" : "Beleg-Kasse"}
+                {pt("receiptCart")}
               </h3>
             </div>
             <button
@@ -700,7 +934,7 @@ export default function POSCashier({
               title="Clear Cart"
             >
               <Trash2 size={13} />
-              <span className="text-[10px] uppercase font-bold">{language === "ar" ? "مسح" : "Leeren"}</span>
+              <span className="text-[10px] uppercase font-bold">{pt("clearCart")}</span>
             </button>
           </div>
 
@@ -710,7 +944,7 @@ export default function POSCashier({
               <div className="h-full flex flex-col items-center justify-center text-center p-8">
                 <ShoppingBag size={28} className="text-gray-300 mb-2" />
                 <p className="text-[11px] text-gray-400 font-medium">
-                  {language === "ar" ? "لا توجد أصناف في السلة." : "Keine Artikel im Warenkorb."}
+                  {pt("emptyCart")}
                 </p>
               </div>
             ) : (
@@ -725,7 +959,7 @@ export default function POSCashier({
                     )}
                     {item.selectedUpsell && (
                       <span className="inline-block text-[9px] bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded-full font-bold mt-1">
-                        🎁 {language === "ar" ? "توصية إضافية" : "Zusatzangebot"}
+                        🎁 {pt("upsellBadge")}
                       </span>
                     )}
                   </div>
@@ -780,9 +1014,9 @@ export default function POSCashier({
                   {type === "dine_in" && <Utensils size={12} />}
                   {type === "pickup" && <Clock size={12} />}
                   {type === "delivery" && <MapPin size={12} />}
-                  {type === "dine_in" ? (language === "ar" ? "طاولة" : "Dine-In") : null}
-                  {type === "pickup" ? (language === "ar" ? "سفري" : "Pickup") : null}
-                  {type === "delivery" ? (language === "ar" ? "توصيل" : "Lieferung") : null}
+                  {type === "dine_in" ? pt("dineIn") : null}
+                  {type === "pickup" ? pt("pickup") : null}
+                  {type === "delivery" ? pt("delivery") : null}
                 </button>
               ))}
             </div>
@@ -792,7 +1026,7 @@ export default function POSCashier({
               <div className="animate-fade-in bg-white border border-gray-100 rounded-xl p-3 shadow-sm space-y-2">
                 <div>
                   <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">
-                    {language === "ar" ? "رقم الطاولة" : language === "en" ? "Table Number" : "Tischnummer"} *
+                    {pt("tableNumber")} *
                   </label>
                   {activeBranch?.reservationEnabled && branchTables.length > 0 ? (
                     <select
@@ -801,22 +1035,18 @@ export default function POSCashier({
                       className="w-full bg-slate-50 border border-gray-200 rounded-lg py-1.5 px-3 text-xs focus:outline-none focus:border-orange-500 font-semibold"
                     >
                       <option value="">
-                        {language === "ar" ? "-- اختر طاولة --" : language === "en" ? "-- Select Table --" : "-- Tisch wählen --"}
+                        {pt("selectTable")}
                       </option>
                       {branchTables.map((t) => {
                         const status = getTableStatus(t);
-                        let label = language === "ar"
-                          ? `طاولة ${t.number} (${t.capacity} مقاعد)`
-                          : language === "en"
-                          ? `Table ${t.number} (${t.capacity}p)`
-                          : `Tisch ${t.number} (${t.capacity} Plätze)`;
+                        let label = pt("tableLabel", { table: t.number, capacity: t.capacity });
 
                         if (status === "busy") {
-                          label += ` - [${language === "ar" ? "مشغولة 🔴" : language === "en" ? "Occupied 🔴" : "Belegt 🔴"}]`;
+                          label += ` - [${pt("occupied")}]`;
                         } else if (status === "reserved") {
-                          label += ` - [${language === "ar" ? "محجوزة قريباً 🟡" : language === "en" ? "Reserved Soon 🟡" : "Bald reserviert 🟡"}]`;
+                          label += ` - [${pt("reservedSoonStatus")}]`;
                         } else {
-                          label += ` - [${language === "ar" ? "متاحة 🟢" : language === "en" ? "Available 🟢" : "Frei 🟢"}]`;
+                          label += ` - [${pt("available")}]`;
                         }
 
                         return (
@@ -829,7 +1059,7 @@ export default function POSCashier({
                   ) : (
                     <input
                       type="text"
-                      placeholder={language === "ar" ? "مثال: طاولة 5" : language === "en" ? "e.g. Table 5" : "z.B. Tisch 5"}
+                      placeholder={pt("tablePlaceholder")}
                       value={tableNumber}
                       onChange={(e) => setTableNumber(e.target.value)}
                       className="w-full bg-slate-50 border border-gray-200 rounded-lg py-1.5 px-3 text-xs focus:outline-none focus:border-orange-500 font-semibold"
@@ -853,11 +1083,11 @@ export default function POSCashier({
             {orderType === "pickup" && (
               <div className="animate-fade-in bg-white border border-gray-100 rounded-xl p-3 shadow-sm">
                 <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">
-                  {language === "ar" ? "وقت الاستلام" : language === "en" ? "Pickup Time" : "Abholzeit"}
+                  {pt("pickupTime")}
                 </label>
                 <input
                   type="text"
-                  placeholder={language === "ar" ? "مثال: بعد 20 دقيقة" : language === "en" ? "e.g. in 20 min" : "z.B. in 20 min"}
+                  placeholder={pt("pickupPlaceholder")}
                   value={pickupTime}
                   onChange={(e) => setPickupTime(e.target.value)}
                   className="w-full bg-slate-50 border border-gray-200 rounded-lg py-1.5 px-3 text-xs focus:outline-none focus:border-orange-500 font-semibold"
@@ -869,7 +1099,7 @@ export default function POSCashier({
               <div className="animate-fade-in bg-white border border-gray-100 rounded-xl p-3 shadow-sm space-y-2">
                 <div>
                   <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">
-                    {language === "ar" ? "عنوان التوصيل" : "Lieferadresse"} *
+                    {pt("deliveryAddress")} *
                   </label>
                   <textarea
                     rows={2}
@@ -881,7 +1111,7 @@ export default function POSCashier({
                 </div>
                 {activeBranch?.deliveryFee > 0 && (
                   <div className="flex justify-between items-center text-[10px] bg-blue-50 text-blue-800 p-2 rounded-lg font-semibold border border-blue-100">
-                    <span>{language === "ar" ? "رسوم التوصيل المضافة:" : "Liefergebühr:"}</span>
+                    <span>{pt("deliveryFeeAdded")}</span>
                     <span>{activeBranch.deliveryFee.toFixed(2)} {currencySymbol}</span>
                   </div>
                 )}
@@ -892,7 +1122,7 @@ export default function POSCashier({
             <div className="bg-white border border-gray-100 rounded-xl p-3 shadow-sm space-y-3">
               <div>
                 <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">
-                  {language === "ar" ? "اسم العميل" : "Kundenname"} *
+                  {pt("customerName")} *
                 </label>
                 <div className="relative">
                   <User className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" size={12} />
@@ -909,7 +1139,7 @@ export default function POSCashier({
 
               <div>
                 <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">
-                  {language === "ar" ? "رقم الهاتف / واتساب" : "WhatsApp-Telefonnummer"}
+                  {pt("phoneLabel")}
                 </label>
                 <div className="relative">
                   <Phone className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" size={12} />
@@ -927,7 +1157,7 @@ export default function POSCashier({
             {/* Payment Method Selector */}
             <div className="space-y-1.5">
               <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider">
-                {language === "ar" ? "طريقة الدفع" : "Zahlungsart"}
+                {pt("paymentMethod")}
               </label>
               <div className="grid grid-cols-3 gap-2">
                 {["Cash", "Card", "WhatsApp Link"].map((method) => (
@@ -941,9 +1171,9 @@ export default function POSCashier({
                         : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
                     }`}
                   >
-                    {method === "Cash" && (language === "ar" ? "نقدي" : "Bar")}
-                    {method === "Card" && (language === "ar" ? "بطاقة" : "Karte")}
-                    {method === "WhatsApp Link" && (language === "ar" ? "رابط دفع" : "Link")}
+                    {method === "Cash" && pt("cash")}
+                    {method === "Card" && pt("card")}
+                    {method === "WhatsApp Link" && pt("paymentLink")}
                   </button>
                 ))}
               </div>
@@ -953,7 +1183,7 @@ export default function POSCashier({
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">
-                  {language === "ar" ? "خصم أمين الصندوق" : "Kassiererrabatt"}
+                  {pt("cashierDiscount")}
                 </label>
                 <div className="relative">
                   <input
@@ -973,7 +1203,7 @@ export default function POSCashier({
 
               <div>
                 <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">
-                  {language === "ar" ? "ملاحظات إضافية" : "Bestellnotiz"}
+                  {pt("orderNote")}
                 </label>
                 <input
                   type="text"
@@ -988,23 +1218,23 @@ export default function POSCashier({
             {/* Calculations Summary */}
             <div className="bg-white border border-gray-100 rounded-xl p-3 shadow-sm space-y-1 text-xs font-medium text-gray-600">
               <div className="flex justify-between">
-                <span>{language === "ar" ? "المجموع الفرعي" : "Zwischensumme"}</span>
+                <span>{pt("subtotal")}</span>
                 <span className="font-bold text-gray-800">{subtotal.toFixed(2)} {currencySymbol}</span>
               </div>
               {orderType === "delivery" && (
                 <div className="flex justify-between">
-                  <span>{language === "ar" ? "رسوم التوصيل" : "Liefergebühr"}</span>
+                  <span>{pt("deliveryFee")}</span>
                   <span className="font-bold text-gray-800">+{deliveryFee.toFixed(2)} {currencySymbol}</span>
                 </div>
               )}
               {discountAmount > 0 && (
                 <div className="flex justify-between text-red-600">
-                  <span>{language === "ar" ? "خصم يدوي" : "Rabatt"}</span>
+                  <span>{pt("manualDiscount")}</span>
                   <span className="font-bold">-{discountAmount.toFixed(2)} {currencySymbol}</span>
                 </div>
               )}
               <div className="flex justify-between text-sm font-extrabold text-gray-900 border-t border-gray-100 pt-2 mt-1">
-                <span>{language === "ar" ? "المجموع الكلي" : "Gesamtsumme"}</span>
+                <span>{pt("grandTotal")}</span>
                 <span className="text-orange-600">{total.toFixed(2)} {currencySymbol}</span>
               </div>
             </div>
@@ -1032,12 +1262,12 @@ export default function POSCashier({
               {submitting ? (
                 <>
                   <Loader2 size={14} className="animate-spin" />
-                  <span>{language === "ar" ? "جار معالجة الطلب..." : "Wird verarbeitet..."}</span>
+                  <span>{pt("processing")}</span>
                 </>
               ) : (
                 <>
                   <Check size={14} />
-                  <span>{language === "ar" ? "تأكيد وإرسال الطلب" : "Bestellung abschicken"}</span>
+                  <span>{pt("submitOrder")}</span>
                 </>
               )}
             </button>
@@ -1054,7 +1284,7 @@ export default function POSCashier({
               <div>
                 <h4 className="text-sm font-bold">{text(selectedItemForMod.name)}</h4>
                 <p className="text-[10px] text-slate-400">
-                  {language === "ar" ? "تعديل وتخصيص الوجبة" : "Artikel anpassen"}
+                  {pt("customizeItem")}
                 </p>
               </div>
               <button
@@ -1079,20 +1309,20 @@ export default function POSCashier({
                         <span className="text-xs font-bold text-gray-800">{text(group.name)}</span>
                         {group.isRequired ? (
                           <span className="text-[9px] bg-red-50 text-red-600 border border-red-100 px-1.5 py-0.5 rounded-full font-bold">
-                            {language === "ar" ? "مطلوب" : "Pflichtfeld"}
+                            {pt("required")}
                           </span>
                         ) : (
                           <span className="text-[9px] bg-slate-50 text-gray-400 border border-gray-100 px-1.5 py-0.5 rounded-full">
-                            {language === "ar" ? "اختياري" : "Optional"}
+                            {pt("optional")}
                           </span>
                         )}
                       </div>
                       <span className="text-[10px] text-gray-400">
                         {group.type === "single" 
-                          ? (language === "ar" ? "اختيار واحد" : "Einzelwahl") 
+                          ? pt("singleChoice")
                           : (group.maxSelections 
-                              ? `${language === "ar" ? "أقصى حد:" : "Max:"} ${group.maxSelections}` 
-                              : (language === "ar" ? "اختيارات متعددة" : "Mehrfachwahl")
+                              ? `${pt("maxSelections")} ${group.maxSelections}`
+                              : pt("multipleChoice")
                             )}
                       </span>
                     </div>
@@ -1129,7 +1359,7 @@ export default function POSCashier({
                 <div className="space-y-3 pt-2">
                   <div className="flex items-center gap-1.5 text-xs font-bold text-gray-800 border-b border-gray-100 pb-2">
                     <span>🎁</span>
-                    <span>{language === "ar" ? "وجبات مقترحة إضافية" : "Zusatzangebote (Upsell)"}</span>
+                    <span>{pt("upsellTitle")}</span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {selectedItemForMod.upsellSuggestions.map((suggestion) => {
@@ -1169,7 +1399,7 @@ export default function POSCashier({
               {/* Quantity selector */}
               <div className="flex items-center gap-2">
                 <span className="text-xs text-gray-500 font-semibold">
-                  {language === "ar" ? "الكمية:" : "Menge:"}
+                  {pt("quantity")}
                 </span>
                 <div className="flex items-center bg-white border border-gray-200 rounded-xl p-1 shadow-sm">
                   <button
@@ -1192,7 +1422,7 @@ export default function POSCashier({
               <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
                 <div className="text-right">
                   <span className="text-[10px] text-gray-400 uppercase font-bold block leading-none">
-                    {language === "ar" ? "إجمالي الوجبة" : "Einzelpreis"}
+                    {pt("itemTotal")}
                   </span>
                   <span className="text-xs font-extrabold text-gray-800">
                     {((selectedItemForMod.basePrice + getModSelectionsPrice()) * modQuantity).toFixed(2)} {currencySymbol}
@@ -1204,7 +1434,7 @@ export default function POSCashier({
                   onClick={handleAddCustomizedItemToCart}
                   className="px-6 py-2.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-xl shadow-md shadow-orange-500/10 hover:shadow-orange-500/20 uppercase tracking-wider transition cursor-pointer"
                 >
-                  {language === "ar" ? "إضافة إلى السلة" : "Hinzufügen"}
+                  {pt("addToCart")}
                 </button>
               </div>
             </div>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Plus, Trash, Edit3, Languages, Save, ShoppingBag, FolderOpen, Image as ImageIcon } from "lucide-react";
+import { Plus, Trash, Edit3, Languages, Save, ShoppingBag, FolderOpen, Image as ImageIcon, X } from "lucide-react";
 import { MenuItem, Category, UpsellSuggestion, ModifierGroup, ModifierOption } from "../types";
 import { useI18n } from "../i18n";
 
@@ -84,6 +84,7 @@ export default function MenuEditor({
   const { language, t, text } = useI18n();
   const [activeCategoryId, setActiveCategoryId] = useState<string>("");
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [showAddItemModal, setShowAddItemModal] = useState(false);
 
   // Form Fields State
   const [nameAr, setNameAr] = useState("");
@@ -127,6 +128,7 @@ export default function MenuEditor({
   const selectableUpsellItems = menuItems.filter((item) => item.id !== editingItemId);
 
   const handleStartEdit = (item: MenuItem) => {
+    setShowAddItemModal(false);
     setEditingItemId(item.id);
     setNameAr(item.name.ar);
     setNameDe(item.name.de);
@@ -352,24 +354,73 @@ export default function MenuEditor({
     );
   };
 
-  const handleAddNewItem = () => {
-    const defaultNew: Partial<MenuItem> = {
+  const resetItemDraft = () => {
+    setNameAr("");
+    setNameDe("");
+    setNameEn("");
+    setNameTr("");
+    setDescAr("");
+    setDescDe("");
+    setDescEn("");
+    setDescTr("");
+    setBasePrice(0);
+    setSku("");
+    setIsBestSeller(false);
+    setImageUrl("");
+    setPrepMinutes(10);
+    setUpsellDrafts([]);
+    setModGroupsDraft([]);
+    setActiveTranslationTab("de");
+  };
+
+  const handleStartAddItem = () => {
+    if (!activeCategoryId) return;
+    setEditingItemId(null);
+    resetItemDraft();
+    setShowAddItemModal(true);
+  };
+
+  const handleCreateItem = () => {
+    if (!activeCategoryId) return;
+    if (!nameAr.trim() && !nameDe.trim() && !nameEn.trim() && !nameTr.trim()) {
+      window.alert(t("menu.nameRequired"));
+      return;
+    }
+
+    const fallbackName = nameDe.trim() || nameEn.trim() || nameAr.trim() || nameTr.trim();
+    const fallbackDescription = descDe.trim() || descEn.trim() || descAr.trim() || descTr.trim();
+    const item: Partial<MenuItem> = {
       categoryId: activeCategoryId,
-      name: { ar: "شاورما جديدة", de: "Neues Shawarma", en: "New Shawarma", tr: "Yeni Shawarma" },
-      description: {
-        ar: "تفاصيل الساندويتش اللذيذ",
-        de: "Leckerer neuer Shawarma Wrap",
-        en: "Tasty classic new custom wrapper",
-        tr: "Lezzetli yeni Shawarma Dürüm",
+      name: {
+        ar: nameAr.trim() || fallbackName,
+        de: nameDe.trim() || fallbackName,
+        en: nameEn.trim() || fallbackName,
+        tr: nameTr.trim() || fallbackName,
       },
-      basePrice: 5.90,
-      image: "https://images.unsplash.com/photo-1561651823-34fed0225408?w=500&auto=format&fit=crop",
-      skucode: "SHW-NEW-" + Math.floor(Math.random() * 100),
-      preparationTimeMinutes: 8,
-      modifierGroups: [],
-      upsellSuggestions: [],
+      description: {
+        ar: descAr.trim() || fallbackDescription,
+        de: descDe.trim() || fallbackDescription,
+        en: descEn.trim() || fallbackDescription,
+        tr: descTr.trim() || fallbackDescription,
+      },
+      basePrice: Number(basePrice) || 0,
+      image: imageUrl.trim() || FALLBACK_IMAGE,
+      skucode: sku.trim() || `ITEM-${Date.now().toString(36).toUpperCase()}`,
+      preparationTimeMinutes: Number(prepMinutes) || 0,
+      isAvailableForDelivery: true,
+      isAvailableForPickup: true,
+      isActive: true,
+      isBestSeller,
+      modifierGroups: normalizeModifierGroups(modGroupsDraft),
+      upsellSuggestions: normalizeUpsellSuggestions(upsellDrafts).filter((upsell) => upsell.suggestedItemName.ar || upsell.suggestedItemName.de || upsell.suggestedItemName.en || upsell.suggestedItemName.tr),
     };
-    onAddItem(defaultNew);
+    onAddItem(item);
+    setShowAddItemModal(false);
+    resetItemDraft();
+  };
+
+  const handleAddNewItem = () => {
+    handleStartAddItem();
   };
 
   const handleDeleteItem = (item: MenuItem) => {
@@ -382,6 +433,7 @@ export default function MenuEditor({
   };
 
   return (
+    <>
     <div className="grid grid-cols-1 md:grid-cols-12 gap-5 h-full">
       
       {/* Category filters sidebar list */}
@@ -1102,5 +1154,206 @@ export default function MenuEditor({
       </div>
 
     </div>
+    {showAddItemModal && (
+      <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            handleCreateItem();
+          }}
+          className="w-full max-w-3xl bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden"
+        >
+          <div className="bg-neutral-50 border-b border-gray-100 p-4 flex items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">{t("menu.addDish")}</h3>
+              <p className="text-xs text-gray-500 mt-0.5">{t("menu.addDishDetails")}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setShowAddItemModal(false);
+                resetItemDraft();
+              }}
+              className="p-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-gray-500 transition"
+              aria-label={t("common.cancel")}
+              title={t("common.cancel")}
+            >
+              <X size={15} />
+            </button>
+          </div>
+
+          <div className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <div className="md:col-span-2">
+                <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">{t("menu.categories")}</label>
+                <select
+                  value={activeCategoryId}
+                  onChange={(e) => setActiveCategoryId(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-xs focus:outline-none focus:border-orange-500"
+                >
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {text(category.name)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">{t("common.price")}</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.05"
+                  value={basePrice}
+                  onChange={(e) => setBasePrice(Number(e.target.value))}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-xs focus:outline-none focus:border-orange-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">{t("menu.prepMinutes")}</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={prepMinutes}
+                  onChange={(e) => setPrepMinutes(Number(e.target.value))}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-xs focus:outline-none focus:border-orange-500"
+                />
+              </div>
+            </div>
+
+            <div className="border border-gray-100 rounded-xl p-4 bg-neutral-50/70 space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <span className="font-bold text-xs text-neutral-800 flex items-center gap-1">
+                  <Languages size={13} />
+                  {t("menu.translationFields")}
+                </span>
+                <div className="flex gap-1">
+                  {(["de", "ar", "en", "tr"] as const).map((lang) => (
+                    <button
+                      key={lang}
+                      type="button"
+                      onClick={() => setActiveTranslationTab(lang)}
+                      className={`px-2 py-1 rounded text-[10px] font-bold uppercase transition ${
+                        activeTranslationTab === lang
+                          ? "bg-orange-500 text-white"
+                          : "bg-white text-neutral-500 hover:bg-neutral-200 border border-neutral-200"
+                      }`}
+                    >
+                      {lang}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {activeTranslationTab === "ar" && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] text-gray-500 font-bold mb-1">{t("menu.nameAr")}</label>
+                    <input value={nameAr} onChange={(e) => setNameAr(e.target.value)} className="w-full bg-white p-2 border border-neutral-300 rounded outline-none text-xs" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-gray-500 font-bold mb-1">{t("menu.descAr")}</label>
+                    <input value={descAr} onChange={(e) => setDescAr(e.target.value)} className="w-full bg-white p-2 border border-neutral-300 rounded outline-none text-xs" />
+                  </div>
+                </div>
+              )}
+
+              {activeTranslationTab === "de" && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] text-gray-500 font-bold mb-1">{t("menu.nameDe")}</label>
+                    <input value={nameDe} onChange={(e) => setNameDe(e.target.value)} className="w-full bg-white p-2 border border-neutral-300 rounded outline-none text-xs" autoFocus />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-gray-500 font-bold mb-1">{t("menu.descDe")}</label>
+                    <input value={descDe} onChange={(e) => setDescDe(e.target.value)} className="w-full bg-white p-2 border border-neutral-300 rounded outline-none text-xs" />
+                  </div>
+                </div>
+              )}
+
+              {activeTranslationTab === "en" && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] text-gray-500 font-bold mb-1">{t("menu.nameEn")}</label>
+                    <input value={nameEn} onChange={(e) => setNameEn(e.target.value)} className="w-full bg-white p-2 border border-neutral-300 rounded outline-none text-xs" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-gray-500 font-bold mb-1">{t("menu.descEn")}</label>
+                    <input value={descEn} onChange={(e) => setDescEn(e.target.value)} className="w-full bg-white p-2 border border-neutral-300 rounded outline-none text-xs" />
+                  </div>
+                </div>
+              )}
+
+              {activeTranslationTab === "tr" && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] text-gray-500 font-bold mb-1">{t("menu.nameTr")}</label>
+                    <input value={nameTr} onChange={(e) => setNameTr(e.target.value)} className="w-full bg-white p-2 border border-neutral-300 rounded outline-none text-xs" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-gray-500 font-bold mb-1">{t("menu.descTr")}</label>
+                    <input value={descTr} onChange={(e) => setDescTr(e.target.value)} className="w-full bg-white p-2 border border-neutral-300 rounded outline-none text-xs" />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">{t("common.sku")}</label>
+                <input
+                  value={sku}
+                  onChange={(e) => setSku(e.target.value)}
+                  placeholder="ITEM-001"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-xs focus:outline-none focus:border-orange-500"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">{t("menu.imageUrl")}</label>
+                <input
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  placeholder={FALLBACK_IMAGE}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 px-3 text-xs focus:outline-none focus:border-orange-500"
+                />
+              </div>
+            </div>
+
+            <label className="inline-flex items-center gap-2 text-xs font-bold text-gray-700 select-none">
+              <input
+                type="checkbox"
+                checked={isBestSeller}
+                onChange={(e) => setIsBestSeller(e.target.checked)}
+                className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
+              />
+              {t("menu.bestsellerFlag")}
+            </label>
+          </div>
+
+          <div className="bg-neutral-50 border-t border-gray-100 p-4 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setShowAddItemModal(false);
+                resetItemDraft();
+              }}
+              className="px-3 py-2 border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-xs font-bold rounded-lg transition"
+            >
+              {t("common.cancel")}
+            </button>
+            <button
+              type="submit"
+              className="px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 transition"
+            >
+              <Save size={12} />
+              {t("menu.addDish")}
+            </button>
+          </div>
+        </form>
+      </div>
+    )}
+    </>
   );
 }

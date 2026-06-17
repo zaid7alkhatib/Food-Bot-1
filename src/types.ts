@@ -267,6 +267,7 @@ export interface Reservation {
   durationMinutes: number;
   status: "pending" | "confirmed" | "seated" | "cancelled" | "completed";
   source: "website" | "whatsapp" | "dashboard";
+  customerLanguage?: "ar" | "de" | "en" | "tr";
   notes?: string;
   createdAt?: string;
   updatedAt?: string;

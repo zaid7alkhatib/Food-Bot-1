@@ -62,7 +62,7 @@ export default function ReservationFloorPlan({
   const [newResvTableId, setNewResvTableId] = useState("");
 
   // Search/Filters
-  const [resvFilter, setResvFilter] = useState<"all" | "pending" | "confirmed" | "seated" | "completed" | "cancelled">("all");
+  const [resvFilter, setResvFilter] = useState<"active" | "all" | "pending" | "confirmed" | "seated" | "completed" | "cancelled">("active");
   const [resvSearch, setResvSearch] = useState("");
 
   // Dragging states
@@ -411,7 +411,9 @@ export default function ReservationFloorPlan({
 
   // Filter & Search reservations
   const filteredReservations = reservations.filter((r) => {
-    const matchesFilter = resvFilter === "all" || r.status === resvFilter;
+    const matchesFilter = resvFilter === "active"
+      ? ["pending", "confirmed", "seated"].includes(r.status)
+      : resvFilter === "all" || r.status === resvFilter;
     const matchesSearch =
       r.customerName.toLowerCase().includes(resvSearch.toLowerCase()) ||
       r.whatsAppPhone.includes(resvSearch) ||
@@ -694,6 +696,7 @@ export default function ReservationFloorPlan({
             onChange={(e: any) => setResvFilter(e.target.value)}
             className="w-full bg-gray-50 border border-gray-200 rounded-lg py-1.5 px-3 text-xs focus:outline-none focus:border-orange-500"
           >
+            <option value="active">{t("reservation.activeStatuses")}</option>
             <option value="all">{t("reservation.allStatuses")}</option>
             <option value="pending">{t("reservation.status.pending")}</option>
             <option value="confirmed">{t("reservation.status.confirmed")}</option>

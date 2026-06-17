@@ -154,6 +154,18 @@ const siteT = {
   }
 };
 
+function isValidPublicPhone(value: string) {
+  const normalized = value.trim().replace(/[\s().-]/g, "");
+  return /^(\+|00)\d{8,15}$/.test(normalized);
+}
+
+function publicPhoneError(language: string) {
+  if (language === "ar") return "يرجى إدخال رقم واتساب صالح بصيغة دولية مثل +491701234567.";
+  if (language === "en") return "Please enter a valid WhatsApp number in international format, e.g. +491701234567.";
+  if (language === "tr") return "Lütfen +491701234567 gibi uluslararası formatta geçerli bir WhatsApp numarası girin.";
+  return "Bitte geben Sie eine gültige WhatsApp-Nummer im internationalen Format ein, z. B. +491701234567.";
+}
+
 interface RestaurantBranding {
   name: string;
   legalName?: string;
@@ -247,21 +259,30 @@ export default function BrandWebsite() {
 
   const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isBookingLoading) return;
+
     if (!bookingName.trim() || !bookingPhone.trim() || !bookingDateTime) {
       setBookingError(language === "ar" ? "الاسم والهاتف والتاريخ مطلوبين" : "Name, phone, and date/time are required");
       return;
     }
+    if (!isValidPublicPhone(bookingPhone)) {
+      setBookingError(publicPhoneError(language));
+      return;
+    }
     setIsBookingLoading(true);
     setBookingError("");
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 15000);
     try {
       const bId = branch._id || branch.id;
       const res = await fetch("/api/public/reservations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           branchId: bId,
-          customerName: bookingName,
-          whatsAppPhone: bookingPhone,
+          customerName: bookingName.trim(),
+          whatsAppPhone: bookingPhone.trim(),
           guestCount: bookingGuests,
           dateTime: bookingDateTime,
           tableId: bookingSelectedTableId || undefined,
@@ -270,7 +291,7 @@ export default function BrandWebsite() {
         }),
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
         setBookingSuccess(true);
         setBookingName("");
@@ -283,8 +304,13 @@ export default function BrandWebsite() {
         setBookingError(data.error || "Failed to submit reservation request");
       }
     } catch (err: any) {
-      setBookingError(err.message || "Network error");
+      setBookingError(
+        err?.name === "AbortError"
+          ? (language === "ar" ? "انتهت مهلة إرسال الطلب. يرجى المحاولة مرة أخرى." : language === "en" ? "The booking request timed out. Please try again." : "Die Reservierungsanfrage hat zu lange gedauert. Bitte versuchen Sie es erneut.")
+          : (err.message || "Network error")
+      );
     } finally {
+      window.clearTimeout(timeoutId);
       setIsBookingLoading(false);
     }
   };
@@ -716,6 +742,10 @@ export default function BrandWebsite() {
     }
     if (!customerPhone.trim()) {
       alert(language === "ar" ? "رقم الهاتف مطلوب" : "Telefonnummer ist erforderlich");
+      return;
+    }
+    if (!isValidPublicPhone(customerPhone)) {
+      alert(publicPhoneError(language));
       return;
     }
     if (orderType === "delivery" && !deliveryAddress.trim()) {
