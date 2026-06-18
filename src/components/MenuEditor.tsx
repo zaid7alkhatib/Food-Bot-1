@@ -15,6 +15,8 @@ interface MenuEditorProps {
   currencySymbol: string;
 }
 
+type LocalCopy = Record<"de" | "ar" | "en" | "tr", string>;
+
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1561651823-34fed0225408?w=500&auto=format&fit=crop";
 
 function emptyUpsellSuggestion(): UpsellSuggestion {
@@ -82,6 +84,7 @@ export default function MenuEditor({
   currencySymbol,
 }: MenuEditorProps) {
   const { language, t, text } = useI18n();
+  const copy = (values: LocalCopy) => values[language] || values.de;
   const [activeCategoryId, setActiveCategoryId] = useState<string>("");
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [showAddItemModal, setShowAddItemModal] = useState(false);
@@ -886,9 +889,16 @@ export default function MenuEditor({
                       <div className="pt-3 border-t border-neutral-200 space-y-2">
                         <div className="flex items-center justify-between gap-3">
                           <div>
-                            <h4 className="text-[11px] font-bold text-neutral-800 uppercase">{language === "ar" ? "خيارات التعديل والتخصيص" : "Anpassungsoptionen & Modifikatoren"}</h4>
+                            <h4 className="text-[11px] font-bold text-neutral-800 uppercase">
+                              {copy({ ar: "خيارات التعديل والتخصيص", de: "Anpassungsoptionen & Modifikatoren", en: "Customization Options & Modifiers", tr: "Özelleştirme Seçenekleri ve Düzenleyiciler" })}
+                            </h4>
                             <p className="text-[10px] text-gray-400">
-                              {language === "ar" ? "إضافة مجموعات خيارات مثل (الصلصات، درجة الحرارة، الإضافات) مع تحديد الأسعار والخيارات" : "Fügen Sie Gruppen wie Soßen oder Beilagen hinzu, um Kunden Auswahlmöglichkeiten zu geben."}
+                              {copy({
+                                ar: "إضافة مجموعات خيارات مثل (الصلصات، درجة الحرارة، الإضافات) مع تحديد الأسعار والخيارات",
+                                de: "Fügen Sie Gruppen wie Soßen oder Beilagen hinzu, um Kunden Auswahlmöglichkeiten zu geben.",
+                                en: "Add option groups like sauces, doneness, or extras with prices and choices.",
+                                tr: "Soslar, pişirme derecesi veya ekstralar gibi seçenek gruplarını fiyat ve seçeneklerle ekleyin.",
+                              })}
                             </p>
                           </div>
                           <button
@@ -897,13 +907,18 @@ export default function MenuEditor({
                             className="px-2 py-1 bg-white border border-neutral-200 hover:border-orange-400 text-neutral-700 rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer select-none"
                           >
                             <Plus size={11} />
-                            {language === "ar" ? "إضافة مجموعة جديدة" : "Gruppe hinzufügen"}
+                            {copy({ ar: "إضافة مجموعة جديدة", de: "Gruppe hinzufügen", en: "Add Group", tr: "Grup Ekle" })}
                           </button>
                         </div>
 
                         {modGroupsDraft.length === 0 ? (
                           <div className="text-[11px] text-gray-400 bg-white border border-dashed border-neutral-200 rounded-lg p-3">
-                            {language === "ar" ? "لا توجد خيارات تعديل مضافة لهذا الصنف." : "Keine Anpassungsgruppen für dieses Gericht."}
+                            {copy({
+                              ar: "لا توجد خيارات تعديل مضافة لهذا الصنف.",
+                              de: "Keine Anpassungsgruppen für dieses Gericht.",
+                              en: "No customization groups have been added for this item.",
+                              tr: "Bu ürün için henüz özelleştirme grubu eklenmedi.",
+                            })}
                           </div>
                         ) : (
                           <div className="space-y-3">
@@ -923,7 +938,7 @@ export default function MenuEditor({
                                     type="button"
                                     onClick={() => handleRemoveModGroup(gIdx)}
                                     className="p-1 text-red-500 hover:bg-red-50 rounded transition cursor-pointer select-none"
-                                    title="Löschen"
+                                    title={copy({ ar: "حذف", de: "Löschen", en: "Delete", tr: "Sil" })}
                                   >
                                     <Trash size={13} />
                                   </button>
@@ -933,26 +948,28 @@ export default function MenuEditor({
                                 <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
                                   <div className="col-span-1 md:col-span-2">
                                     <label className="block text-[10px] text-gray-400 font-bold mb-1">
-                                      {language === "ar" ? "اسم المجموعة" : "Gruppenname"} ({activeTranslationTab.toUpperCase()})
+                                      {copy({ ar: "اسم المجموعة", de: "Gruppenname", en: "Group Name", tr: "Grup Adı" })} ({activeTranslationTab.toUpperCase()})
                                     </label>
                                     <input
                                       type="text"
                                       value={group.name[activeTranslationTab] || ""}
                                       onChange={(e) => handleUpdateModGroupName(gIdx, activeTranslationTab, e.target.value)}
                                       className="w-full bg-white p-2 border border-neutral-300 rounded outline-none font-sans"
-                                      placeholder="z.B. Extra Soßen"
+                                      placeholder={copy({ ar: "مثال: صوصات إضافية", de: "z.B. Extra Soßen", en: "e.g. Extra sauces", tr: "örn. Ekstra soslar" })}
                                     />
                                   </div>
 
                                   <div>
-                                    <label className="block text-[10px] text-gray-400 font-bold mb-1">{language === "ar" ? "نوع الاختيار" : "Auswahltyp"}</label>
+                                    <label className="block text-[10px] text-gray-400 font-bold mb-1">
+                                      {copy({ ar: "نوع الاختيار", de: "Auswahltyp", en: "Selection Type", tr: "Seçim Türü" })}
+                                    </label>
                                     <select
                                       value={group.type}
                                       onChange={(e) => handleUpdateModGroup(gIdx, { type: e.target.value as "single" | "multiple" })}
                                       className="w-full bg-white p-2 border border-neutral-300 rounded outline-none"
                                     >
-                                      <option value="single">{language === "ar" ? "اختيار واحد فقط (Radio)" : "Einzelne Auswahl (Radio)"}</option>
-                                      <option value="multiple">{language === "ar" ? "اختيارات متعددة (Checkbox)" : "Mehrfachauswahl (Checkbox)"}</option>
+                                      <option value="single">{copy({ ar: "اختيار واحد فقط (Radio)", de: "Einzelne Auswahl (Radio)", en: "Single Selection (Radio)", tr: "Tek Seçim (Radio)" })}</option>
+                                      <option value="multiple">{copy({ ar: "اختيارات متعددة (Checkbox)", de: "Mehrfachauswahl (Checkbox)", en: "Multiple Selection (Checkbox)", tr: "Çoklu Seçim (Checkbox)" })}</option>
                                     </select>
                                   </div>
 
@@ -971,7 +988,7 @@ export default function MenuEditor({
                                       className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded cursor-pointer"
                                     />
                                     <label htmlFor={`req-${group.id}`} className="font-bold text-neutral-700 select-none cursor-pointer">
-                                      {language === "ar" ? "إجباري للطلب" : "Erforderlich"}
+                                      {copy({ ar: "إجباري للطلب", de: "Erforderlich", en: "Required", tr: "Zorunlu" })}
                                     </label>
                                   </div>
                                 </div>
@@ -980,7 +997,9 @@ export default function MenuEditor({
                                 {group.type === "multiple" && (
                                   <div className="grid grid-cols-2 gap-3 p-2 bg-stone-50 rounded-lg border border-stone-100 text-xs">
                                     <div>
-                                      <label className="block text-[9px] text-gray-400 font-bold mb-1">Min. Selections</label>
+                                      <label className="block text-[9px] text-gray-400 font-bold mb-1">
+                                        {copy({ ar: "الحد الأدنى للاختيارات", de: "Min. Auswahl", en: "Min. Selections", tr: "Min. Seçim" })}
+                                      </label>
                                       <input
                                         type="number"
                                         min="0"
@@ -990,7 +1009,9 @@ export default function MenuEditor({
                                       />
                                     </div>
                                     <div>
-                                      <label className="block text-[9px] text-gray-400 font-bold mb-1">Max. Selections</label>
+                                      <label className="block text-[9px] text-gray-400 font-bold mb-1">
+                                        {copy({ ar: "الحد الأقصى للاختيارات", de: "Max. Auswahl", en: "Max. Selections", tr: "Maks. Seçim" })}
+                                      </label>
                                       <input
                                         type="number"
                                         min="1"
@@ -1006,7 +1027,7 @@ export default function MenuEditor({
                                 <div className="pl-4 border-l-2 border-stone-100 space-y-2 mt-2">
                                   <div className="flex items-center justify-between">
                                     <span className="text-[10px] font-bold text-neutral-600 uppercase tracking-wide">
-                                      {language === "ar" ? "الخيارات المتاحة" : "Optionen"}
+                                      {copy({ ar: "الخيارات المتاحة", de: "Optionen", en: "Options", tr: "Seçenekler" })}
                                     </span>
                                     <button
                                       type="button"
@@ -1014,13 +1035,13 @@ export default function MenuEditor({
                                       className="text-orange-500 hover:text-orange-600 text-[10px] font-bold flex items-center gap-1 select-none cursor-pointer"
                                     >
                                       <Plus size={10} />
-                                      {language === "ar" ? "إضافة خيار" : "Option hinzufügen"}
+                                      {copy({ ar: "إضافة خيار", de: "Option hinzufügen", en: "Add Option", tr: "Seçenek Ekle" })}
                                     </button>
                                   </div>
 
                                   {group.options.length === 0 ? (
                                     <div className="text-[10px] text-gray-400 bg-stone-50/50 border border-stone-100 rounded-lg p-2 text-center">
-                                      {language === "ar" ? "لا توجد خيارات مضافة بعد." : "Keine Optionen hinzugefügt."}
+                                      {copy({ ar: "لا توجد خيارات مضافة بعد.", de: "Keine Optionen hinzugefügt.", en: "No options added yet.", tr: "Henüz seçenek eklenmedi." })}
                                     </div>
                                   ) : (
                                     <div className="space-y-2">
@@ -1033,7 +1054,7 @@ export default function MenuEditor({
                                                 value={opt.name[activeTranslationTab] || ""}
                                                 onChange={(e) => handleUpdateModOptionName(gIdx, oIdx, activeTranslationTab, e.target.value)}
                                                 className="w-full bg-white p-1.5 border border-stone-200 rounded text-[11px] outline-none font-medium font-sans"
-                                                placeholder={language === "ar" ? "مثال: بدون بصل" : "z.B. Extra Käse"}
+                                                placeholder={copy({ ar: "مثال: بدون بصل", de: "z.B. Extra Käse", en: "e.g. Extra cheese", tr: "örn. Ekstra peynir" })}
                                               />
                                             </div>
                                             <div className="flex items-center gap-1">
@@ -1053,7 +1074,7 @@ export default function MenuEditor({
                                             type="button"
                                             onClick={() => handleRemoveModOption(gIdx, oIdx)}
                                             className="p-1.5 text-red-500 hover:bg-red-50 rounded transition cursor-pointer select-none"
-                                            title="Löschen"
+                                            title={copy({ ar: "حذف", de: "Löschen", en: "Delete", tr: "Sil" })}
                                           >
                                             <Trash size={12} />
                                           </button>

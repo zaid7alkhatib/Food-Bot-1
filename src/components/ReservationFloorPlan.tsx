@@ -28,6 +28,8 @@ interface ReservationFloorPlanProps {
   branch: any;
 }
 
+type LocalCopy = Record<"de" | "ar" | "en" | "tr", string>;
+
 export default function ReservationFloorPlan({
   branchId,
   tables = [],
@@ -37,6 +39,7 @@ export default function ReservationFloorPlan({
   branch,
 }: ReservationFloorPlanProps) {
   const { t, language } = useI18n();
+  const copy = (values: LocalCopy) => values[language] || values.de;
 
   // Floor plan modes
   const [isEditMode, setIsEditMode] = useState(false);
@@ -200,7 +203,12 @@ export default function ReservationFloorPlan({
           throw new Error("Failed to save table drag position");
         }
       } catch (err: any) {
-        triggerAlert("error", err.message || "Failed to update table location");
+        triggerAlert("error", err.message || copy({
+          ar: "تعذر تحديث موقع الطاولة.",
+          de: "Die Tischposition konnte nicht aktualisiert werden.",
+          en: "Failed to update table location.",
+          tr: "Masa konumu güncellenemedi.",
+        }));
       }
     }
   };
@@ -226,7 +234,7 @@ export default function ReservationFloorPlan({
       });
 
       if (res.ok) {
-        triggerAlert("success", "Table created successfully");
+        triggerAlert("success", t("reservation.alert.tableCreated"));
         setShowAddTableModal(false);
         setNewTableNum("");
         setNewTableCapacity(4);
@@ -251,7 +259,7 @@ export default function ReservationFloorPlan({
       });
 
       if (res.ok) {
-        triggerAlert("success", "Table removed");
+        triggerAlert("success", t("reservation.alert.tableRemoved"));
         setSelectedTable(null);
       } else {
         const err = await res.json();
@@ -266,7 +274,7 @@ export default function ReservationFloorPlan({
   const handleAddReservationSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newResvName.trim() || !newResvPhone.trim() || !newResvDateTime) {
-      triggerAlert("error", "Name, Phone, and Date/Time are required");
+      triggerAlert("error", t("reservation.alert.requiredFields"));
       return;
     }
 
@@ -286,7 +294,7 @@ export default function ReservationFloorPlan({
       });
 
       if (res.ok) {
-        triggerAlert("success", "Manual reservation created");
+        triggerAlert("success", t("reservation.alert.manualCreated"));
         setShowAddReservationModal(false);
         setNewResvName("");
         setNewResvPhone("");
@@ -318,7 +326,7 @@ export default function ReservationFloorPlan({
       });
 
       if (res.ok) {
-        triggerAlert("success", `Reservation status updated to ${newStatus}`);
+        triggerAlert("success", t("reservation.alert.statusUpdated", { status: t(`status.${newStatus}`) }));
       } else {
         const err = await res.json();
         throw new Error(err.error || "Failed to update reservation");
@@ -333,6 +341,30 @@ export default function ReservationFloorPlan({
     const origin = window.location.origin;
     const dataUrl = `${origin}/menu?branchId=${branchId}&table=${table.number}`;
     const qrImage = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(dataUrl)}`;
+    const printTitle = copy({
+      ar: `طباعة رمز QR - طاولة ${table.number}`,
+      de: `QR-Code drucken - Tisch ${table.number}`,
+      en: `Print QR Code - Table ${table.number}`,
+      tr: `QR Kodunu Yazdır - Masa ${table.number}`,
+    });
+    const tableTitle = copy({
+      ar: `طاولة ${table.number}`,
+      de: `Tisch ${table.number}`,
+      en: `Table ${table.number}`,
+      tr: `Masa ${table.number}`,
+    });
+    const printSubtitle = copy({
+      ar: "امسح للطلب والدفع",
+      de: "Scannen zum Bestellen & Bezahlen",
+      en: "Scan to Order & Pay",
+      tr: "Sipariş ve Ödeme için Tara",
+    });
+    const poweredBy = copy({
+      ar: "مشغل بواسطة نظام واتساب Mr. Tabboush",
+      de: "Powered by Mr. Tabboush Whatsapp System",
+      en: "Powered by Mr. Tabboush Whatsapp System",
+      tr: "Mr. Tabboush WhatsApp Sistemi tarafından desteklenir",
+    });
 
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
@@ -340,7 +372,7 @@ export default function ReservationFloorPlan({
     printWindow.document.write(`
       <html>
         <head>
-          <title>Print QR Code - Table ${table.number}</title>
+          <title>${printTitle}</title>
           <style>
             body {
               font-family: 'Outfit', 'Inter', sans-serif;
@@ -390,12 +422,12 @@ export default function ReservationFloorPlan({
         <body>
           <div class="container">
             <div class="logo">${branch?.restaurantName || "Restaurant"}</div>
-            <div class="title">Tisch / Table ${table.number}</div>
-            <div class="subtitle">Scannen zum Bestellen & Bezahlen<br/>Scan to Order & Pay</div>
+            <div class="title">${tableTitle}</div>
+            <div class="subtitle">${printSubtitle}</div>
             <div class="qr-wrapper">
               <img class="qr-image" src="${qrImage}" alt="QR" />
             </div>
-            <div class="footer">Powered by Mr. Tabboush Whatsapp System</div>
+            <div class="footer">${poweredBy}</div>
           </div>
           <script>
             window.onload = function() {
@@ -431,7 +463,7 @@ export default function ReservationFloorPlan({
         <Calendar size={48} className="text-gray-300 mb-4" />
         <h3 className="text-lg font-bold text-gray-900 mb-2">{t("nav.reservations")}</h3>
         <p className="text-sm text-gray-500 max-w-sm mb-6">
-          Table reservations are currently disabled for this branch. Please enable it in the settings toggle to activate the visual layout editor and booking workflows.
+          {t("reservation.disabledHint")}
         </p>
       </div>
     );
@@ -851,7 +883,7 @@ export default function ReservationFloorPlan({
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">{t("reservation.tableIdentifier")}</label>
                 <input
                   type="text"
-                  placeholder="e.g. T1"
+                  placeholder={copy({ ar: "مثال: T1", de: "z.B. T1", en: "e.g. T1", tr: "örn. T1" })}
                   required
                   value={newTableNum}
                   onChange={(e) => setNewTableNum(e.target.value)}
@@ -891,7 +923,7 @@ export default function ReservationFloorPlan({
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">{t("reservation.sectionName")}</label>
                 <input
                   type="text"
-                  placeholder="e.g. Main Hall"
+                  placeholder={copy({ ar: "مثال: الصالة الرئيسية", de: "z.B. Hauptraum", en: "e.g. Main Hall", tr: "örn. Ana Salon" })}
                   value={newTableSection}
                   onChange={(e) => setNewTableSection(e.target.value)}
                   className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-sm focus:outline-none focus:border-orange-500"
@@ -929,7 +961,7 @@ export default function ReservationFloorPlan({
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">{t("reservation.customerName")}</label>
                 <input
                   type="text"
-                  placeholder="John Doe"
+                  placeholder={copy({ ar: "أحمد محمد", de: "Max Mustermann", en: "John Doe", tr: "Ahmet Yılmaz" })}
                   required
                   value={newResvName}
                   onChange={(e) => setNewResvName(e.target.value)}
@@ -993,7 +1025,7 @@ export default function ReservationFloorPlan({
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">{t("reservation.additionalNotes")}</label>
                 <textarea
-                  placeholder="e.g. allergies, window table preference..."
+                  placeholder={copy({ ar: "مثال: حساسية، تفضيل طاولة قرب النافذة...", de: "z.B. Allergien, Tisch am Fenster...", en: "e.g. allergies, window table preference...", tr: "örn. alerjiler, pencere kenarı masa tercihi..." })}
                   value={newResvNotes}
                   onChange={(e) => setNewResvNotes(e.target.value)}
                   className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-sm focus:outline-none focus:border-orange-500 h-20 resize-none"
@@ -1031,13 +1063,14 @@ export default function ReservationFloorPlan({
               <X size={20} />
             </button>
 
-            <h3 className="text-base font-bold text-gray-900 mb-2">{t("reservation.table")} {showQrModal.number} QR Code</h3>
+            <h3 className="text-base font-bold text-gray-900 mb-2">{t("reservation.table")} {showQrModal.number} {copy({ ar: "رمز QR", de: "QR-Code", en: "QR Code", tr: "QR Kodu" })}</h3>
             <p className="text-xs text-gray-500 mb-6">
-              {language === "ar" 
-                ? `المسح الضوئي لهذا الرمز سيفتح قائمة الطعام الذكية المخصصة لطاولة ${showQrModal.number}.`
-                : language === "en"
-                ? `Customers scanning this code will open the Smart Menu pre-assigned to Table ${showQrModal.number}.`
-                : `Das Scannen dieses Codes öffnet das Smart Menu, das Tisch ${showQrModal.number} zugeordnet ist.`}
+              {copy({
+                ar: `المسح الضوئي لهذا الرمز سيفتح قائمة الطعام الذكية المخصصة لطاولة ${showQrModal.number}.`,
+                de: `Das Scannen dieses Codes öffnet das Smart Menu, das Tisch ${showQrModal.number} zugeordnet ist.`,
+                en: `Customers scanning this code will open the Smart Menu pre-assigned to Table ${showQrModal.number}.`,
+                tr: `Bu kodu tarayan müşteriler, Masa ${showQrModal.number} için atanmış Smart Menu'yu açacaktır.`,
+              })}
             </p>
 
             <div className="bg-gray-50 p-4 rounded-xl inline-block border border-gray-100 mb-6">
@@ -1045,7 +1078,7 @@ export default function ReservationFloorPlan({
                 src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
                   `${window.location.origin}/menu?branchId=${branchId}&table=${showQrModal.number}`
                 )}`}
-                alt={`Table ${showQrModal.number} QR`}
+                alt={`${t("reservation.table")} ${showQrModal.number} QR`}
                 className="w-48 h-48 mx-auto"
               />
             </div>
@@ -1064,7 +1097,7 @@ export default function ReservationFloorPlan({
                 }}
                 className="flex-1 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition"
               >
-                {language === "ar" ? "نسخ الرابط" : language === "en" ? "Copy Link" : "Link kopieren"}
+                {copy({ ar: "نسخ الرابط", de: "Link kopieren", en: "Copy Link", tr: "Bağlantıyı Kopyala" })}
               </button>
               <button
                 onClick={() => {

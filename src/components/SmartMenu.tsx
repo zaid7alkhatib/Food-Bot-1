@@ -29,8 +29,11 @@ interface SmartMenuProps {
   convoId?: string;
 }
 
+type LocalCopy = Record<"de" | "ar" | "en" | "tr", string>;
+
 export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuProps) {
   const { language, setLanguage, t, text, dir } = useI18n();
+  const copy = (values: LocalCopy) => values[language] || values.de;
   const isWhatsAppMode = !!convoId;
 
   // State
@@ -225,9 +228,12 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
       if (group.isRequired) {
         const selections = modSelections[group.id] || [];
         if (selections.length < (group.minSelections || 1)) {
-          alert(language === "ar" 
-            ? `الرجاء تحديد الخيارات المطلوبة لـ ${text(group.name)}`
-            : `Bitte wählen Sie Optionen für ${text(group.name)}`);
+          alert(copy({
+            ar: `الرجاء تحديد الخيارات المطلوبة لـ ${text(group.name)}`,
+            de: `Bitte wählen Sie Optionen für ${text(group.name)}`,
+            en: `Please choose the required options for ${text(group.name)}`,
+            tr: `Lütfen ${text(group.name)} için gerekli seçenekleri seçin`,
+          }));
           return;
         }
       }
@@ -444,7 +450,12 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
           setIsCartOpen(false);
         } else {
           const errorData = await response.json();
-          alert(errorData.error || "Failed to sync cart with WhatsApp.");
+          alert(errorData.error || copy({
+            ar: "تعذرت مزامنة السلة مع واتساب.",
+            de: "Der Warenkorb konnte nicht mit WhatsApp synchronisiert werden.",
+            en: "Failed to sync cart with WhatsApp.",
+            tr: "Sepet WhatsApp ile senkronize edilemedi.",
+          }));
         }
       } else {
         const orderData = {
@@ -479,12 +490,22 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
           setIsCartOpen(false);
         } else {
           const errorData = await response.json();
-          alert(errorData.error || "Failed to submit order.");
+          alert(errorData.error || copy({
+            ar: "تعذر إرسال الطلب.",
+            de: "Die Bestellung konnte nicht übermittelt werden.",
+            en: "Failed to submit order.",
+            tr: "Sipariş gönderilemedi.",
+          }));
         }
       }
     } catch (err) {
       console.error(err);
-      alert("Submission failed. Connection issue.");
+      alert(copy({
+        ar: "فشل الإرسال بسبب مشكلة في الاتصال.",
+        de: "Übermittlung fehlgeschlagen. Verbindungsproblem.",
+        en: "Submission failed. Connection issue.",
+        tr: "Gönderim başarısız. Bağlantı sorunu.",
+      }));
     } finally {
       setIsSubmitting(false);
     }
@@ -512,22 +533,30 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
 
       // Show beautiful toast feedback
       let msg = "";
-      if (language === "ar") {
-        if (type === "waiter") msg = "تم إرسال نداء للنادل، سيصلك في أقرب وقت!";
-        else if (type === "bill") msg = "تم طلب الفاتورة، سيحضرها النادل لطاولتك!";
-        else if (type === "water") msg = "تم طلب الماء، سيصلك قريباً!";
-        else msg = "تم إرسال طلب الخدمة بنجاح!";
-      } else if (language === "de") {
-        if (type === "waiter") msg = "Der Service wurde gerufen! Ein Kellner kommt gleich.";
-        else if (type === "bill") msg = "Die Rechnung wurde angefordert! Der Kellner bringt sie an Ihren Tisch.";
-        else if (type === "water") msg = "Wasser wurde angefordert! Wird gleich serviert.";
-        else msg = "Service-Anfrage erfolgreich übermittelt!";
-      } else {
-        if (type === "waiter") msg = "Service summoned! A waiter will be with you shortly.";
-        else if (type === "bill") msg = "Bill requested! A waiter will bring it to your table.";
-        else if (type === "water") msg = "Water requested! Serving shortly.";
-        else msg = "Service request sent successfully!";
-      }
+      if (type === "waiter") msg = copy({
+        ar: "تم إرسال نداء للنادل، سيصلك في أقرب وقت!",
+        de: "Der Service wurde gerufen! Ein Kellner kommt gleich.",
+        en: "Service summoned! A waiter will be with you shortly.",
+        tr: "Garson çağrıldı! Kısa süre içinde masanıza gelecek.",
+      });
+      else if (type === "bill") msg = copy({
+        ar: "تم طلب الفاتورة، سيحضرها النادل لطاولتك!",
+        de: "Die Rechnung wurde angefordert! Der Kellner bringt sie an Ihren Tisch.",
+        en: "Bill requested! A waiter will bring it to your table.",
+        tr: "Hesap istendi! Garson masanıza getirecek.",
+      });
+      else if (type === "water") msg = copy({
+        ar: "تم طلب الماء، سيصلك قريباً!",
+        de: "Wasser wurde angefordert! Wird gleich serviert.",
+        en: "Water requested! Serving shortly.",
+        tr: "Su istendi! Kısa süre içinde servis edilecek.",
+      });
+      else msg = copy({
+        ar: "تم إرسال طلب الخدمة بنجاح!",
+        de: "Service-Anfrage erfolgreich übermittelt!",
+        en: "Service request sent successfully!",
+        tr: "Servis isteği başarıyla gönderildi!",
+      });
 
       setServiceSuccessMsg(msg);
       setActiveServiceRequests((prev) => [...prev, type]);
@@ -539,7 +568,12 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
       }, 3000);
     } catch (err) {
       console.error("Failed to summon service:", err);
-      alert("Failed to send service request.");
+      alert(copy({
+        ar: "تعذر إرسال طلب الخدمة.",
+        de: "Die Service-Anfrage konnte nicht gesendet werden.",
+        en: "Failed to send service request.",
+        tr: "Servis isteği gönderilemedi.",
+      }));
     } finally {
       setIsServiceSubmitting(false);
     }
@@ -653,12 +687,20 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
             </div>
             
             <h2 className="text-base font-bold text-neutral-900 leading-tight">
-              {language === "ar" ? "تم إرسال طلبك بنجاح!" : "Bestellung erfolgreich übermittelt!"}
+              {copy({
+                ar: "تم إرسال طلبك بنجاح!",
+                de: "Bestellung erfolgreich übermittelt!",
+                en: "Order sent successfully!",
+                tr: "Sipariş başarıyla gönderildi!",
+              })}
             </h2>
             <p className="text-[11px] text-neutral-400 mt-2 max-w-xs mx-auto leading-relaxed">
-              {language === "ar" 
-                ? `طلبك رقم ${orderNum} تم إرساله مباشرة لمطبخ المطعم للتحضير.`
-                : `Ihre Bestellnummer ist ${orderNum}. Sie wurde direkt in die Küche übertragen.`}
+              {copy({
+                ar: `طلبك رقم ${orderNum} تم إرساله مباشرة لمطبخ المطعم للتحضير.`,
+                de: `Ihre Bestellnummer ist ${orderNum}. Sie wurde direkt in die Küche übertragen.`,
+                en: `Your order number is ${orderNum}. It was sent directly to the kitchen for preparation.`,
+                tr: `Sipariş numaranız ${orderNum}. Hazırlanması için doğrudan mutfağa gönderildi.`,
+              })}
             </p>
 
             {/* Total Paid Stamp */}
@@ -668,7 +710,7 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
                 {placedOrder.total.toFixed(2)}{currency.symbol}
               </span>
               <span className="text-[9px] uppercase bg-stone-200 text-neutral-700 px-2 py-0.5 rounded-md font-bold tracking-wider">
-                {language === "ar" ? "دفع عند الطاولة" : "Pay at Table"}
+                {copy({ ar: "دفع عند الطاولة", de: "Zahlung am Tisch", en: "Pay at Table", tr: "Masada Ödeme" })}
               </span>
             </div>
           </div>
@@ -677,7 +719,7 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
           <div className="bg-white rounded-2xl border border-stone-200/50 p-6 shadow-sm">
             <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-400 mb-6 flex items-center gap-2">
               <Clock size={14} className="text-orange-500" />
-              {language === "ar" ? "حالة تحضير الطلب" : "Zubereitungsstatus"}
+              {copy({ ar: "حالة تحضير الطلب", de: "Zubereitungsstatus", en: "Preparation Status", tr: "Hazırlık Durumu" })}
             </h3>
 
             {placedOrder.status === "cancelled" ? (
@@ -699,7 +741,12 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
                   <div className="leading-tight">
                     <h4 className={`text-xs font-bold ${stepIdx === 0 ? "text-orange-600" : "text-neutral-900"}`}>{t("status.received")}</h4>
                     <p className="text-[10px] text-neutral-400 mt-1">
-                      {language === "ar" ? "تم استلام الطلب وتأكيده بالكامل" : "Bestellung empfangen und bestätigt"}
+                      {copy({
+                        ar: "تم استلام الطلب وتأكيده بالكامل",
+                        de: "Bestellung empfangen und bestätigt",
+                        en: "Order received and confirmed",
+                        tr: "Sipariş alındı ve onaylandı",
+                      })}
                     </p>
                   </div>
                 </div>
@@ -716,7 +763,12 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
                   <div className="leading-tight">
                     <h4 className={`text-xs font-bold ${stepIdx === 1 ? "text-orange-600" : "text-neutral-900"}`}>{t("status.preparing")}</h4>
                     <p className="text-[10px] text-neutral-400 mt-1">
-                      {language === "ar" ? "وجبتك تحضّر الآن طازجة في المطبخ" : "Wird frisch in der Küche zubereitet"}
+                      {copy({
+                        ar: "وجبتك تحضّر الآن طازجة في المطبخ",
+                        de: "Wird frisch in der Küche zubereitet",
+                        en: "Your meal is being freshly prepared in the kitchen",
+                        tr: "Yemeğiniz mutfakta taze olarak hazırlanıyor",
+                      })}
                     </p>
                   </div>
                 </div>
@@ -733,7 +785,12 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
                   <div className="leading-tight">
                     <h4 className={`text-xs font-bold ${stepIdx === 2 ? "text-orange-600" : "text-neutral-900"}`}>{t("status.ready_for_pickup")}</h4>
                     <p className="text-[10px] text-neutral-400 mt-1">
-                      {language === "ar" ? "وجبتك جاهزة وسيقوم النادل بتقديمها فوراً" : "Gerichte fertig zum Servieren"}
+                      {copy({
+                        ar: "وجبتك جاهزة وسيقوم النادل بتقديمها فوراً",
+                        de: "Gerichte fertig zum Servieren",
+                        en: "Your meal is ready and will be served shortly",
+                        tr: "Yemeğiniz hazır ve kısa süre içinde servis edilecek",
+                      })}
                     </p>
                   </div>
                 </div>
@@ -750,7 +807,12 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
                   <div className="leading-tight">
                     <h4 className={`text-xs font-bold ${stepIdx === 3 ? "text-orange-600" : "text-neutral-900"}`}>{t("status.delivered")}</h4>
                     <p className="text-[10px] text-neutral-400 mt-1">
-                      {language === "ar" ? "بالهناء والشفاء! نتمنى أن تنال وجبتنا إعجابك" : "Guten Appetit! Genießen Sie Ihr Essen"}
+                      {copy({
+                        ar: "بالهناء والشفاء! نتمنى أن تنال وجبتنا إعجابك",
+                        de: "Guten Appetit! Genießen Sie Ihr Essen",
+                        en: "Enjoy your meal! We hope you love it",
+                        tr: "Afiyet olsun! Umarız yemeğimizi beğenirsiniz",
+                      })}
                     </p>
                   </div>
                 </div>
@@ -762,13 +824,18 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
           <div className="bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 rounded-2xl p-5 text-white flex items-center justify-between shadow-md">
             <div className="space-y-1">
               <span className="text-[9px] font-bold text-orange-400 font-mono tracking-widest uppercase block">
-                {language === "ar" ? "خدمة الطاولة المباشرة" : "DINE-IN SERVICE"}
+                {copy({ ar: "خدمة الطاولة المباشرة", de: "TISCHSERVICE", en: "DINE-IN SERVICE", tr: "MASA SERVİSİ" })}
               </span>
               <h4 className="text-xs font-bold">
-                {language === "ar" ? "بحاجة لمساعدة أو طلب الخدمة؟" : "Unterstützung am Tisch?"}
+                {copy({ ar: "بحاجة لمساعدة أو طلب الخدمة؟", de: "Unterstützung am Tisch?", en: "Need help at the table?", tr: "Masada yardıma mı ihtiyacınız var?" })}
               </h4>
               <p className="text-[9px] text-slate-400">
-                {language === "ar" ? "اطلب النادل، ماء، أو الفاتورة بضغطة واحدة" : "Kellner rufen, Wasser oder Rechnung bitten"}
+                {copy({
+                  ar: "اطلب النادل، ماء، أو الفاتورة بضغطة واحدة",
+                  de: "Kellner rufen, Wasser oder Rechnung anfordern",
+                  en: "Call a waiter, request water, or ask for the bill",
+                  tr: "Garson çağırın, su veya hesap isteyin",
+                })}
               </p>
             </div>
             <button
@@ -776,14 +843,14 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
               className="bg-orange-500 hover:bg-orange-600 text-white text-[10px] font-bold px-4 py-2 rounded-xl transition shadow active:scale-95 shrink-0 inline-flex items-center gap-1.5 cursor-pointer"
             >
               <Bell size={12} className="animate-pulse" />
-              {language === "ar" ? "طلب الخدمة" : "Service rufen"}
+              {copy({ ar: "طلب الخدمة", de: "Service rufen", en: "Call Service", tr: "Servis İste" })}
             </button>
           </div>
 
           {/* Order Details list for verification */}
           <div className="bg-white rounded-2xl border border-stone-200/50 p-4 shadow-sm text-xs space-y-2.5">
             <h4 className="font-bold text-neutral-900 pb-1.5 border-b border-stone-100 flex justify-between items-center">
-              <span>{language === "ar" ? "تفاصيل الطلب" : "Bestelldetails"}</span>
+              <span>{copy({ ar: "تفاصيل الطلب", de: "Bestelldetails", en: "Order Details", tr: "Sipariş Detayları" })}</span>
               <span className="font-mono text-[10px] text-neutral-400">#{orderNum}</span>
             </h4>
             {placedOrder.items && placedOrder.items.map((it: any, itIdx: number) => (
@@ -802,16 +869,16 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
             onClick={() => setPlacedOrder(null)}
             className="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-3.5 rounded-xl transition shadow-md active:scale-98 cursor-pointer"
           >
-            {language === "ar" ? "طلب أطباق أخرى" : "Weitere Gerichte bestellen"}
+            {copy({ ar: "طلب أطباق أخرى", de: "Weitere Gerichte bestellen", en: "Order More Items", tr: "Başka Ürünler Sipariş Et" })}
           </button>
         </main>
 
         <footer className="py-4 text-center text-[9px] text-neutral-400 border-t border-stone-200/40 mt-auto bg-stone-100 select-none flex flex-col gap-1.5 items-center justify-center">
           <div>{restaurantName.toUpperCase()} SMART TABLE MENU</div>
           <div className="flex gap-3 text-[10px] text-neutral-500 font-light">
-            <button onClick={() => setShowImprintModal(true)} className="hover:text-slate-900 transition cursor-pointer bg-transparent border-none p-0 outline-none">{language === "ar" ? "إخلاء المسؤولية" : language === "en" ? "Imprint" : "Impressum"}</button>
+            <button onClick={() => setShowImprintModal(true)} className="hover:text-slate-900 transition cursor-pointer bg-transparent border-none p-0 outline-none">{copy({ ar: "إخلاء المسؤولية", de: "Impressum", en: "Imprint", tr: "Künye" })}</button>
             <span>•</span>
-            <button onClick={() => setShowPrivacyModal(true)} className="hover:text-slate-900 transition cursor-pointer bg-transparent border-none p-0 outline-none">{language === "ar" ? "الخصوصية" : language === "en" ? "Privacy Policy" : "Datenschutz"}</button>
+            <button onClick={() => setShowPrivacyModal(true)} className="hover:text-slate-900 transition cursor-pointer bg-transparent border-none p-0 outline-none">{copy({ ar: "الخصوصية", de: "Datenschutz", en: "Privacy Policy", tr: "Gizlilik Politikası" })}</button>
           </div>
         </footer>
 
@@ -824,7 +891,7 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
                 <div className="flex items-center gap-2">
                   <Bell className="text-orange-500 animate-bounce" size={18} />
                   <h3 className="font-bold text-sm text-neutral-900">
-                    {language === "ar" ? "نداء الخدمة" : "Service anfordern"}
+                    {copy({ ar: "نداء الخدمة", de: "Service anfordern", en: "Service Request", tr: "Servis Çağrısı" })}
                   </h3>
                 </div>
                 <button
@@ -849,9 +916,12 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
                 ) : (
                   <>
                     <p className="text-[11px] text-neutral-400 text-center leading-relaxed">
-                      {language === "ar"
-                        ? "اختر نوع الخدمة التي تحتاجها، وسيقوم أحد موظفينا بتلبيتك فوراً."
-                        : "Wählen Sie Ihren Wunsch. Unser Team wird Sie umgehend am Tisch bedienen."}
+                      {copy({
+                        ar: "اختر نوع الخدمة التي تحتاجها، وسيقوم أحد موظفينا بتلبيتك فوراً.",
+                        de: "Wählen Sie Ihren Wunsch. Unser Team wird Sie umgehend am Tisch bedienen.",
+                        en: "Choose the service you need and our team will come to your table shortly.",
+                        tr: "İhtiyacınız olan servisi seçin; ekibimiz kısa süre içinde masanıza gelecektir.",
+                      })}
                     </p>
 
                     <div className="grid grid-cols-2 gap-3 pt-2">
@@ -862,6 +932,7 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
                           labelDE: "Kellner rufen",
                           labelAR: "نداء النادل",
                           labelEN: "Call Waiter",
+                          labelTR: "Garson Çağır",
                         },
                         {
                           id: "bill",
@@ -869,6 +940,7 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
                           labelDE: "Rechnung bitten",
                           labelAR: "طلب الفاتورة",
                           labelEN: "Request Bill",
+                          labelTR: "Hesap İste",
                         },
                         {
                           id: "water",
@@ -876,6 +948,7 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
                           labelDE: "Wasser bitten",
                           labelAR: "طلب ماء",
                           labelEN: "Request Water",
+                          labelTR: "Su İste",
                         },
                         {
                           id: "custom",
@@ -883,6 +956,7 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
                           labelDE: "Anderer Wunsch",
                           labelAR: "خدمة أخرى",
                           labelEN: "Other Request",
+                          labelTR: "Diğer Servis",
                         },
                       ].map((srv) => {
                         const alreadySent = activeServiceRequests.includes(srv.id);
@@ -902,8 +976,8 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
                             </div>
                             <span className="text-[11px] font-bold leading-tight">
                               {alreadySent 
-                                ? (language === "ar" ? "تم الإرسال" : "Gesendet")
-                                : (language === "ar" ? srv.labelAR : language === "de" ? srv.labelDE : srv.labelEN)
+                                ? copy({ ar: "تم الإرسال", de: "Gesendet", en: "Sent", tr: "Gönderildi" })
+                                : (language === "ar" ? srv.labelAR : language === "tr" ? srv.labelTR : language === "en" ? srv.labelEN : srv.labelDE)
                               }
                             </span>
                           </button>
@@ -978,7 +1052,7 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
             <span className="text-xl shrink-0">⚠️</span>
             <div className="space-y-1 text-xs">
               <h4 className="font-bold">
-                {language === "ar" ? "تنبيه طاولة محجوزة" : language === "en" ? "Upcoming Table Reservation" : "Tisch reserviert"}
+                {copy({ ar: "تنبيه طاولة محجوزة", de: "Tisch reserviert", en: "Upcoming Table Reservation", tr: "Yaklaşan Masa Rezervasyonu" })}
               </h4>
               <p className="text-amber-800 leading-relaxed">
                 {t("smartMenu.tableReservedWarning", {
@@ -1026,7 +1100,7 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
                 : "bg-white border-stone-200/80 text-neutral-500 hover:bg-stone-100/50 hover:text-neutral-700"
             }`}
           >
-            {language === "ar" ? "كل الأصناف" : "Alle Speisen"}
+            {copy({ ar: "كل الأصناف", de: "Alle Speisen", en: "All Items", tr: "Tüm Ürünler" })}
           </button>
           
           {categories.map((cat) => (
@@ -1079,7 +1153,7 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
                           />
                           {item.isBestSeller && (
                             <div className="absolute top-1 left-1 bg-red-500 text-white text-[8px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider shadow-sm flex items-center gap-0.5">
-                              <Flame size={8} /> HOT
+                              <Flame size={8} /> {copy({ ar: "الأكثر طلباً", de: "Beliebt", en: "Popular", tr: "Popüler" })}
                             </div>
                           )}
                         </div>
@@ -1088,7 +1162,7 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
                           <Utensils size={24} />
                           {item.isBestSeller && (
                             <div className="absolute top-1 left-1 bg-red-500 text-white text-[8px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider shadow-sm flex items-center gap-0.5">
-                              <Flame size={8} /> HOT
+                              <Flame size={8} /> {copy({ ar: "الأكثر طلباً", de: "Beliebt", en: "Popular", tr: "Popüler" })}
                             </div>
                           )}
                         </div>
@@ -1101,7 +1175,7 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
                             {text(item.name)}
                             {item.isBestSeller && !item.image && (
                               <span className="text-[8px] bg-red-50 text-red-600 border border-red-100 px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wide shrink-0">
-                                🔥 Bestseller
+                                🔥 {copy({ ar: "الأكثر طلباً", de: "Bestseller", en: "Bestseller", tr: "En Çok Satan" })}
                               </span>
                             )}
                           </h4>
@@ -1129,7 +1203,7 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
                             className="bg-orange-500 hover:bg-orange-600 text-white rounded-xl p-1.5 px-3.5 text-[10px] font-extrabold flex items-center gap-1 transition-all duration-200 shadow-xs hover:shadow-md active:scale-90 select-none cursor-pointer"
                           >
                             <Plus size={11} className="stroke-[3px]" />
-                            {language === "ar" ? "أضف" : "Hinzufügen"}
+                            {copy({ ar: "أضف", de: "Hinzufügen", en: "Add", tr: "Ekle" })}
                           </button>
                         </div>
                       </div>
@@ -1165,7 +1239,7 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
               onClick={() => setIsCartOpen(true)}
               className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-6 py-2.5 rounded-xl flex items-center gap-1.5 transition shadow-md cursor-pointer active:scale-95"
             >
-              {language === "ar" ? "استعراض السلة" : "Warenkorb ansehen"}
+              {copy({ ar: "استعراض السلة", de: "Warenkorb ansehen", en: "View Cart", tr: "Sepeti Gör" })}
               <ChevronRight size={14} className={dir === "rtl" ? "rotate-180" : ""} />
             </button>
           </div>
@@ -1193,14 +1267,14 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
                 </button>
                 {selectedItemForMod.isBestSeller && (
                   <div className="absolute top-3 left-3 bg-red-500 text-white text-[8px] px-2 py-0.5 rounded-md font-extrabold flex items-center gap-0.5 shadow-md">
-                    <Flame size={8} /> {language === "ar" ? "الأكثر طلباً" : "HOT"}
+                    <Flame size={8} /> {copy({ ar: "الأكثر طلباً", de: "Beliebt", en: "Popular", tr: "Popüler" })}
                   </div>
                 )}
               </div>
             ) : (
               <div className="relative w-full h-12 bg-stone-50 shrink-0 border-b border-stone-150 flex items-center justify-between px-4">
                 <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
-                  {language === "ar" ? "تفاصيل الوجبة" : "Details"}
+                  {copy({ ar: "تفاصيل الوجبة", de: "Details", en: "Details", tr: "Detaylar" })}
                 </span>
                 <button 
                   onClick={() => setSelectedItemForMod(null)}
@@ -1218,7 +1292,7 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
                   {text(selectedItemForMod.name)}
                   {selectedItemForMod.isBestSeller && !selectedItemForMod.image && (
                     <span className="text-[8px] bg-red-550/10 text-red-600 border border-red-200/50 px-1.5 py-0.5 rounded font-extrabold">
-                      🔥 {language === "ar" ? "الأكثر طلباً" : "HOT"}
+                      🔥 {copy({ ar: "الأكثر طلباً", de: "Beliebt", en: "Popular", tr: "Popüler" })}
                     </span>
                   )}
                 </h3>
@@ -1245,14 +1319,14 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
                       {text(group.name)}
                       {group.isRequired && (
                         <span className="text-[8px] bg-red-50 text-red-650 border border-red-150 px-1.5 py-0.5 rounded font-extrabold uppercase">
-                          {language === "ar" ? "إجباري" : "Erforderlich"}
+                          {copy({ ar: "إجباري", de: "Erforderlich", en: "Required", tr: "Zorunlu" })}
                         </span>
                       )}
                     </span>
                     <span className="text-[10px] text-neutral-450 font-bold">
                       {group.type === "single" 
-                        ? (language === "ar" ? "اختر واحداً" : "Wählen Sie 1") 
-                        : (group.maxSelections ? `${language === "ar" ? "حد أقصى" : "Max"} ${group.maxSelections}` : "")
+                        ? copy({ ar: "اختر واحداً", de: "Wählen Sie 1", en: "Choose one", tr: "Birini seçin" })
+                        : (group.maxSelections ? `${copy({ ar: "حد أقصى", de: "Max", en: "Max", tr: "Maks" })} ${group.maxSelections}` : "")
                       }
                     </span>
                   </div>
@@ -1292,7 +1366,7 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
 
               {/* Quantity Adjuster */}
               <div className="flex items-center justify-between border-t border-stone-100 pt-4">
-                <span className="text-xs font-bold text-neutral-800">{language === "ar" ? "الكمية" : "Menge"}</span>
+                <span className="text-xs font-bold text-neutral-800">{copy({ ar: "الكمية", de: "Menge", en: "Quantity", tr: "Miktar" })}</span>
                 <div className="flex items-center bg-stone-50 border border-stone-200 rounded-xl p-1 gap-3">
                   <button 
                     onClick={() => setModQuantity(q => Math.max(1, q - 1))}
@@ -1317,7 +1391,7 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
                 onClick={handleAddToCart}
                 className="w-full bg-brand-primary hover:bg-brand-primary/95 text-white font-bold py-3.5 rounded-xl transition shadow flex items-center justify-center gap-2 cursor-pointer"
               >
-                <span>{language === "ar" ? "إضافة إلى السلة" : "In den Warenkorb"}</span>
+                <span>{copy({ ar: "إضافة إلى السلة", de: "In den Warenkorb", en: "Add to Cart", tr: "Sepete Ekle" })}</span>
                 <span className="w-1 h-1 bg-white/40 rounded-full font-mono"></span>
                 <span>{((selectedItemForMod.basePrice + getSelectedModsAdjustment()) * modQuantity).toFixed(2)}{currency.symbol}</span>
               </button>
@@ -1335,7 +1409,7 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
             <div className="p-4 border-b border-stone-100 flex items-center justify-between bg-stone-50 select-none">
               <div className="flex items-center gap-1.5">
                 <ShoppingBag size={16} className="text-orange-500" />
-                <h3 className="font-bold text-sm text-neutral-900">{language === "ar" ? "سلة طلباتك" : "Ihr Warenkorb"}</h3>
+                <h3 className="font-bold text-sm text-neutral-900">{copy({ ar: "سلة طلباتك", de: "Ihr Warenkorb", en: "Your Cart", tr: "Sepetiniz" })}</h3>
               </div>
               <button
                 onClick={() => setIsCartOpen(false)}
@@ -1377,7 +1451,7 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
 
                   {/* Quantity & Remove operations */}
                   <div className="flex justify-between items-center border-t border-stone-200/30 pt-2.5 mt-0.5">
-                    <span className="text-[10px] text-neutral-400 font-semibold">{language === "ar" ? "الكمية" : "Menge"}</span>
+                    <span className="text-[10px] text-neutral-400 font-semibold">{copy({ ar: "الكمية", de: "Menge", en: "Quantity", tr: "Miktar" })}</span>
                     <div className="flex items-center bg-white border border-stone-200 rounded-lg p-0.5 gap-2.5">
                       <button
                         onClick={() => updateQuantity(idx, -1)}
@@ -1401,17 +1475,17 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
               {!isWhatsAppMode && (
                 <div className="border-t border-stone-100 pt-4 space-y-3">
                   <h4 className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider">
-                    {language === "ar" ? "بيانات الدفع والاستلام" : "Angaben zur Abrechnung"}
+                    {copy({ ar: "بيانات الدفع والاستلام", de: "Angaben zur Abrechnung", en: "Payment & Pickup Details", tr: "Ödeme ve Teslim Alma Bilgileri" })}
                   </h4>
                   
                   <div className="space-y-2.5 text-xs">
                     <div>
                       <label className="text-[11px] text-neutral-500 block mb-1 font-medium">
-                        {language === "ar" ? "اسم الضيف (اختياري)" : "Name des Gastes (Optional)"}
+                        {copy({ ar: "اسم الضيف (اختياري)", de: "Name des Gastes (Optional)", en: "Guest Name (Optional)", tr: "Misafir Adı (İsteğe Bağlı)" })}
                       </label>
                       <input
                         type="text"
-                        placeholder={language === "ar" ? "مثال: أحمد" : "z.B. Alex"}
+                        placeholder={copy({ ar: "مثال: أحمد", de: "z.B. Alex", en: "e.g. Alex", tr: "örn. Ahmet" })}
                         value={customerName}
                         onChange={(e) => setCustomerName(e.target.value)}
                         className="w-full p-2.5 border border-stone-200 rounded-xl focus:outline-none focus:border-orange-500 bg-stone-50"
@@ -1420,7 +1494,7 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
 
                     <div>
                       <label className="text-[11px] text-neutral-500 block mb-1 font-medium">
-                        {language === "ar" ? "رقم الهاتف (اختياري)" : "Telefonnummer (Optional)"}
+                        {copy({ ar: "رقم الهاتف (اختياري)", de: "Telefonnummer (Optional)", en: "Phone Number (Optional)", tr: "Telefon Numarası (İsteğe Bağlı)" })}
                       </label>
                       <input
                         type="tel"
@@ -1433,10 +1507,10 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
 
                     <div>
                       <label className="text-[11px] text-neutral-500 block mb-1 font-medium">
-                        {language === "ar" ? "ملاحظات خاصة للمطبخ" : "Hinweise für das Küchenteam"}
+                        {copy({ ar: "ملاحظات خاصة للمطبخ", de: "Hinweise für das Küchenteam", en: "Special Notes for the Kitchen", tr: "Mutfak İçin Özel Notlar" })}
                       </label>
                       <textarea
-                        placeholder={language === "ar" ? "مثال: بدون فلفل حار..." : "z.B. Keine Zwiebeln..."}
+                        placeholder={copy({ ar: "مثال: بدون فلفل حار...", de: "z.B. Keine Zwiebeln...", en: "e.g. No onions...", tr: "örn. Acısız..." })}
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
                         className="w-full p-2.5 border border-stone-200 rounded-xl focus:outline-none focus:border-orange-500 bg-stone-50 h-16 resize-none"
@@ -1450,7 +1524,7 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
             {/* Drawer Checkout Footer */}
             <div className="p-4 border-t border-stone-100 bg-stone-50 space-y-3">
               <div className="flex justify-between items-center text-xs text-neutral-800 font-semibold px-1">
-                <span>{language === "ar" ? "إجمالي الفاتورة" : "Rechnungssumme"}</span>
+                <span>{copy({ ar: "إجمالي الفاتورة", de: "Rechnungssumme", en: "Bill Total", tr: "Fatura Toplamı" })}</span>
                 <span className="font-mono text-sm font-bold text-orange-600">
                   {getCheckoutTotal().toFixed(2)}{currency.symbol}
                 </span>
@@ -1471,7 +1545,7 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
                     {isWhatsAppMode ? <MessageSquare size={14} /> : <Utensils size={14} />}
                     {isWhatsAppMode 
                       ? t("orders.sendCartToWhatsApp") 
-                      : (language === "ar" ? "تأكيد وإرسال الطلب للمطبخ" : "Bestellung in die Küche schicken")}
+                      : copy({ ar: "تأكيد وإرسال الطلب للمطبخ", de: "Bestellung in die Küche schicken", en: "Send Order to Kitchen", tr: "Siparişi Mutfağa Gönder" })}
                   </>
                 )}
               </button>
@@ -1490,12 +1564,15 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
 
             <div className="space-y-1.5 select-none">
               <h3 className="font-bold text-sm text-neutral-900">
-                {language === "ar" ? "ترقية وجبة كومبو مذهلة!" : "Combo-Upgrade verfügbar!"}
+                {copy({ ar: "ترقية وجبة كومبو مذهلة!", de: "Combo-Upgrade verfügbar!", en: "Combo Upgrade Available!", tr: "Harika Combo Yükseltmesi!" })}
               </h3>
               <p className="text-[11px] text-neutral-400 leading-snug">
-                {language === "ar" 
-                  ? `هل ترغب في إضافة *${text(pendingUpsellItem.upsell.suggestedItemName)}* مقابل +${pendingUpsellItem.upsell.price.toFixed(2)}€ فقط؟`
-                  : `Möchten Sie *${text(pendingUpsellItem.upsell.suggestedItemName)}* für nur +${pendingUpsellItem.upsell.price.toFixed(2)} € hinzufügen?`}
+                {copy({
+                  ar: `هل ترغب في إضافة *${text(pendingUpsellItem.upsell.suggestedItemName)}* مقابل +${pendingUpsellItem.upsell.price.toFixed(2)}€ فقط؟`,
+                  de: `Möchten Sie *${text(pendingUpsellItem.upsell.suggestedItemName)}* für nur +${pendingUpsellItem.upsell.price.toFixed(2)} € hinzufügen?`,
+                  en: `Would you like to add *${text(pendingUpsellItem.upsell.suggestedItemName)}* for only +${pendingUpsellItem.upsell.price.toFixed(2)} €?`,
+                  tr: `*${text(pendingUpsellItem.upsell.suggestedItemName)}* ürününü yalnızca +${pendingUpsellItem.upsell.price.toFixed(2)} € karşılığında eklemek ister misiniz?`,
+                })}
               </p>
             </div>
 
@@ -1504,13 +1581,13 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
                 onClick={() => handleApplyUpsell(false)}
                 className="flex-1 py-2.5 border border-stone-200 hover:bg-neutral-50 text-xs font-bold text-neutral-600 rounded-xl transition cursor-pointer active:scale-95"
               >
-                {language === "ar" ? "لا، شكراً" : "Nein, danke"}
+                {copy({ ar: "لا، شكراً", de: "Nein, danke", en: "No, thanks", tr: "Hayır, teşekkürler" })}
               </button>
               <button
                 onClick={() => handleApplyUpsell(true)}
                 className="flex-1 py-2.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-xl transition shadow-md cursor-pointer active:scale-95"
               >
-                {language === "ar" ? "نعم، أضف للوجبة" : "Ja, hinzufügen"}
+                {copy({ ar: "نعم، أضف للوجبة", de: "Ja, hinzufügen", en: "Yes, add", tr: "Evet, ekle" })}
               </button>
             </div>
           </div>
@@ -1522,7 +1599,7 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
         <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-55 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-xl max-h-[85vh] overflow-y-auto p-6 shadow-2xl border border-neutral-100 flex flex-col relative animate-fade-in text-neutral-800">
             <h3 className="font-serif font-extrabold text-base text-slate-900 border-b border-slate-100 pb-3 mb-4 flex items-center justify-between">
-              <span>{language === "ar" ? "إخلاء المسؤولية" : language === "en" ? "Imprint" : "Impressum"}</span>
+              <span>{copy({ ar: "إخلاء المسؤولية", de: "Impressum", en: "Imprint", tr: "Künye" })}</span>
               <button 
                 onClick={() => setShowImprintModal(false)}
                 className="text-slate-400 hover:text-slate-600 text-sm font-sans font-bold cursor-pointer bg-transparent border-none p-0"
@@ -1533,37 +1610,56 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
             
             <div className="text-xs text-slate-700 space-y-4 leading-relaxed font-sans text-left">
               <div>
-                <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[9px] mb-1">Angaben gemäß § 5 DDG</h4>
+                <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[9px] mb-1">
+                  {copy({ ar: "معلومات وفقاً للمادة 5 DDG", de: "Angaben gemäß § 5 DDG", en: "Information according to Section 5 DDG", tr: "DDG Madde 5 uyarınca bilgiler" })}
+                </h4>
                 <p className="font-medium text-slate-800">{restaurant?.legalName || restaurant?.name || restaurantName}</p>
                 <p>{restaurant?.address || "Berliner Str. 179, 42277 Wuppertal"}</p>
               </div>
               
               <div>
-                <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[9px] mb-1">Vertreten durch</h4>
-                <p>{language === "ar" ? "إدارة المطعم" : "Geschäftsführung"}</p>
+                <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[9px] mb-1">
+                  {copy({ ar: "يمثله", de: "Vertreten durch", en: "Represented by", tr: "Temsil eden" })}
+                </h4>
+                <p>{copy({ ar: "إدارة المطعم", de: "Geschäftsführung", en: "Restaurant Management", tr: "Restoran Yönetimi" })}</p>
               </div>
 
               <div>
-                <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[9px] mb-1">Kontakt</h4>
-                <p>{language === "ar" ? "الهاتف" : "Telefon"}: {restaurant?.phone || restaurant?.whatsappNumber}</p>
+                <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[9px] mb-1">
+                  {copy({ ar: "التواصل", de: "Kontakt", en: "Contact", tr: "İletişim" })}
+                </h4>
+                <p>{copy({ ar: "الهاتف", de: "Telefon", en: "Phone", tr: "Telefon" })}: {restaurant?.phone || restaurant?.whatsappNumber}</p>
                 {restaurant?.email && (
-                  <p>{language === "ar" ? "البريد الإلكتروني" : "E-Mail"}: {restaurant.email}</p>
+                  <p>{copy({ ar: "البريد الإلكتروني", de: "E-Mail", en: "Email", tr: "E-posta" })}: {restaurant.email}</p>
                 )}
               </div>
 
               <div>
-                <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[9px] mb-1">Umsatzsteuer-ID</h4>
-                <p>Umsatzsteuer-Identifikationsnummer gemäß § 27 a Umsatzsteuergesetz: DE318947510 (Muster-ID)</p>
+                <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[9px] mb-1">
+                  {copy({ ar: "رقم ضريبة القيمة المضافة", de: "Umsatzsteuer-ID", en: "VAT ID", tr: "KDV Kimlik Numarası" })}
+                </h4>
+                <p>{copy({
+                  ar: "رقم التعريف الضريبي للقيمة المضافة وفقاً للمادة 27 أ من قانون ضريبة القيمة المضافة: DE318947510 (رقم تجريبي)",
+                  de: "Umsatzsteuer-Identifikationsnummer gemäß § 27 a Umsatzsteuergesetz: DE318947510 (Muster-ID)",
+                  en: "VAT identification number according to Section 27a of the German VAT Act: DE318947510 (sample ID)",
+                  tr: "Alman KDV Kanunu Madde 27a uyarınca KDV kimlik numarası: DE318947510 (örnek ID)",
+                })}</p>
               </div>
 
               <div className="pt-2 border-t border-slate-100 text-[10px] text-slate-400 space-y-1.5">
-                <p>{language === "ar" ? "إخلاء المسؤولية: على الرغم من الرقابة الدقيقة على المحتوى، لا نتحمل أي مسؤولية عن محتوى الروابط الخارجية." : "Haftungsausschluss: Trotz sorgfältiger inhaltlicher Kontrolle übernehmen wir keine Haftung für die Inhalte externer Links. Für den Inhalt der verlinkten Seiten sind ausschließlich deren Betreiber verantwortlich."}</p>
+                <p>{copy({
+                  ar: "إخلاء المسؤولية: على الرغم من الرقابة الدقيقة على المحتوى، لا نتحمل أي مسؤولية عن محتوى الروابط الخارجية.",
+                  de: "Haftungsausschluss: Trotz sorgfältiger inhaltlicher Kontrolle übernehmen wir keine Haftung für die Inhalte externer Links. Für den Inhalt der verlinkten Seiten sind ausschließlich deren Betreiber verantwortlich.",
+                  en: "Disclaimer: Although we check content carefully, we accept no liability for the content of external links. The operators of linked pages are solely responsible for their content.",
+                  tr: "Sorumluluk reddi: İçerikleri dikkatle kontrol etmemize rağmen harici bağlantıların içeriklerinden sorumlu değiliz. Bağlantılı sayfaların içeriğinden yalnızca ilgili işletmeciler sorumludur.",
+                })}</p>
                 <p>
-                  {language === "ar" 
-                    ? "Farman FoodSuite عبارة عن منصة للطلب وجذب العملاء ولا تحل محل الالتزامات القانونية للعميل فيما يتعلق بالتسجيل المالي أو الامتثال لسجل النقد أو التقارير الضريبية أو المحاسبة." 
-                    : language === "en"
-                    ? "Farman FoodSuite is an ordering and customer engagement platform and does not replace the customer's legal obligations regarding fiscal recording, cash register compliance, tax reporting, or accounting."
-                    : "Farman FoodSuite ist eine Bestell- und Kundenbindungsplattform und ersetzt nicht die gesetzlichen Verpflichtungen des Kunden zur steuerlichen Erfassung, Kassenkonformität (TSE), Steuerberichterstattung oder Buchhaltung."}
+                  {copy({
+                    ar: "Farman FoodSuite عبارة عن منصة للطلب وجذب العملاء ولا تحل محل الالتزامات القانونية للعميل فيما يتعلق بالتسجيل المالي أو الامتثال لسجل النقد أو التقارير الضريبية أو المحاسبة.",
+                    de: "Farman FoodSuite ist eine Bestell- und Kundenbindungsplattform und ersetzt nicht die gesetzlichen Verpflichtungen des Kunden zur steuerlichen Erfassung, Kassenkonformität (TSE), Steuerberichterstattung oder Buchhaltung.",
+                    en: "Farman FoodSuite is an ordering and customer engagement platform and does not replace the customer's legal obligations regarding fiscal recording, cash register compliance, tax reporting, or accounting.",
+                    tr: "Farman FoodSuite bir sipariş ve müşteri etkileşim platformudur; mali kayıt, kasa uyumluluğu, vergi raporlaması veya muhasebe konularındaki yasal yükümlülüklerin yerine geçmez.",
+                  })}
                 </p>
               </div>
             </div>
@@ -1573,7 +1669,7 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
                 onClick={() => setShowImprintModal(false)}
                 className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold cursor-pointer transition shadow"
               >
-                {language === "ar" ? "إغلاق" : "Schließen"}
+                {copy({ ar: "إغلاق", de: "Schließen", en: "Close", tr: "Kapat" })}
               </button>
             </div>
           </div>
@@ -1585,7 +1681,7 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
         <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-55 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-xl max-h-[85vh] overflow-y-auto p-6 shadow-2xl border border-neutral-100 flex flex-col relative animate-fade-in text-neutral-800">
             <h3 className="font-serif font-extrabold text-base text-slate-900 border-b border-slate-100 pb-3 mb-4 flex items-center justify-between">
-              <span>{language === "ar" ? "الخصوصية" : language === "en" ? "Privacy Policy" : "Datenschutz"}</span>
+              <span>{copy({ ar: "الخصوصية", de: "Datenschutz", en: "Privacy Policy", tr: "Gizlilik Politikası" })}</span>
               <button 
                 onClick={() => setShowPrivacyModal(false)}
                 className="text-slate-400 hover:text-slate-600 text-sm font-sans font-bold cursor-pointer bg-transparent border-none p-0"
@@ -1596,28 +1692,56 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
             
             <div className="text-xs text-slate-700 space-y-4 leading-relaxed font-sans overflow-y-auto max-h-[45vh] pr-2 text-left">
               <div>
-                <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[9px] mb-1">1. Datenschutz auf einen Blick</h4>
-                <p>Wir nehmen den Schutz Ihrer persönlichen Daten sehr ernst. Personenbezogene Daten werden auf dieser Website nur im technisch notwendigen Umfang (z. B. für den Bestellprozess über WhatsApp oder die Tischreservierung) verarbeitet.</p>
+                <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[9px] mb-1">
+                  {copy({ ar: "1. الخصوصية في لمحة", de: "1. Datenschutz auf einen Blick", en: "1. Privacy at a Glance", tr: "1. Gizliliğe Genel Bakış" })}
+                </h4>
+                <p>{copy({
+                  ar: "نحن نأخذ حماية بياناتك الشخصية على محمل الجد. تتم معالجة البيانات الشخصية على هذا الموقع فقط بالقدر الضروري تقنياً، مثل طلبات واتساب أو حجوزات الطاولات.",
+                  de: "Wir nehmen den Schutz Ihrer persönlichen Daten sehr ernst. Personenbezogene Daten werden auf dieser Website nur im technisch notwendigen Umfang (z. B. für den Bestellprozess über WhatsApp oder die Tischreservierung) verarbeitet.",
+                  en: "We take the protection of your personal data very seriously. Personal data is processed on this website only to the technically necessary extent, such as for WhatsApp ordering or table reservations.",
+                  tr: "Kişisel verilerinizin korunmasını çok ciddiye alıyoruz. Bu web sitesinde kişisel veriler yalnızca WhatsApp siparişi veya masa rezervasyonu gibi teknik olarak gerekli kapsamda işlenir.",
+                })}</p>
               </div>
 
               <div>
-                <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[9px] mb-1">2. Verantwortliche Stelle</h4>
+                <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[9px] mb-1">
+                  {copy({ ar: "2. الجهة المسؤولة", de: "2. Verantwortliche Stelle", en: "2. Responsible Party", tr: "2. Sorumlu Taraf" })}
+                </h4>
                 <p className="font-medium text-slate-800">{restaurant?.legalName || restaurant?.name || restaurantName}</p>
                 <p>{restaurant?.address}</p>
-                <p>E-Mail: {restaurant?.email || "info@mr-tabboush.de"}</p>
+                <p>{copy({ ar: "البريد الإلكتروني", de: "E-Mail", en: "Email", tr: "E-posta" })}: {restaurant?.email || "info@mr-tabboush.de"}</p>
               </div>
 
               <div>
-                <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[9px] mb-1">3. Erhebung und Verarbeitung von Daten</h4>
+                <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[9px] mb-1">
+                  {copy({ ar: "3. جمع البيانات ومعالجتها", de: "3. Erhebung und Verarbeitung von Daten", en: "3. Collection and Processing of Data", tr: "3. Verilerin Toplanması ve İşlenmesi" })}
+                </h4>
                 <ul className="list-disc pl-4 space-y-1">
-                  <li><strong>WhatsApp-Bestellungen:</strong> Wenn Sie Ihre Bestellung über den Smart Menu Service abschicken, werden die von Ihnen eingegebenen Daten (Name, Telefonnummer, Lieferadresse) zur Generierung des Bestelltexts und zur vertraglichen Abwicklung verarbeitet (Art. 6 Abs. 1 lit. b DSGVO).</li>
-                  <li><strong>Tischreservierung:</strong> Name, WhatsApp-Telefonnummer und Datum der Reservierung werden zur Bereitstellung des Reservierungsdienstes verarbeitet.</li>
+                  <li><strong>{copy({ ar: "طلبات واتساب", de: "WhatsApp-Bestellungen", en: "WhatsApp Orders", tr: "WhatsApp Siparişleri" })}:</strong> {copy({
+                    ar: "عند إرسال طلبك عبر خدمة القائمة الذكية، تتم معالجة البيانات التي تدخلها (الاسم، رقم الهاتف، عنوان التوصيل) لإنشاء نص الطلب وتنفيذ المعاملة التعاقدية (المادة 6 الفقرة 1 ب من DSGVO).",
+                    de: "Wenn Sie Ihre Bestellung über den Smart Menu Service abschicken, werden die von Ihnen eingegebenen Daten (Name, Telefonnummer, Lieferadresse) zur Generierung des Bestelltexts und zur vertraglichen Abwicklung verarbeitet (Art. 6 Abs. 1 lit. b DSGVO).",
+                    en: "When you submit your order through the Smart Menu service, the data you enter (name, phone number, delivery address) is processed to generate the order text and handle the contract process (Art. 6 para. 1 lit. b DSGVO).",
+                    tr: "Siparişinizi Smart Menu hizmeti üzerinden gönderdiğinizde, girdiğiniz veriler (ad, telefon numarası, teslimat adresi) sipariş metnini oluşturmak ve sözleşme sürecini yürütmek için işlenir (DSGVO Madde 6 paragraf 1 bent b).",
+                  })}</li>
+                  <li><strong>{copy({ ar: "حجز الطاولات", de: "Tischreservierung", en: "Table Reservation", tr: "Masa Rezervasyonu" })}:</strong> {copy({
+                    ar: "تتم معالجة الاسم ورقم واتساب وتاريخ الحجز لتوفير خدمة الحجز.",
+                    de: "Name, WhatsApp-Telefonnummer und Datum der Reservierung werden zur Bereitstellung des Reservierungsdienstes verarbeitet.",
+                    en: "Name, WhatsApp phone number, and reservation date are processed to provide the reservation service.",
+                    tr: "Ad, WhatsApp telefon numarası ve rezervasyon tarihi, rezervasyon hizmetini sağlamak için işlenir.",
+                  })}</li>
                 </ul>
               </div>
 
               <div>
-                <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[9px] mb-1">4. Ihre Rechte</h4>
-                <p>Sie haben jederzeit das Recht auf unentgeltliche Auskunft über Herkunft, Empfänger und Zweck Ihrer gespeicherten personenbezogenen Daten sowie ein Recht auf Berichtigung, Sperrung oder Löschung dieser Daten. Wenden Sie sich hierzu an den im Impressum angegebenen Kontakt.</p>
+                <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[9px] mb-1">
+                  {copy({ ar: "4. حقوقك", de: "4. Ihre Rechte", en: "4. Your Rights", tr: "4. Haklarınız" })}
+                </h4>
+                <p>{copy({
+                  ar: "يحق لك في أي وقت الحصول مجاناً على معلومات حول مصدر بياناتك الشخصية المخزنة والمستلمين والغرض منها، وكذلك طلب تصحيح هذه البيانات أو حظرها أو حذفها. يرجى التواصل عبر جهة الاتصال المذكورة في صفحة البيانات القانونية.",
+                  de: "Sie haben jederzeit das Recht auf unentgeltliche Auskunft über Herkunft, Empfänger und Zweck Ihrer gespeicherten personenbezogenen Daten sowie ein Recht auf Berichtigung, Sperrung oder Löschung dieser Daten. Wenden Sie sich hierzu an den im Impressum angegebenen Kontakt.",
+                  en: "You have the right at any time to free information about the origin, recipients, and purpose of your stored personal data, as well as the right to correction, blocking, or deletion of this data. Please contact the address listed in the imprint.",
+                  tr: "Saklanan kişisel verilerinizin kaynağı, alıcıları ve amacı hakkında ücretsiz bilgi alma, ayrıca bu verilerin düzeltilmesini, engellenmesini veya silinmesini talep etme hakkına her zaman sahipsiniz. Bunun için künyede belirtilen iletişim adresine başvurabilirsiniz.",
+                })}</p>
               </div>
             </div>
 
@@ -1626,7 +1750,7 @@ export default function SmartMenu({ tableNumber, branchId, convoId }: SmartMenuP
                 onClick={() => setShowPrivacyModal(false)}
                 className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold cursor-pointer transition shadow"
               >
-                {language === "ar" ? "إغلاق" : "Schließen"}
+                {copy({ ar: "إغلاق", de: "Schließen", en: "Close", tr: "Kapat" })}
               </button>
             </div>
           </div>

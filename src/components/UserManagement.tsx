@@ -363,7 +363,13 @@ export default function UserManagement() {
                             className="w-full bg-white border border-gray-200 rounded-lg py-1.5 px-3 text-xs focus:outline-none focus:border-orange-500"
                           />
                           <span className="text-[9px] text-gray-400 mt-0.5 block">
-                            {language === "ar" ? "اتركه فارغاً للاحتفاظ بكلمة المرور الحالية" : (language === "de" ? "Leer lassen, um das aktuelle Passwort zu behalten" : "Leave blank to keep current password")}
+                            {language === "ar"
+                              ? "اتركه فارغاً للاحتفاظ بكلمة المرور الحالية"
+                              : language === "tr"
+                              ? "Mevcut şifreyi korumak için boş bırakın"
+                              : language === "en"
+                              ? "Leave blank to keep current password"
+                              : "Leer lassen, um das aktuelle Passwort zu behalten"}
                           </span>
                         </div>
                       </div>

@@ -2145,7 +2145,7 @@ function interpolate(template: string, values?: Record<string, string | number>)
 function getStoredLanguage(): AppLanguage {
   if (typeof window === "undefined") return "de";
   const stored = window.localStorage.getItem(STORAGE_KEY);
-  return stored === "ar" || stored === "de" || stored === "en" ? stored : "de";
+  return stored === "ar" || stored === "de" || stored === "en" || stored === "tr" ? stored : "de";
 }
 
 export function I18nProvider({ children }: { children: React.ReactNode }) {

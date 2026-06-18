@@ -166,6 +166,8 @@ function publicPhoneError(language: string) {
   return "Bitte geben Sie eine gültige WhatsApp-Nummer im internationalen Format ein, z. B. +491701234567.";
 }
 
+type LocalCopy = Record<"de" | "ar" | "en" | "tr", string>;
+
 interface RestaurantBranding {
   name: string;
   legalName?: string;
@@ -203,6 +205,7 @@ interface Review {
 export default function BrandWebsite() {
   const { language, setLanguage, t, text, dir } = useI18n();
   const localized = siteT[language] || siteT.de;
+  const copy = (values: LocalCopy) => values[language] || values.de;
 
   // States
   const [restaurant, setRestaurant] = useState<RestaurantBranding | null>(null);
@@ -262,7 +265,12 @@ export default function BrandWebsite() {
     if (isBookingLoading) return;
 
     if (!bookingName.trim() || !bookingPhone.trim() || !bookingDateTime) {
-      setBookingError(language === "ar" ? "الاسم والهاتف والتاريخ مطلوبين" : "Name, phone, and date/time are required");
+      setBookingError(copy({
+        ar: "الاسم والهاتف والتاريخ مطلوبين",
+        de: "Name, Telefonnummer und Datum/Uhrzeit sind erforderlich",
+        en: "Name, phone, and date/time are required",
+        tr: "Ad, telefon ve tarih/saat gereklidir",
+      }));
       return;
     }
     if (!isValidPublicPhone(bookingPhone)) {
@@ -306,7 +314,12 @@ export default function BrandWebsite() {
     } catch (err: any) {
       setBookingError(
         err?.name === "AbortError"
-          ? (language === "ar" ? "انتهت مهلة إرسال الطلب. يرجى المحاولة مرة أخرى." : language === "en" ? "The booking request timed out. Please try again." : "Die Reservierungsanfrage hat zu lange gedauert. Bitte versuchen Sie es erneut.")
+          ? copy({
+            ar: "انتهت مهلة إرسال الطلب. يرجى المحاولة مرة أخرى.",
+            de: "Die Reservierungsanfrage hat zu lange gedauert. Bitte versuchen Sie es erneut.",
+            en: "The booking request timed out. Please try again.",
+            tr: "Rezervasyon isteği zaman aşımına uğradı. Lütfen tekrar deneyin.",
+          })
           : (err.message || "Network error")
       );
     } finally {
@@ -349,11 +362,12 @@ export default function BrandWebsite() {
         });
     } else if (checkoutStatus === "cancelled") {
       setPaymentError(
-        language === "ar"
-          ? "تم إلغاء عملية الدفع. يرجى المحاولة مرة أخرى أو اختيار الدفع نقداً."
-          : language === "en"
-          ? "Payment was cancelled. Please try again or select cash."
-          : "Zahlung wurde abgebrochen. Bitte versuchen Sie es erneut oder wählen Sie Barzahlung."
+        copy({
+          ar: "تم إلغاء عملية الدفع. يرجى المحاولة مرة أخرى أو اختيار الدفع نقداً.",
+          de: "Zahlung wurde abgebrochen. Bitte versuchen Sie es erneut oder wählen Sie Barzahlung.",
+          en: "Payment was cancelled. Please try again or select cash.",
+          tr: "Ödeme iptal edildi. Lütfen tekrar deneyin veya nakit ödemeyi seçin.",
+        })
       );
       setIsCartOpen(true);
       // Clean up URL parameters
@@ -580,10 +594,12 @@ export default function BrandWebsite() {
       if (group.isRequired) {
         const selections = modSelections[group.id] || [];
         if (selections.length === 0) {
-          alert(language === "ar" 
-            ? `الرجاء تحديد خيار للمجموعة: ${text(group.name)}`
-            : `Bitte wählen Sie Optionen für ${text(group.name)}`
-          );
+          alert(copy({
+            ar: `الرجاء تحديد خيار للمجموعة: ${text(group.name)}`,
+            de: `Bitte wählen Sie Optionen für ${text(group.name)}`,
+            en: `Please choose an option for ${text(group.name)}`,
+            tr: `Lütfen ${text(group.name)} için bir seçenek seçin`,
+          }));
           return;
         }
       }
@@ -662,11 +678,12 @@ export default function BrandWebsite() {
     if (cart.length === 0) return;
     if (!isOpenNow) {
       alert(
-        language === "ar"
-          ? "عذراً، المطعم مغلق حالياً ولا يستقبل طلبات."
-          : language === "en"
-          ? "Sorry, the restaurant is currently closed and not accepting orders."
-          : "Entschuldigung, das Restaurant ist derzeit geschlossen und nimmt keine Bestellungen entgegen."
+        copy({
+          ar: "عذراً، المطعم مغلق حالياً ولا يستقبل طلبات.",
+          de: "Entschuldigung, das Restaurant ist derzeit geschlossen und nimmt keine Bestellungen entgegen.",
+          en: "Sorry, the restaurant is currently closed and not accepting orders.",
+          tr: "Üzgünüz, restoran şu anda kapalı ve sipariş kabul etmiyor.",
+        })
       );
       return;
     }
@@ -678,6 +695,8 @@ export default function BrandWebsite() {
       message += `*طلب جديد من الموقع الإلكتروني (${isDelivery ? "توصيل" : "استلام"})*\n\n`;
     } else if (language === "en") {
       message += `*New Order from Brand Website (${isDelivery ? "Delivery" : "Pickup"})*\n\n`;
+    } else if (language === "tr") {
+      message += `*Web sitesinden yeni sipariş (${isDelivery ? "Teslimat" : "Gel Al"})*\n\n`;
     } else {
       message += `*Neue Bestellung über die Webseite (${isDelivery ? "Lieferung" : "Abholung"})*\n\n`;
     }
@@ -697,28 +716,28 @@ export default function BrandWebsite() {
 
     message += `\n`;
     if (isDelivery && deliveryFee > 0) {
-      message += `Subtotal: ${subtotal.toFixed(2)} €\n`;
-      message += `Delivery Fee: ${deliveryFee.toFixed(2)} €\n`;
+      message += `${copy({ ar: "المجموع الفرعي", de: "Zwischensumme", en: "Subtotal", tr: "Ara Toplam" })}: ${subtotal.toFixed(2)} €\n`;
+      message += `${copy({ ar: "رسوم التوصيل", de: "Liefergebühr", en: "Delivery Fee", tr: "Teslimat Ücreti" })}: ${deliveryFee.toFixed(2)} €\n`;
     }
-    message += `*Total: ${total.toFixed(2)} €*\n\n`;
+    message += `*${copy({ ar: "الإجمالي", de: "Gesamt", en: "Total", tr: "Toplam" })}: ${total.toFixed(2)} €*\n\n`;
 
     if (customerName.trim()) {
-      message += `Name: ${customerName.trim()}\n`;
+      message += `${copy({ ar: "الاسم", de: "Name", en: "Name", tr: "Ad" })}: ${customerName.trim()}\n`;
     }
     if (customerPhone.trim()) {
-      message += `Phone: ${customerPhone.trim()}\n`;
+      message += `${copy({ ar: "الهاتف", de: "Telefon", en: "Phone", tr: "Telefon" })}: ${customerPhone.trim()}\n`;
     }
     if (isDelivery) {
       if (deliveryAddress.trim()) {
-        message += `Address: ${deliveryAddress.trim()}\n`;
+        message += `${copy({ ar: "العنوان", de: "Adresse", en: "Address", tr: "Adres" })}: ${deliveryAddress.trim()}\n`;
       }
     } else {
       if (pickupTime.trim()) {
-        message += `Time: ${pickupTime.trim()}\n`;
+        message += `${copy({ ar: "الوقت", de: "Zeit", en: "Time", tr: "Saat" })}: ${pickupTime.trim()}\n`;
       }
     }
     if (notes.trim()) {
-      message += `Notes: ${notes.trim()}\n`;
+      message += `${copy({ ar: "ملاحظات", de: "Notizen", en: "Notes", tr: "Notlar" })}: ${notes.trim()}\n`;
     }
 
     const waNumber = restaurant?.whatsappNumber || branch?.whatsappNumber || "";
@@ -732,16 +751,22 @@ export default function BrandWebsite() {
     if (cart.length === 0) return;
     if (!isOpenNow) {
       alert(
-        language === "ar"
-          ? "عذراً، المطعم مغلق حالياً ولا يستقبل طلبات."
-          : language === "en"
-          ? "Sorry, the restaurant is currently closed and not accepting orders."
-          : "Entschuldigung, das Restaurant ist derzeit geschlossen und nimmt keine Bestellungen entgegen."
+        copy({
+          ar: "عذراً، المطعم مغلق حالياً ولا يستقبل طلبات.",
+          de: "Entschuldigung, das Restaurant ist derzeit geschlossen und nimmt keine Bestellungen entgegen.",
+          en: "Sorry, the restaurant is currently closed and not accepting orders.",
+          tr: "Üzgünüz, restoran şu anda kapalı ve sipariş kabul etmiyor.",
+        })
       );
       return;
     }
     if (!customerPhone.trim()) {
-      alert(language === "ar" ? "رقم الهاتف مطلوب" : "Telefonnummer ist erforderlich");
+      alert(copy({
+        ar: "رقم الهاتف مطلوب",
+        de: "Telefonnummer ist erforderlich",
+        en: "Phone number is required",
+        tr: "Telefon numarası gereklidir",
+      }));
       return;
     }
     if (!isValidPublicPhone(customerPhone)) {
@@ -749,11 +774,21 @@ export default function BrandWebsite() {
       return;
     }
     if (orderType === "delivery" && !deliveryAddress.trim()) {
-      alert(language === "ar" ? "عنوان التوصيل مطلوب" : "Lieferadresse ist erforderlich");
+      alert(copy({
+        ar: "عنوان التوصيل مطلوب",
+        de: "Lieferadresse ist erforderlich",
+        en: "Delivery address is required",
+        tr: "Teslimat adresi gereklidir",
+      }));
       return;
     }
     if (orderType === "pickup" && !pickupTime.trim()) {
-      alert(language === "ar" ? "وقت الاستلام مطلوب" : "Abholzeit ist erforderlich");
+      alert(copy({
+        ar: "وقت الاستلام مطلوب",
+        de: "Abholzeit ist erforderlich",
+        en: "Pickup time is required",
+        tr: "Teslim alma saati gereklidir",
+      }));
       return;
     }
 
@@ -809,7 +844,12 @@ export default function BrandWebsite() {
       })
       .catch(err => {
         console.error(err);
-        alert(err.message || "Failed to place order.");
+        alert(err.message || copy({
+          ar: "تعذر إرسال الطلب.",
+          de: "Die Bestellung konnte nicht aufgegeben werden.",
+          en: "Failed to place order.",
+          tr: "Sipariş verilemedi.",
+        }));
       })
       .finally(() => {
         setIsSubmitting(false);
@@ -819,7 +859,12 @@ export default function BrandWebsite() {
   const handleWhatsAppRedirect = () => {
     const waNumber = restaurant?.whatsappNumber || branch?.whatsappNumber || "";
     const cleanNumber = waNumber.replace(/[^0-9]/g, "");
-    const welcomeText = language === "ar" ? "مرحباً! أود طلب الطعام" : "Hallo! Ich möchte gerne bestellen.";
+    const welcomeText = copy({
+      ar: "مرحباً! أود طلب الطعام",
+      de: "Hallo! Ich möchte gerne bestellen.",
+      en: "Hello! I would like to order food.",
+      tr: "Merhaba! Yemek siparişi vermek istiyorum.",
+    });
     const url = `https://wa.me/${cleanNumber}?text=${encodeURIComponent(welcomeText)}`;
     window.open(url, "_blank");
   };
@@ -845,7 +890,9 @@ export default function BrandWebsite() {
     return (
       <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center">
         <div className="w-12 h-12 rounded-full border-4 border-brand-primary border-t-transparent animate-spin"></div>
-        <p className="text-xs font-mono text-slate-400 mt-4">Loading Brand Website...</p>
+        <p className="text-xs font-mono text-slate-400 mt-4">
+          {copy({ ar: "جارٍ تحميل الموقع...", de: "Website wird geladen...", en: "Loading website...", tr: "Web sitesi yükleniyor..." })}
+        </p>
       </div>
     );
   }
@@ -897,7 +944,7 @@ export default function BrandWebsite() {
                 onClick={() => setIsBookingModalOpen(true)} 
                 className="hover:text-brand-primary transition text-brand-primary font-bold border border-brand-primary/20 bg-brand-primary/5 py-1 px-3 rounded-lg"
               >
-                {language === "ar" ? "حجز طاولة" : language === "en" ? "Book Table" : "Tisch reservieren"}
+                {copy({ ar: "حجز طاولة", de: "Tisch reservieren", en: "Book Table", tr: "Masa Ayır" })}
               </button>
             )}
           </nav>
@@ -969,7 +1016,7 @@ export default function BrandWebsite() {
                 onClick={() => { setIsBookingModalOpen(true); setIsMobileMenuOpen(false); }} 
                 className="text-left py-2 text-brand-primary font-bold"
               >
-                {language === "ar" ? "حجز طاولة" : language === "en" ? "Book Table" : "Tisch reservieren"}
+                {copy({ ar: "حجز طاولة", de: "Tisch reservieren", en: "Book Table", tr: "Masa Ayır" })}
               </button>
             )}
           </div>
@@ -1052,7 +1099,7 @@ export default function BrandWebsite() {
                   : "bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100"
               }`}
             >
-              {language === "ar" ? "كل الأصناف" : "Alle Speisen"}
+              {copy({ ar: "كل الأصناف", de: "Alle Speisen", en: "All Items", tr: "Tüm Ürünler" })}
             </button>
             {categories.map((cat) => (
               <button
@@ -1345,14 +1392,20 @@ export default function BrandWebsite() {
                   <span className="text-sm">⚠️</span>
                   <div className="space-y-0.5">
                     <p className="font-bold">
-                      {language === "ar" ? "المطعم مغلق حالياً" : language === "en" ? "Restaurant is currently closed" : "Restaurant geschlossen"}
+                      {copy({
+                        ar: "المطعم مغلق حالياً",
+                        de: "Restaurant geschlossen",
+                        en: "Restaurant is currently closed",
+                        tr: "Restoran şu anda kapalı",
+                      })}
                     </p>
                     <p className="text-[10px] leading-relaxed text-rose-600 font-medium">
-                      {language === "ar" 
-                        ? `عذراً، لا يمكن استقبال طلبات خارج ساعات العمل. ساعات العمل: ${branch?.openingHours || ""}`
-                        : language === "en"
-                        ? `Sorry, orders cannot be placed outside of business hours. Opening hours: ${branch?.openingHours || ""}`
-                        : `Leider können außerhalb der Geschäftszeiten keine Bestellungen aufgegeben werden. Öffnungszeiten: ${branch?.openingHours || ""}`}
+                      {copy({
+                        ar: `عذراً، لا يمكن استقبال طلبات خارج ساعات العمل. ساعات العمل: ${branch?.openingHours || ""}`,
+                        de: `Leider können außerhalb der Geschäftszeiten keine Bestellungen aufgegeben werden. Öffnungszeiten: ${branch?.openingHours || ""}`,
+                        en: `Sorry, orders cannot be placed outside of business hours. Opening hours: ${branch?.openingHours || ""}`,
+                        tr: `Üzgünüz, çalışma saatleri dışında sipariş alınamaz. Çalışma saatleri: ${branch?.openingHours || ""}`,
+                      })}
                     </p>
                   </div>
                 </div>
@@ -1365,22 +1418,30 @@ export default function BrandWebsite() {
                   </div>
                   <div className="space-y-2">
                     <h3 className="font-bold text-lg text-slate-950">
-                      {language === "ar" ? "تم استلام طلبك بنجاح!" : "Bestellung erfolgreich empfangen!"}
+                      {copy({
+                        ar: "تم استلام طلبك بنجاح!",
+                        de: "Bestellung erfolgreich empfangen!",
+                        en: "Your order was received successfully!",
+                        tr: "Siparişiniz başarıyla alındı!",
+                      })}
                     </h3>
                     <p className="text-xs text-slate-500 px-6 leading-relaxed">
-                      {language === "ar" 
-                        ? `طلبك رقم ${placedOrder.orderNumber} تم إرساله مباشرة لمطبخ المطعم للتحضير.`
-                        : `Ihre Bestellnummer ist ${placedOrder.orderNumber}. Sie wurde direkt in die Küche übertragen.`}
+                      {copy({
+                        ar: `طلبك رقم ${placedOrder.orderNumber} تم إرساله مباشرة لمطبخ المطعم للتحضير.`,
+                        de: `Ihre Bestellnummer ist ${placedOrder.orderNumber}. Sie wurde direkt in die Küche übertragen.`,
+                        en: `Your order number is ${placedOrder.orderNumber}. It was sent directly to the kitchen for preparation.`,
+                        tr: `Sipariş numaranız ${placedOrder.orderNumber}. Hazırlanması için doğrudan mutfağa gönderildi.`,
+                      })}
                     </p>
                   </div>
                   
                   <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl inline-flex flex-col gap-1.5 text-xs text-slate-700 min-w-[200px] mx-auto select-text">
                     <div className="flex justify-between font-medium gap-4">
-                      <span>Total:</span>
+                      <span>{copy({ ar: "الإجمالي", de: "Gesamt", en: "Total", tr: "Toplam" })}:</span>
                       <span className="font-mono font-bold text-brand-primary">{placedOrder.total.toFixed(2)} €</span>
                     </div>
                     <div className="flex justify-between gap-4">
-                      <span>Method:</span>
+                      <span>{copy({ ar: "الطريقة", de: "Methode", en: "Method", tr: "Yöntem" })}:</span>
                       <span className="font-semibold">{placedOrder.paymentMethod}</span>
                     </div>
                   </div>
@@ -1393,7 +1454,7 @@ export default function BrandWebsite() {
                       }}
                       className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition cursor-pointer"
                     >
-                      {language === "ar" ? "موافق" : "Fertig"}
+                      {copy({ ar: "موافق", de: "Fertig", en: "Done", tr: "Tamam" })}
                     </button>
                   </div>
                 </div>
@@ -1415,7 +1476,7 @@ export default function BrandWebsite() {
                           : "text-slate-500 hover:text-slate-850"
                       }`}
                     >
-                      {language === "ar" ? "توصيل" : language === "en" ? "Delivery" : "Lieferung"}
+                      {copy({ ar: "توصيل", de: "Lieferung", en: "Delivery", tr: "Teslimat" })}
                     </button>
                     <button
                       type="button"
@@ -1426,7 +1487,7 @@ export default function BrandWebsite() {
                           : "text-slate-500 hover:text-slate-855"
                       }`}
                     >
-                      {language === "ar" ? "استلام" : language === "en" ? "Pickup" : "Abholung"}
+                      {copy({ ar: "استلام", de: "Abholung", en: "Pickup", tr: "Gel Al" })}
                     </button>
                   </div>
 
@@ -1483,20 +1544,20 @@ export default function BrandWebsite() {
                         type="text" 
                         value={customerName}
                         onChange={(e) => setCustomerName(e.target.value)}
-                        placeholder="z.B. Alexander"
+                        placeholder={copy({ ar: "مثال: أحمد", de: "z.B. Alexander", en: "e.g. Alexander", tr: "örn. Ahmet" })}
                         className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:border-brand-primary"
                       />
                     </div>
 
                     <div>
                       <label className="text-[10px] text-slate-450 font-bold uppercase block mb-1">
-                        {language === "ar" ? "رقم الهاتف" : language === "en" ? "Phone Number" : "Telefonnummer"} *
+                        {copy({ ar: "رقم الهاتف", de: "Telefonnummer", en: "Phone Number", tr: "Telefon Numarası" })} *
                       </label>
                       <input 
                         type="tel" 
                         value={customerPhone}
                         onChange={(e) => setCustomerPhone(e.target.value)}
-                        placeholder="z.B. +49176..."
+                        placeholder={copy({ ar: "مثال: +49176...", de: "z.B. +49176...", en: "e.g. +49176...", tr: "örn. +49176..." })}
                         required
                         className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:border-brand-primary"
                       />
@@ -1505,13 +1566,13 @@ export default function BrandWebsite() {
                     {orderType === "delivery" ? (
                       <div>
                         <label className="text-[10px] text-slate-455 font-bold uppercase block mb-1">
-                          {language === "ar" ? "عنوان التوصيل" : language === "en" ? "Delivery Address" : "Lieferadresse"} *
+                          {copy({ ar: "عنوان التوصيل", de: "Lieferadresse", en: "Delivery Address", tr: "Teslimat Adresi" })} *
                         </label>
                         <input 
                           type="text" 
                           value={deliveryAddress}
                           onChange={(e) => setDeliveryAddress(e.target.value)}
-                          placeholder="z.B. Berliner Str. 179, Wuppertal"
+                          placeholder={copy({ ar: "مثال: Berliner Str. 179, Wuppertal", de: "z.B. Berliner Str. 179, Wuppertal", en: "e.g. Berliner Str. 179, Wuppertal", tr: "örn. Berliner Str. 179, Wuppertal" })}
                           required
                           className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:border-brand-primary"
                         />
@@ -1523,7 +1584,7 @@ export default function BrandWebsite() {
                           type="text" 
                           value={pickupTime}
                           onChange={(e) => setPickupTime(e.target.value)}
-                          placeholder="z.B. 19:30"
+                          placeholder={copy({ ar: "مثال: 19:30", de: "z.B. 19:30", en: "e.g. 19:30", tr: "örn. 19:30" })}
                           required
                           className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:border-brand-primary"
                         />
@@ -1535,7 +1596,7 @@ export default function BrandWebsite() {
                       <textarea 
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
-                        placeholder="z.B. Extra Knoblauchsoße..."
+                        placeholder={copy({ ar: "مثال: صوص ثوم إضافي...", de: "z.B. Extra Knoblauchsoße...", en: "e.g. Extra garlic sauce...", tr: "örn. Ek sarımsak sosu..." })}
                         className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:border-brand-primary h-16 resize-none"
                       />
                     </div>
@@ -1543,7 +1604,7 @@ export default function BrandWebsite() {
                     {restaurant?.stripeEnabled && (
                       <div className="pt-2">
                         <label className="text-[10px] text-slate-400 font-bold uppercase block mb-1">
-                          {language === "ar" ? "طريقة الدفع" : language === "en" ? "Payment Method" : "Zahlungsart"}
+                          {copy({ ar: "طريقة الدفع", de: "Zahlungsart", en: "Payment Method", tr: "Ödeme Yöntemi" })}
                         </label>
                         <div className="grid grid-cols-2 gap-2 mt-1">
                           <button
@@ -1556,7 +1617,7 @@ export default function BrandWebsite() {
                             }`}
                           >
                             <span>💵</span>
-                            {language === "ar" ? "نقداً عند الاستلام" : language === "en" ? "Cash" : "Barzahlung"}
+                            {copy({ ar: "نقداً عند الاستلام", de: "Barzahlung", en: "Cash", tr: "Nakit" })}
                           </button>
                           <button
                             type="button"
@@ -1568,7 +1629,7 @@ export default function BrandWebsite() {
                             }`}
                           >
                             <span>💳</span>
-                            {language === "ar" ? "دفع إلكتروني (بطاقة)" : language === "en" ? "Pay Online" : "Online zahlen"}
+                            {copy({ ar: "دفع إلكتروني (بطاقة)", de: "Online zahlen", en: "Pay Online", tr: "Online Öde" })}
                           </button>
                         </div>
                       </div>
@@ -1582,7 +1643,7 @@ export default function BrandWebsite() {
             {cart.length > 0 && !placedOrder && (
               <div className="p-4 border-t border-slate-100 bg-slate-50 space-y-3">
                 <div className="flex justify-between items-center text-xs text-slate-800 font-bold">
-                  <span>Subtotal</span>
+                  <span>{copy({ ar: "المجموع الفرعي", de: "Zwischensumme", en: "Subtotal", tr: "Ara Toplam" })}</span>
                   <span className="font-mono text-sm font-bold text-brand-primary">{getCheckoutTotal().toFixed(2)} €</span>
                 </div>
 
@@ -1597,8 +1658,8 @@ export default function BrandWebsite() {
                     <ShoppingBag size={14} />
                   )}
                   {!isOpenNow 
-                    ? (language === "ar" ? "المطعم مغلق حالياً" : language === "en" ? "Restaurant is currently closed" : "Restaurant ist derzeit geschlossen")
-                    : (language === "ar" ? "تأكيد وإرسال الطلب للمطبخ" : language === "en" ? "Confirm Order Direct (Web)" : "Direkt Bestellen (Web)")}
+                    ? copy({ ar: "المطعم مغلق حالياً", de: "Restaurant ist derzeit geschlossen", en: "Restaurant is currently closed", tr: "Restoran şu anda kapalı" })
+                    : copy({ ar: "تأكيد وإرسال الطلب للمطبخ", de: "Direkt Bestellen (Web)", en: "Confirm Order Direct (Web)", tr: "Siparişi Onayla ve Mutfağa Gönder" })}
                 </button>
 
                 <button 
@@ -1643,7 +1704,9 @@ export default function BrandWebsite() {
               </div>
             ) : (
               <div className="relative w-full h-12 bg-slate-50 shrink-0 border-b border-slate-150 flex items-center justify-between px-4">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Product Details</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    {copy({ ar: "تفاصيل المنتج", de: "Produktdetails", en: "Product Details", tr: "Ürün Detayları" })}
+                  </span>
                 <button 
                   onClick={() => setSelectedItemForMod(null)}
                   className="w-6 h-6 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-xs hover:bg-slate-300 transition cursor-pointer"
@@ -1858,15 +1921,16 @@ export default function BrandWebsite() {
 
             <h3 className="text-xl font-serif font-bold text-slate-900 mb-2 flex items-center gap-2">
               <span>📅</span>
-              {language === "ar" ? "حجز طاولة" : language === "en" ? "Book a Table" : "Tisch reservieren"}
+              {copy({ ar: "حجز طاولة", de: "Tisch reservieren", en: "Book a Table", tr: "Masa Ayır" })}
             </h3>
             
             <p className="text-xs text-slate-500 mb-6">
-              {language === "ar" 
-                ? "احجز طاولتك مجاناً في ثوانٍ. سنرسل لك رسالة تأكيد عبر واتساب فوراً." 
-                : language === "en" 
-                ? "Reserve your dining table online. Receive instant status updates on WhatsApp." 
-                : "Reservieren Sie Ihren Tisch online. Sie erhalten den Status direkt per WhatsApp."}
+              {copy({
+                ar: "احجز طاولتك مجاناً في ثوانٍ. سنرسل لك رسالة تأكيد عبر واتساب فوراً.",
+                de: "Reservieren Sie Ihren Tisch online. Sie erhalten den Status direkt per WhatsApp.",
+                en: "Reserve your dining table online. Receive status updates on WhatsApp.",
+                tr: "Masanızı online ayırın. Durum güncellemelerini WhatsApp üzerinden alın.",
+              })}
             </p>
 
             {bookingSuccess ? (
@@ -1875,14 +1939,20 @@ export default function BrandWebsite() {
                   ✓
                 </div>
                 <h4 className="text-sm font-bold text-slate-900">
-                  {language === "ar" ? "تم استلام طلب الحجز!" : language === "en" ? "Booking Request Sent!" : "Reservierungsanfrage gesendet!"}
+                  {copy({
+                    ar: "تم استلام طلب الحجز!",
+                    de: "Reservierungsanfrage gesendet!",
+                    en: "Booking Request Sent!",
+                    tr: "Rezervasyon isteği gönderildi!",
+                  })}
                 </h4>
                 <p className="text-xs text-slate-500 max-w-xs mx-auto">
-                  {language === "ar" 
-                    ? "لقد استلمنا طلب الحجز الخاص بك. سنقوم بمراجعة الطلب وإرسال تأكيد الحجز لك عبر واتساب." 
-                    : language === "en" 
-                    ? "We have received your table request. Please check WhatsApp for confirmation shortly." 
-                    : "Wir haben Ihre Reservierungsanfrage erhalten. Eine Bestätigung wird Ihnen in Kürze per WhatsApp zugesandt."}
+                  {copy({
+                    ar: "لقد استلمنا طلب الحجز الخاص بك. سنقوم بمراجعة الطلب وإرسال تأكيد الحجز لك عبر واتساب.",
+                    de: "Wir haben Ihre Reservierungsanfrage erhalten. Eine Bestätigung wird Ihnen in Kürze per WhatsApp zugesandt.",
+                    en: "We have received your table request. Please check WhatsApp for confirmation shortly.",
+                    tr: "Masa rezervasyon isteğinizi aldık. Lütfen kısa süre içinde onay için WhatsApp'ı kontrol edin.",
+                  })}
                 </p>
                 <button
                   type="button"
@@ -1892,7 +1962,7 @@ export default function BrandWebsite() {
                   }}
                   className="w-full mt-4 bg-brand-primary text-white font-bold py-2.5 rounded-xl text-xs hover:bg-brand-primary/95 transition cursor-pointer"
                 >
-                  {language === "ar" ? "إغلاق" : language === "en" ? "Close" : "Schließen"}
+                  {copy({ ar: "إغلاق", de: "Schließen", en: "Close", tr: "Kapat" })}
                 </button>
               </div>
             ) : (
@@ -1906,12 +1976,12 @@ export default function BrandWebsite() {
 
                 <div>
                   <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
-                    {language === "ar" ? "الاسم الكامل" : language === "en" ? "Full Name" : "Vollständiger Name"} *
+                    {copy({ ar: "الاسم الكامل", de: "Vollständiger Name", en: "Full Name", tr: "Ad Soyad" })} *
                   </label>
                   <input
                     type="text"
                     required
-                    placeholder="e.g. John Doe"
+                    placeholder={copy({ ar: "مثال: أحمد محمد", de: "z.B. Max Mustermann", en: "e.g. John Doe", tr: "örn. Ahmet Yılmaz" })}
                     value={bookingName}
                     onChange={(e) => setBookingName(e.target.value)}
                     className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:border-brand-primary text-xs"
@@ -1920,12 +1990,12 @@ export default function BrandWebsite() {
 
                 <div>
                   <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
-                    {language === "ar" ? "رقم هاتف واتساب" : language === "en" ? "WhatsApp Number" : "WhatsApp-Nummer"} *
+                    {copy({ ar: "رقم هاتف واتساب", de: "WhatsApp-Nummer", en: "WhatsApp Number", tr: "WhatsApp Numarası" })} *
                   </label>
                   <input
                     type="tel"
                     required
-                    placeholder="e.g. +491761234567"
+                    placeholder={copy({ ar: "مثال: +491761234567", de: "z.B. +491761234567", en: "e.g. +491761234567", tr: "örn. +491761234567" })}
                     value={bookingPhone}
                     onChange={(e) => setBookingPhone(e.target.value)}
                     className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:border-brand-primary text-xs"
@@ -1935,7 +2005,7 @@ export default function BrandWebsite() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
-                      {language === "ar" ? "عدد الضيوف" : language === "en" ? "Guest Count" : "Personenanzahl"}
+                      {copy({ ar: "عدد الضيوف", de: "Personenanzahl", en: "Guest Count", tr: "Kişi Sayısı" })}
                     </label>
                     <input
                       type="number"
@@ -1950,7 +2020,7 @@ export default function BrandWebsite() {
 
                   <div>
                     <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
-                      {language === "ar" ? "التاريخ والوقت" : language === "en" ? "Date & Time" : "Datum & Uhrzeit"} *
+                      {copy({ ar: "التاريخ والوقت", de: "Datum & Uhrzeit", en: "Date & Time", tr: "Tarih ve Saat" })} *
                     </label>
                     <input
                       type="datetime-local"
@@ -1964,7 +2034,7 @@ export default function BrandWebsite() {
 
                 <div>
                   <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
-                    {language === "ar" ? "اختيار الطاولة (اختياري)" : language === "en" ? "Select Preferred Table (Optional)" : "Bevorzugten Tisch wählen (Optional)"}
+                    {copy({ ar: "اختيار الطاولة (اختياري)", de: "Bevorzugten Tisch wählen (Optional)", en: "Select Preferred Table (Optional)", tr: "Tercih Edilen Masa (İsteğe Bağlı)" })}
                   </label>
                   <select
                     value={bookingSelectedTableId}
@@ -1972,15 +2042,16 @@ export default function BrandWebsite() {
                     className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:border-brand-primary text-xs"
                   >
                     <option value="">
-                      {language === "ar" ? "أي طاولة متاحة" : language === "en" ? "Any available table" : "Jeder freie Tisch"}
+                      {copy({ ar: "أي طاولة متاحة", de: "Jeder freie Tisch", en: "Any available table", tr: "Uygun herhangi bir masa" })}
                     </option>
                     {bookingTables.map((t) => (
                       <option key={t.id || t._id} value={t.id || t._id}>
-                        {language === "ar" 
-                          ? `طاولة ${t.number} (${t.capacity} أشخاص)` 
-                          : language === "en" 
-                          ? `Table ${t.number} (${t.capacity} guests)` 
-                          : `Tisch ${t.number} (${t.capacity} Personen)`}
+                        {copy({
+                          ar: `طاولة ${t.number} (${t.capacity} أشخاص)`,
+                          de: `Tisch ${t.number} (${t.capacity} Personen)`,
+                          en: `Table ${t.number} (${t.capacity} guests)`,
+                          tr: `Masa ${t.number} (${t.capacity} kişi)`,
+                        })}
                       </option>
                     ))}
                   </select>
@@ -1988,10 +2059,10 @@ export default function BrandWebsite() {
 
                 <div>
                   <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
-                    {language === "ar" ? "ملاحظات إضافية" : language === "en" ? "Additional Notes" : "Zusätzliche Wünsche"}
+                    {copy({ ar: "ملاحظات إضافية", de: "Zusätzliche Wünsche", en: "Additional Notes", tr: "Ek Notlar" })}
                   </label>
                   <textarea
-                    placeholder="e.g. Baby seat, allergy notes..."
+                    placeholder={copy({ ar: "مثال: كرسي طفل، ملاحظات حساسية...", de: "z.B. Kinderstuhl, Allergiehinweise...", en: "e.g. Baby seat, allergy notes...", tr: "örn. Bebek sandalyesi, alerji notları..." })}
                     value={bookingNotes}
                     onChange={(e) => setBookingNotes(e.target.value)}
                     className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:border-brand-primary text-xs h-16 resize-none"
@@ -2004,7 +2075,7 @@ export default function BrandWebsite() {
                   className="w-full bg-brand-primary text-white font-bold py-3 rounded-xl text-xs hover:bg-brand-primary/95 transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 font-serif"
                 >
                   {isBookingLoading && <span className="animate-spin text-xs">🌀</span>}
-                  {language === "ar" ? "إرسال طلب الحجز" : language === "en" ? "Request Reservation" : "Tisch anfragen"}
+                  {copy({ ar: "إرسال طلب الحجز", de: "Tisch anfragen", en: "Request Reservation", tr: "Rezervasyon İste" })}
                 </button>
               </form>
             )}
@@ -2028,37 +2099,56 @@ export default function BrandWebsite() {
             
             <div className="text-xs text-slate-700 space-y-4 leading-relaxed font-sans text-left">
               <div>
-                <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[9px] mb-1">Angaben gemäß § 5 DDG</h4>
+                <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[9px] mb-1">
+                  {copy({ ar: "معلومات وفقاً للمادة 5 DDG", de: "Angaben gemäß § 5 DDG", en: "Information according to Section 5 DDG", tr: "DDG Madde 5 uyarınca bilgiler" })}
+                </h4>
                 <p className="font-medium text-slate-800">{restaurant?.legalName || restaurant?.name || brandName}</p>
                 <p>{restaurant?.address || "Berliner Str. 179, 42277 Wuppertal"}</p>
               </div>
               
               <div>
-                <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[9px] mb-1">Vertreten durch</h4>
-                <p>{language === "ar" ? "إدارة المطعم" : "Geschäftsführung"}</p>
+                <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[9px] mb-1">
+                  {copy({ ar: "يمثله", de: "Vertreten durch", en: "Represented by", tr: "Temsil eden" })}
+                </h4>
+                <p>{copy({ ar: "إدارة المطعم", de: "Geschäftsführung", en: "Restaurant Management", tr: "Restoran Yönetimi" })}</p>
               </div>
 
               <div>
-                <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[9px] mb-1">Kontakt</h4>
-                <p>{language === "ar" ? "الهاتف" : "Telefon"}: {restaurant?.phone || restaurant?.whatsappNumber}</p>
+                <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[9px] mb-1">
+                  {copy({ ar: "التواصل", de: "Kontakt", en: "Contact", tr: "İletişim" })}
+                </h4>
+                <p>{copy({ ar: "الهاتف", de: "Telefon", en: "Phone", tr: "Telefon" })}: {restaurant?.phone || restaurant?.whatsappNumber}</p>
                 {restaurant?.email && (
-                  <p>{language === "ar" ? "البريد الإلكتروني" : "E-Mail"}: {restaurant.email}</p>
+                  <p>{copy({ ar: "البريد الإلكتروني", de: "E-Mail", en: "Email", tr: "E-posta" })}: {restaurant.email}</p>
                 )}
               </div>
 
               <div>
-                <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[9px] mb-1">Umsatzsteuer-ID</h4>
-                <p>Umsatzsteuer-Identifikationsnummer gemäß § 27 a Umsatzsteuergesetz: DE318947510 (Muster-ID)</p>
+                <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[9px] mb-1">
+                  {copy({ ar: "رقم ضريبة القيمة المضافة", de: "Umsatzsteuer-ID", en: "VAT ID", tr: "KDV Kimlik Numarası" })}
+                </h4>
+                <p>{copy({
+                  ar: "رقم التعريف الضريبي للقيمة المضافة وفقاً للمادة 27 أ من قانون ضريبة القيمة المضافة: DE318947510 (رقم تجريبي)",
+                  de: "Umsatzsteuer-Identifikationsnummer gemäß § 27 a Umsatzsteuergesetz: DE318947510 (Muster-ID)",
+                  en: "VAT identification number according to Section 27a of the German VAT Act: DE318947510 (sample ID)",
+                  tr: "Alman KDV Kanunu Madde 27a uyarınca KDV kimlik numarası: DE318947510 (örnek ID)",
+                })}</p>
               </div>
 
               <div className="pt-2 border-t border-slate-100 text-[10px] text-slate-400 space-y-1.5">
-                <p>{language === "ar" ? "إخلاء المسؤولية: على الرغم من الرقابة الدقيقة على المحتوى، لا نتحمل أي مسؤولية عن محتوى الروابط الخارجية." : "Haftungsausschluss: Trotz sorgfältiger inhaltlicher Kontrolle übernehmen wir keine Haftung für die Inhalte externer Links. Für den Inhalt der verlinkten Seiten sind ausschließlich deren Betreiber verantwortlich."}</p>
+                <p>{copy({
+                  ar: "إخلاء المسؤولية: على الرغم من الرقابة الدقيقة على المحتوى، لا نتحمل أي مسؤولية عن محتوى الروابط الخارجية.",
+                  de: "Haftungsausschluss: Trotz sorgfältiger inhaltlicher Kontrolle übernehmen wir keine Haftung für die Inhalte externer Links. Für den Inhalt der verlinkten Seiten sind ausschließlich deren Betreiber verantwortlich.",
+                  en: "Disclaimer: Although we check content carefully, we accept no liability for the content of external links. The operators of linked pages are solely responsible for their content.",
+                  tr: "Sorumluluk reddi: İçerikleri dikkatle kontrol etmemize rağmen harici bağlantıların içeriklerinden sorumlu değiliz. Bağlantılı sayfaların içeriğinden yalnızca ilgili işletmeciler sorumludur.",
+                })}</p>
                 <p>
-                  {language === "ar" 
-                    ? "Farman FoodSuite عبارة عن منصة للطلب وجذب العملاء ولا تحل محل الالتزامات القانونية للعميل فيما يتعلق بالتسجيل المالي أو الامتثال لسجل النقد أو التقارير الضريبية أو المحاسبة." 
-                    : language === "en"
-                    ? "Farman FoodSuite is an ordering and customer engagement platform and does not replace the customer's legal obligations regarding fiscal recording, cash register compliance, tax reporting, or accounting."
-                    : "Farman FoodSuite ist eine Bestell- und Kundenbindungsplattform und ersetzt nicht die gesetzlichen Verpflichtungen des Kunden zur steuerlichen Erfassung, Kassenkonformität (TSE), Steuerberichterstattung oder Buchhaltung."}
+                  {copy({
+                    ar: "Farman FoodSuite عبارة عن منصة للطلب وجذب العملاء ولا تحل محل الالتزامات القانونية للعميل فيما يتعلق بالتسجيل المالي أو الامتثال لسجل النقد أو التقارير الضريبية أو المحاسبة.",
+                    de: "Farman FoodSuite ist eine Bestell- und Kundenbindungsplattform und ersetzt nicht die gesetzlichen Verpflichtungen des Kunden zur steuerlichen Erfassung, Kassenkonformität (TSE), Steuerberichterstattung oder Buchhaltung.",
+                    en: "Farman FoodSuite is an ordering and customer engagement platform and does not replace the customer's legal obligations regarding fiscal recording, cash register compliance, tax reporting, or accounting.",
+                    tr: "Farman FoodSuite bir sipariş ve müşteri etkileşim platformudur; mali kayıt, kasa uyumluluğu, vergi raporlaması veya muhasebe konularındaki yasal yükümlülüklerin yerine geçmez.",
+                  })}
                 </p>
               </div>
             </div>
@@ -2091,28 +2181,56 @@ export default function BrandWebsite() {
             
             <div className="text-xs text-slate-700 space-y-4 leading-relaxed font-sans overflow-y-auto max-h-[45vh] pr-2 text-left">
               <div>
-                <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[9px] mb-1">1. Datenschutz auf einen Blick</h4>
-                <p>Wir nehmen den Schutz Ihrer persönlichen Daten sehr ernst. Personenbezogene Daten werden auf dieser Website nur im technisch notwendigen Umfang (z. B. für den Bestellprozess über WhatsApp oder die Tischreservierung) verarbeitet.</p>
+                <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[9px] mb-1">
+                  {copy({ ar: "1. الخصوصية في لمحة", de: "1. Datenschutz auf einen Blick", en: "1. Privacy at a Glance", tr: "1. Gizliliğe Genel Bakış" })}
+                </h4>
+                <p>{copy({
+                  ar: "نحن نأخذ حماية بياناتك الشخصية على محمل الجد. تتم معالجة البيانات الشخصية على هذا الموقع فقط بالقدر الضروري تقنياً، مثل طلبات واتساب أو حجوزات الطاولات.",
+                  de: "Wir nehmen den Schutz Ihrer persönlichen Daten sehr ernst. Personenbezogene Daten werden auf dieser Website nur im technisch notwendigen Umfang (z. B. für den Bestellprozess über WhatsApp oder die Tischreservierung) verarbeitet.",
+                  en: "We take the protection of your personal data very seriously. Personal data is processed on this website only to the technically necessary extent, such as for WhatsApp ordering or table reservations.",
+                  tr: "Kişisel verilerinizin korunmasını çok ciddiye alıyoruz. Bu web sitesinde kişisel veriler yalnızca WhatsApp siparişi veya masa rezervasyonu gibi teknik olarak gerekli kapsamda işlenir.",
+                })}</p>
               </div>
 
               <div>
-                <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[9px] mb-1">2. Verantwortliche Stelle</h4>
+                <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[9px] mb-1">
+                  {copy({ ar: "2. الجهة المسؤولة", de: "2. Verantwortliche Stelle", en: "2. Responsible Party", tr: "2. Sorumlu Taraf" })}
+                </h4>
                 <p className="font-medium text-slate-800">{restaurant?.legalName || restaurant?.name || brandName}</p>
                 <p>{restaurant?.address}</p>
-                <p>E-Mail: {restaurant?.email || "info@mr-tabboush.de"}</p>
+                <p>{copy({ ar: "البريد الإلكتروني", de: "E-Mail", en: "Email", tr: "E-posta" })}: {restaurant?.email || "info@mr-tabboush.de"}</p>
               </div>
 
               <div>
-                <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[9px] mb-1">3. Erhebung und Verarbeitung von Daten</h4>
+                <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[9px] mb-1">
+                  {copy({ ar: "3. جمع البيانات ومعالجتها", de: "3. Erhebung und Verarbeitung von Daten", en: "3. Collection and Processing of Data", tr: "3. Verilerin Toplanması ve İşlenmesi" })}
+                </h4>
                 <ul className="list-disc pl-4 space-y-1">
-                  <li><strong>WhatsApp-Bestellungen:</strong> Wenn Sie Ihre Bestellung über den Smart Menu Service abschicken, werden die von Ihnen eingegebenen Daten (Name, Telefonnummer, Lieferadresse) zur Generierung des Bestelltexts und zur vertraglichen Abwicklung verarbeitet (Art. 6 Abs. 1 lit. b DSGVO).</li>
-                  <li><strong>Tischreservierung:</strong> Name, WhatsApp-Telefonnummer und Datum der Reservierung werden zur Bereitstellung des Reservierungsdienstes verarbeitet.</li>
+                  <li><strong>{copy({ ar: "طلبات واتساب", de: "WhatsApp-Bestellungen", en: "WhatsApp Orders", tr: "WhatsApp Siparişleri" })}:</strong> {copy({
+                    ar: "عند إرسال طلبك عبر خدمة القائمة الذكية، تتم معالجة البيانات التي تدخلها (الاسم، رقم الهاتف، عنوان التوصيل) لإنشاء نص الطلب وتنفيذ المعاملة التعاقدية (المادة 6 الفقرة 1 ب من DSGVO).",
+                    de: "Wenn Sie Ihre Bestellung über den Smart Menu Service abschicken, werden die von Ihnen eingegebenen Daten (Name, Telefonnummer, Lieferadresse) zur Generierung des Bestelltexts und zur vertraglichen Abwicklung verarbeitet (Art. 6 Abs. 1 lit. b DSGVO).",
+                    en: "When you submit your order through the Smart Menu service, the data you enter (name, phone number, delivery address) is processed to generate the order text and handle the contract process (Art. 6 para. 1 lit. b DSGVO).",
+                    tr: "Siparişinizi Smart Menu hizmeti üzerinden gönderdiğinizde, girdiğiniz veriler (ad, telefon numarası, teslimat adresi) sipariş metnini oluşturmak ve sözleşme sürecini yürütmek için işlenir (DSGVO Madde 6 paragraf 1 bent b).",
+                  })}</li>
+                  <li><strong>{copy({ ar: "حجز الطاولات", de: "Tischreservierung", en: "Table Reservation", tr: "Masa Rezervasyonu" })}:</strong> {copy({
+                    ar: "تتم معالجة الاسم ورقم واتساب وتاريخ الحجز لتوفير خدمة الحجز.",
+                    de: "Name, WhatsApp-Telefonnummer und Datum der Reservierung werden zur Bereitstellung des Reservierungsdienstes verarbeitet.",
+                    en: "Name, WhatsApp phone number, and reservation date are processed to provide the reservation service.",
+                    tr: "Ad, WhatsApp telefon numarası ve rezervasyon tarihi, rezervasyon hizmetini sağlamak için işlenir.",
+                  })}</li>
                 </ul>
               </div>
 
               <div>
-                <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[9px] mb-1">4. Ihre Rechte</h4>
-                <p>Sie haben jederzeit das Recht auf unentgeltliche Auskunft über Herkunft, Empfänger und Zweck Ihrer gespeicherten personenbezogenen Daten sowie ein Recht auf Berichtigung, Sperrung oder Löschung dieser Daten. Wenden Sie sich hierzu an den im Impressum angegebenen Kontakt.</p>
+                <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[9px] mb-1">
+                  {copy({ ar: "4. حقوقك", de: "4. Ihre Rechte", en: "4. Your Rights", tr: "4. Haklarınız" })}
+                </h4>
+                <p>{copy({
+                  ar: "يحق لك في أي وقت الحصول مجاناً على معلومات حول مصدر بياناتك الشخصية المخزنة والمستلمين والغرض منها، وكذلك طلب تصحيح هذه البيانات أو حظرها أو حذفها. يرجى التواصل عبر جهة الاتصال المذكورة في صفحة البيانات القانونية.",
+                  de: "Sie haben jederzeit das Recht auf unentgeltliche Auskunft über Herkunft, Empfänger und Zweck Ihrer gespeicherten personenbezogenen Daten sowie ein Recht auf Berichtigung, Sperrung oder Löschung dieser Daten. Wenden Sie sich hierzu an den im Impressum angegebenen Kontakt.",
+                  en: "You have the right at any time to free information about the origin, recipients, and purpose of your stored personal data, as well as the right to correction, blocking, or deletion of this data. Please contact the address listed in the imprint.",
+                  tr: "Saklanan kişisel verilerinizin kaynağı, alıcıları ve amacı hakkında ücretsiz bilgi alma, ayrıca bu verilerin düzeltilmesini, engellenmesini veya silinmesini talep etme hakkına her zaman sahipsiniz. Bunun için künyede belirtilen iletişim adresine başvurabilirsiniz.",
+                })}</p>
               </div>
             </div>
 
